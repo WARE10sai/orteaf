@@ -5,29 +5,6 @@ set(ORTEAF_USER_INCLUDE_DIR ${ORTEAF_INCLUDE_ROOT}/user)
 set(ORTEAF_EXTENSION_INCLUDE_DIR ${ORTEAF_INCLUDE_ROOT}/extension)
 set(ORTEAF_INTERNAL_INCLUDE_DIR ${ORTEAF_INCLUDE_ROOT}/internal)
 
-set(ORTEAF_RUNTIME_STATS_LEVEL 0 CACHE STRING
-    "Default statistics level for runtimes and allocators (0=off, 1=basic, 2=extended)")
-set_property(CACHE ORTEAF_RUNTIME_STATS_LEVEL PROPERTY STRINGS 0 1 2)
-
-foreach(_component CPU CUDA MPS ALLOCATOR)
-    set(ORTEAF_${_component}_STATS_LEVEL "AUTO" CACHE STRING
-        "Statistics level override for ${_component} (AUTO inherits ORTEAF_RUNTIME_STATS_LEVEL)")
-    set_property(CACHE ORTEAF_${_component}_STATS_LEVEL PROPERTY STRINGS AUTO 0 1 2)
-endforeach()
-
-function(orteaf_resolve_stats_level out_var override_value)
-    if("${override_value}" STREQUAL "AUTO")
-        set(${out_var} ${ORTEAF_RUNTIME_STATS_LEVEL} PARENT_SCOPE)
-    else()
-        set(${out_var} ${override_value} PARENT_SCOPE)
-    endif()
-endfunction()
-
-orteaf_resolve_stats_level(ORTEAF_CPU_STATS_LEVEL_EFFECTIVE "${ORTEAF_CPU_STATS_LEVEL}")
-orteaf_resolve_stats_level(ORTEAF_CUDA_STATS_LEVEL_EFFECTIVE "${ORTEAF_CUDA_STATS_LEVEL}")
-orteaf_resolve_stats_level(ORTEAF_MPS_STATS_LEVEL_EFFECTIVE "${ORTEAF_MPS_STATS_LEVEL}")
-orteaf_resolve_stats_level(ORTEAF_ALLOCATOR_STATS_LEVEL_EFFECTIVE "${ORTEAF_ALLOCATOR_STATS_LEVEL}")
-
 add_library(orteaf_user INTERFACE)
 target_include_directories(orteaf_user INTERFACE ${ORTEAF_USER_INCLUDE_DIR})
 
@@ -43,6 +20,9 @@ target_compile_definitions(orteaf_extension INTERFACE
     ORTEAF_CUDA_STATS_LEVEL=${ORTEAF_CUDA_STATS_LEVEL_EFFECTIVE}
     ORTEAF_MPS_STATS_LEVEL=${ORTEAF_MPS_STATS_LEVEL_EFFECTIVE}
     ORTEAF_ALLOCATOR_STATS_LEVEL=${ORTEAF_ALLOCATOR_STATS_LEVEL_EFFECTIVE}
+    ORTEAF_ENABLE_CPU=${ORTEAF_ENABLE_CPU_INT}
+    ORTEAF_ENABLE_CUDA=${ORTEAF_ENABLE_CUDA_INT}
+    ORTEAF_ENABLE_MPS=${ORTEAF_ENABLE_MPS_INT}
 )
 
 file(GLOB_RECURSE ORTEAF_SOURCES CONFIGURE_DEPENDS
@@ -71,6 +51,9 @@ target_compile_definitions(orteaf
         ORTEAF_CUDA_STATS_LEVEL=${ORTEAF_CUDA_STATS_LEVEL_EFFECTIVE}
         ORTEAF_MPS_STATS_LEVEL=${ORTEAF_MPS_STATS_LEVEL_EFFECTIVE}
         ORTEAF_ALLOCATOR_STATS_LEVEL=${ORTEAF_ALLOCATOR_STATS_LEVEL_EFFECTIVE}
+        ORTEAF_ENABLE_CPU=${ORTEAF_ENABLE_CPU_INT}
+        ORTEAF_ENABLE_CUDA=${ORTEAF_ENABLE_CUDA_INT}
+        ORTEAF_ENABLE_MPS=${ORTEAF_ENABLE_MPS_INT}
 )
 
 target_compile_features(orteaf PUBLIC cxx_std_20)

@@ -46,6 +46,7 @@ cmake -G Ninja .. -DENABLE_CUDA=ON -DENABLE_MPS=OFF
 
 | Option | Description | Default |
 |---------|-------------|----------|
+| `ENABLE_CPU` | Enable CPU runtime | ON |
 | `ENABLE_CUDA` | Enable CUDA backend | OFF |
 | `ENABLE_MPS` | Enable Metal (MPS) backend | OFF |
 
