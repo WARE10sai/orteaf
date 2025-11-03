@@ -39,6 +39,7 @@
 
 # Generated documentation
 docs/api/
+docs/api-tests/
 
 # debug information files
 *.dwo

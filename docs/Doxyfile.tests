@@ -1,21 +1,14 @@
-# Doxygen configuration for ORTEAF
-# Generated to document the C++ library and developer docs.
+# Doxygen configuration for ORTEAF test documentation.
 
-PROJECT_NAME           = "ORTEAF"
-PROJECT_BRIEF          = "Orchestrated Tensor Execution Adapter Framework"
+PROJECT_NAME           = "ORTEAF Tests"
+PROJECT_BRIEF          = "Test suites and specifications for ORTEAF"
 
-OUTPUT_DIRECTORY       = docs/api
+OUTPUT_DIRECTORY       = docs/api-tests
 GENERATE_HTML          = YES
 GENERATE_LATEX         = NO
 
-INPUT                  = ../orteaf/include \
-                         ../orteaf/src \
-                         ./developer
-EXCLUDE                = ../tests
-FILE_PATTERNS          = *.h \
-                         *.hpp \
-                         *.hh \
-                         *.cpp \
+INPUT                  = ../tests
+FILE_PATTERNS          = *.cpp \
                          *.cc \
                          *.cxx \
                          *.md
@@ -24,10 +17,7 @@ RECURSIVE              = YES
 EXTRACT_PRIVATE        = NO
 EXTRACT_STATIC         = NO
 EXTRACT_LOCAL_METHODS  = NO
-
 EXTRACT_ALL            = NO
-
-EXCLUDE_PATTERNS       = */internal/diagnostics/error/*.hpp
 
 ENABLE_PREPROCESSING   = YES
 MACRO_EXPANSION        = YES
@@ -48,8 +38,4 @@ WARN_IF_UNDOCUMENTED   = NO
 QUIET                  = NO
 WARNINGS               = YES
 
-# Make sure undocumented members in user/extension layers show up when documented.
-INPUT_FILTER           =
-
-# Disable search indexing for now to keep output lightweight.
 SEARCHENGINE           = NO

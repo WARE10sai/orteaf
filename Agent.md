@@ -43,6 +43,7 @@ scripts/setup-mps.sh   # Placeholder for macOS Metal setup
 - Architecture overview: `docs/developer/design.md`
 - Extension guidelines: `docs/developer/extension-guide.md`
 - Environment setup (Docker, MPS placeholder, WSL): `docs/developer/environment.md`
+- Doxygen configs: `docs/Doxyfile` (core) / `docs/Doxyfile.tests` (tests)
 - Testing checklist for TDD: `docs/developer/testing-strategy.md`
 - Roadmap / challenge log templates: `docs/roadmap.md`, `docs/challenge-log.md`
 

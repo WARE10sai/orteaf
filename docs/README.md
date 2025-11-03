@@ -15,4 +15,8 @@ ORTEAF に関するドキュメントの索引です。目的に応じて以下�
 - チャレンジログ テンプレート: [docs/challenge-log.md](challenge-log.md)
 - 開発環境ガイド: [docs/developer/environment.md](developer/environment.md)
 
+## テスト
+- TDD チェックリスト: [docs/developer/testing-strategy.md](developer/testing-strategy.md)
+- テスト専用 Doxygen 設定: `docs/Doxyfile.tests`
+
 > ドキュメントが増えた場合は、この索引を更新して導線を維持してください。
