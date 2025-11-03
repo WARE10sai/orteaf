@@ -9,6 +9,9 @@ option(ENABLE_CPU "Enable CPU runtime" ON)
 option(ENABLE_CUDA "Enable CUDA runtime" OFF)
 option(ENABLE_MPS "Enable Metal (MPS) runtime" OFF)
 
+# Enable CTest at the top level so `ctest` from the build dir works.
+enable_testing()
+
 # Statistics level configuration (shared by library and tests)
 set(ORTEAF_RUNTIME_STATS_LEVEL 0 CACHE STRING
     "Default statistics level for runtimes and allocators (0=off, 1=basic, 2=extended)")

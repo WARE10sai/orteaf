@@ -138,12 +138,10 @@ template <typename T>
 inline OrteafResultImpl<T>::OrteafResultImpl(std::in_place_index_t<1>, OrteafError error)
     : error_(std::move(error)) {}
 
-template <>
 inline OrteafResultImpl<void> OrteafResultImpl<void>::success() {
     return OrteafResultImpl();
 }
 
-template <>
 inline OrteafResultImpl<void> OrteafResultImpl<void>::failure(OrteafError error) {
     OrteafResultImpl result;
     result.error_ = std::move(error);
@@ -151,29 +149,24 @@ inline OrteafResultImpl<void> OrteafResultImpl<void>::failure(OrteafError error)
     return result;
 }
 
-template <>
 inline bool OrteafResultImpl<void>::has_value() const noexcept {
     return has_value_;
 }
 
-template <>
 inline bool OrteafResultImpl<void>::has_error() const noexcept {
     return error_.has_value();
 }
 
-template <>
 inline void OrteafResultImpl<void>::value() const {
     if (!has_value_) {
         throw *error_;
     }
 }
 
-template <>
 inline void OrteafResultImpl<void>::value_or() const {
     value();
 }
 
-template <>
 inline OrteafError OrteafResultImpl<void>::error() const {
     if (!error_) {
         throw OrteafError(OrteafErrc::Success, "result has no error");
@@ -181,12 +174,7 @@ inline OrteafError OrteafResultImpl<void>::error() const {
     return *error_;
 }
 
-template <>
 inline OrteafResultImpl<void>::OrteafResultImpl() = default;
-
-template <>
-inline OrteafResultImpl<void>::OrteafResultImpl(std::in_place_index_t<1>, OrteafError error)
-    : has_value_(false), error_(std::move(error)) {}
 
 }  // namespace detail
 
@@ -254,47 +242,38 @@ template <typename T>
 inline OrteafResult<T>::OrteafResult(detail::OrteafResultImpl<T>&& impl)
     : impl_(std::move(impl)) {}
 
-template <>
 inline OrteafResult<void> OrteafResult<void>::success() {
     return OrteafResult(detail::OrteafResultImpl<void>::success());
 }
 
-template <>
 inline OrteafResult<void> OrteafResult<void>::failure(OrteafErrc errc, std::string message) {
     return OrteafResult(detail::OrteafResultImpl<void>::failure(OrteafError(errc, std::move(message))));
 }
 
-template <>
 inline OrteafResult<void> OrteafResult<void>::failure(OrteafError error) {
     return OrteafResult(detail::OrteafResultImpl<void>::failure(std::move(error)));
 }
 
-template <>
 inline bool OrteafResult<void>::has_value() const noexcept {
     return impl_.has_value();
 }
 
-template <>
 inline bool OrteafResult<void>::has_error() const noexcept {
     return impl_.has_error();
 }
 
-template <>
 inline void OrteafResult<void>::value() const {
     impl_.value();
 }
 
-template <>
 inline void OrteafResult<void>::value_or() const {
     impl_.value();
 }
 
-template <>
 inline OrteafError OrteafResult<void>::error() const {
     return impl_.error();
 }
 
-template <>
 inline OrteafResult<void>::OrteafResult(detail::OrteafResultImpl<void>&& impl)
     : impl_(std::move(impl)) {}
 
@@ -346,7 +325,6 @@ inline void unwrap_or_throw(OrteafResult<void>&& result) {
     throw result.error();
 }
 
-template <>
 inline OrteafResult<void> capture_result(void (*fn)()) {
     return capture_result<std::function<void()>>([fn] {
         fn();
