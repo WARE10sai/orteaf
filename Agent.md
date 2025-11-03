@@ -16,7 +16,10 @@ orteaf/                # Library sources
   include/orteaf/
     user/              # Public wrappers (PImpl front end)
     extension/         # Extension points (Kernel, Ops, TensorImpl, ModuleImpl)
-    internal/          # Core runtime/allocator/error implementations
+    internal/          # Core runtime/allocator/diagnostics implementations
+      diagnostics/
+        error/         # Common exception helpers
+        log/           # (planned) logging interfaces
   src/…                # Mirrors the include tree (user/extension/internal)
 tests/                 # Mirrors the include layout for TDD-focused suites
 docs/

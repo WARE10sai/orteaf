@@ -4,7 +4,7 @@
 #include <string>
 #include <string_view>
 
-namespace orteaf::internal::error {
+namespace orteaf::internal::diagnostics::error {
 
 /**
  * 共通の例外スロー関数。内部実装から利用し、ユーザー層には伝播させずに変換する。
@@ -26,4 +26,4 @@ auto wrapAndRethrow(Fn&& fn) -> decltype(auto) {
     }
 }
 
-}  // namespace orteaf::internal::error
+}  // namespace orteaf::internal::diagnostics::error

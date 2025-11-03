@@ -19,7 +19,7 @@ orteaf/
 ├── include/orteaf/
 │   ├── user/          # ユーザーが触れるラッパー層
 │   ├── extension/     # 拡張ポイント（Kernel, Ops, TensorImpl など）
-│   └── internal/      # 実行基盤（SystemManager, Dispatcher 等）
+│   └── internal/      # 実行基盤（SystemManager, Diagnostics 等）
 └── src/
     ├── user/
     ├── extension/
@@ -44,7 +44,7 @@ orteaf/
 - `Allocator` / `MemSafe`：メモリ確保と安全管理。
 - `Dispatcher` / `KernelRegister`：OPS と Kernel の橋渡し。
 - `Runtimes`：CPU / CUDA / MPS を抽象化したバックエンド。
-- `Error`：共通の例外ラッパーとエラー分類。内部で統一的に throw / catch を扱い、必要に応じてログや統計を追加する。
+- `Diagnostics`（`error/`, `log/`）：共通の例外ラッパーやログインターフェースをまとめる。内部で統一的に throw / catch / logging を扱い、必要に応じて統計やトレースを連携させる。
 
 ## ビルド時オプション
 
