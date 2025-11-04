@@ -45,25 +45,59 @@ const std::error_category& orteaf_error_category();
 std::error_code make_error_code(OrteafErrc errc);
 
 /**
- * @brief ORTEAF 専用の system_error 派生クラス。
+ * @brief ORTEAF 専用のエラー情報。
  *
- * エラーコードとメッセージを保持し、`std::system_error` として扱える。
+ * `std::error_code`（= OrteafErrc + カテゴリ）と、任意の詳細メッセージを保持する。
+ * 例外を投げる場合も、結果オブジェクトとして返す場合も、この構造体を経由する。
  */
-class OrteafError : public std::system_error {
+class OrteafError {
 public:
-    OrteafError(std::error_code ec, std::string message);
-    OrteafError(OrteafErrc errc, std::string message);
-    explicit OrteafError(std::error_code ec);
+    OrteafError();
+    OrteafError(std::error_code ec, std::string message = {});
+    OrteafError(OrteafErrc errc, std::string message = {});
+
+    /// エラー種別（OrteafErrc）を取得。
+    OrteafErrc errc() const noexcept;
+
+    /// 詳細メッセージ（空の場合あり）。
+    std::string_view detail() const noexcept;
+
+    /// カテゴリメッセージと詳細を結合した説明文字列を返す。
+    std::string describe() const;
+
+    /// 保持している std::error_code。
+    const std::error_code& code() const noexcept;
+
+    /// メッセージ文字列（mutable）。
+    const std::string& message() const noexcept;
+
+    /// エラーコードを設定（カテゴリ付き）。
+    void set_code(std::error_code ec);
+
+    /// エラーコードを ORTEAF カテゴリで設定。
+    void set_code(OrteafErrc errc);
+
+    /// 詳細メッセージを設定。
+    void set_message(std::string message);
 
 private:
-    static std::string compose_message(const std::error_code& ec, std::string_view message);
+    std::error_code code_;
+    std::string message_;
 };
 
-/// @brief エラーを送出するヘルパ。OrteafErrc から OrteafError を投げる。
-[[noreturn]] void throw_error(OrteafErrc errc, std::string message = {});
+/// @brief エラーを生成するヘルパ。
+OrteafError make_error(OrteafErrc errc, std::string message = {});
+OrteafError make_error(std::error_code ec, std::string message = {});
 
-/// @brief std::error_code から OrteafError を投げる。
+/// @brief エラーを送出するヘルパ。内部で std::system_error を生成して投げる。
+[[noreturn]] void throw_error(const OrteafError& error);
+[[noreturn]] void throw_error(OrteafErrc errc, std::string message = {});
 [[noreturn]] void throw_error(std::error_code ec, std::string message = {});
+
+/// @brief 致命的エラー。ログ出力後にプログラムを停止する。
+[[noreturn]] void fatal_error(const OrteafError& error);
+[[noreturn]] void fatal_error(OrteafErrc errc, std::string message = {});
+[[noreturn]] void fatal_error(std::error_code ec, std::string message = {});
 
 /**
  * @brief Result 型の内部実装。

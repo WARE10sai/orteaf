@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstdio>
+#include <cstdlib>
+#include <exception>
 #include <functional>
 #include <utility>
 
@@ -37,34 +40,87 @@ inline std::error_code make_error_code(OrteafErrc errc) {
     return {static_cast<int>(errc), orteaf_error_category()};
 }
 
+inline OrteafError::OrteafError()
+    : code_(make_error_code(OrteafErrc::Unknown)) {}
+
 inline OrteafError::OrteafError(std::error_code ec, std::string message)
-    : std::system_error(ec, compose_message(ec, message)) {}
+    : code_(std::move(ec)), message_(std::move(message)) {}
 
 inline OrteafError::OrteafError(OrteafErrc errc, std::string message)
     : OrteafError(make_error_code(errc), std::move(message)) {}
 
-inline OrteafError::OrteafError(std::error_code ec)
-    : std::system_error(ec) {}
+inline OrteafErrc OrteafError::errc() const noexcept {
+    return static_cast<OrteafErrc>(code_.value());
+}
 
-inline std::string OrteafError::compose_message(const std::error_code& ec, std::string_view message) {
-    if (message.empty()) {
-        return ec.message();
+inline std::string_view OrteafError::detail() const noexcept {
+    return message_;
+}
+
+inline std::string OrteafError::describe() const {
+    const auto base = code_.message();
+    if (message_.empty()) {
+        return base;
     }
     std::string out;
-    auto base = ec.message();
-    out.reserve(base.size() + 2 + message.size());
+    out.reserve(base.size() + 2 + message_.size());
     out.append(base);
     out.append(": ");
-    out.append(message);
+    out.append(message_);
     return out;
 }
 
+inline const std::error_code& OrteafError::code() const noexcept {
+    return code_;
+}
+
+inline const std::string& OrteafError::message() const noexcept {
+    return message_;
+}
+
+inline void OrteafError::set_code(std::error_code ec) {
+    code_ = std::move(ec);
+}
+
+inline void OrteafError::set_code(OrteafErrc errc) {
+    code_ = make_error_code(errc);
+}
+
+inline void OrteafError::set_message(std::string message) {
+    message_ = std::move(message);
+}
+
+inline OrteafError make_error(OrteafErrc errc, std::string message) {
+    return OrteafError(errc, std::move(message));
+}
+
+inline OrteafError make_error(std::error_code ec, std::string message) {
+    return OrteafError(std::move(ec), std::move(message));
+}
+
+inline void throw_error(const OrteafError& error) {
+    throw std::system_error(error.code(), error.describe());
+}
+
 inline void throw_error(OrteafErrc errc, std::string message) {
-    throw OrteafError(errc, std::move(message));
+    throw_error(make_error(errc, std::move(message)));
 }
 
 inline void throw_error(std::error_code ec, std::string message) {
-    throw OrteafError(ec, std::move(message));
+    throw_error(make_error(ec, std::move(message)));
+}
+
+inline void fatal_error(const OrteafError& error) {
+    std::fprintf(stderr, "[ORTEAF][FATAL] %s\n", error.describe().c_str());
+    std::abort();
+}
+
+inline void fatal_error(OrteafErrc errc, std::string message) {
+    fatal_error(make_error(errc, std::move(message)));
+}
+
+inline void fatal_error(std::error_code ec, std::string message) {
+    fatal_error(make_error(ec, std::move(message)));
 }
 
 namespace detail {
@@ -92,7 +148,7 @@ inline bool OrteafResultImpl<T>::has_error() const noexcept {
 template <typename T>
 inline T& OrteafResultImpl<T>::value() & {
     if (!value_) {
-        throw *error_;
+        throw_error(error());
     }
     return *value_;
 }
@@ -100,7 +156,7 @@ inline T& OrteafResultImpl<T>::value() & {
 template <typename T>
 inline const T& OrteafResultImpl<T>::value() const& {
     if (!value_) {
-        throw *error_;
+        throw_error(error());
     }
     return *value_;
 }
@@ -108,7 +164,7 @@ inline const T& OrteafResultImpl<T>::value() const& {
 template <typename T>
 inline T&& OrteafResultImpl<T>::value() && {
     if (!value_) {
-        throw *error_;
+        throw_error(error());
     }
     return std::move(*value_);
 }
@@ -124,7 +180,7 @@ inline T OrteafResultImpl<T>::value_or(T default_value) const& {
 template <typename T>
 inline OrteafError OrteafResultImpl<T>::error() const {
     if (!error_) {
-        throw OrteafError(OrteafErrc::Success, "result has no error");
+        throw_error(make_error(OrteafErrc::Success, "result has no error"));
     }
     return *error_;
 }
@@ -159,7 +215,7 @@ inline bool OrteafResultImpl<void>::has_error() const noexcept {
 
 inline void OrteafResultImpl<void>::value() const {
     if (!has_value_) {
-        throw *error_;
+        throw_error(error());
     }
 }
 
@@ -169,7 +225,7 @@ inline void OrteafResultImpl<void>::value_or() const {
 
 inline OrteafError OrteafResultImpl<void>::error() const {
     if (!error_) {
-        throw OrteafError(OrteafErrc::Success, "result has no error");
+        throw_error(make_error(OrteafErrc::Success, "result has no error"));
     }
     return *error_;
 }
@@ -185,7 +241,7 @@ inline OrteafResult<T> OrteafResult<T>::success(T value) {
 
 template <typename T>
 inline OrteafResult<T> OrteafResult<T>::failure(OrteafErrc errc, std::string message) {
-    return OrteafResult(detail::OrteafResultImpl<T>::failure(OrteafError(errc, std::move(message))));
+    return OrteafResult(detail::OrteafResultImpl<T>::failure(make_error(errc, std::move(message))));
 }
 
 template <typename T>
@@ -196,7 +252,7 @@ inline OrteafResult<T> OrteafResult<T>::failure(OrteafError error) {
 template <typename T>
 template <typename... Args>
 inline OrteafResult<T> OrteafResult<T>::failure_with(OrteafErrc errc, Args&&... args) {
-    return failure(OrteafError(errc, std::string(std::forward<Args>(args)...)));
+    return failure(make_error(errc, std::string(std::forward<Args>(args)...)));
 }
 
 template <typename T>
@@ -247,7 +303,7 @@ inline OrteafResult<void> OrteafResult<void>::success() {
 }
 
 inline OrteafResult<void> OrteafResult<void>::failure(OrteafErrc errc, std::string message) {
-    return OrteafResult(detail::OrteafResultImpl<void>::failure(OrteafError(errc, std::move(message))));
+    return OrteafResult(detail::OrteafResultImpl<void>::failure(make_error(errc, std::move(message))));
 }
 
 inline OrteafResult<void> OrteafResult<void>::failure(OrteafError error) {
@@ -287,21 +343,22 @@ auto capture_result(Fn&& fn) -> OrteafResult<std::invoke_result_t<Fn>> {
         } else {
             return OrteafResult<ReturnT>::success(std::invoke(std::forward<Fn>(fn)));
         }
-    } catch (const OrteafError& err) {
+    } catch (const std::system_error& ex) {
+        auto err = make_error(ex.code(), ex.what());
         if constexpr (std::is_void_v<ReturnT>) {
-            return OrteafResult<void>::failure(err);
+            return OrteafResult<void>::failure(std::move(err));
         } else {
-            return OrteafResult<ReturnT>::failure(err);
+            return OrteafResult<ReturnT>::failure(std::move(err));
         }
     } catch (const std::exception& ex) {
-        auto err = OrteafError(OrteafErrc::Unknown, ex.what());
+        auto err = make_error(OrteafErrc::Unknown, ex.what());
         if constexpr (std::is_void_v<ReturnT>) {
             return OrteafResult<void>::failure(std::move(err));
         } else {
             return OrteafResult<ReturnT>::failure(std::move(err));
         }
     } catch (...) {
-        auto err = OrteafError(OrteafErrc::Unknown, "unknown non-std exception");
+        auto err = make_error(OrteafErrc::Unknown, "unknown non-std exception");
         if constexpr (std::is_void_v<ReturnT>) {
             return OrteafResult<void>::failure(std::move(err));
         } else {
@@ -315,14 +372,14 @@ inline T unwrap_or_throw(OrteafResult<T>&& result) {
     if (result.has_value()) {
         return std::move(result).value();
     }
-    throw result.error();
+    throw_error(result.error());
 }
 
 inline void unwrap_or_throw(OrteafResult<void>&& result) {
     if (result.has_value()) {
         return;
     }
-    throw result.error();
+    throw_error(result.error());
 }
 
 inline OrteafResult<void> capture_result(void (*fn)()) {

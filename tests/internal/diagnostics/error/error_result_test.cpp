@@ -15,14 +15,21 @@ TEST(DiagnosticsError, ErrorCodeCategoryBasics) {
 }
 
 TEST(DiagnosticsError, OrteafErrorCapturesCodeAndMessage) {
-    diag::OrteafError err(diag::OrteafErrc::BackendUnavailable, "cuda backend disabled");
-    EXPECT_EQ(diag::OrteafErrc::BackendUnavailable, static_cast<diag::OrteafErrc>(err.code().value()));
+    auto err = diag::make_error(diag::OrteafErrc::BackendUnavailable, "cuda backend disabled");
+    EXPECT_EQ(diag::OrteafErrc::BackendUnavailable, err.errc());
     EXPECT_EQ(&diag::orteaf_error_category(), &err.code().category());
-    EXPECT_NE(std::string::npos, std::string(err.what()).find("cuda backend disabled"));
+    const auto describe = err.describe();
+    EXPECT_NE(std::string::npos, describe.find("cuda backend disabled"));
 }
 
 TEST(DiagnosticsError, ThrowErrorHelperThrowsOrteafError) {
-    EXPECT_THROW(diag::throw_error(diag::OrteafErrc::OutOfMemory, "allocation failed"), diag::OrteafError);
+    try {
+        diag::throw_error(diag::OrteafErrc::OutOfMemory, "allocation failed");
+        FAIL() << "Expected std::system_error to be thrown";
+    } catch (const std::system_error& ex) {
+        EXPECT_EQ(diag::OrteafErrc::OutOfMemory, static_cast<diag::OrteafErrc>(ex.code().value()));
+        EXPECT_NE(std::string::npos, std::string(ex.what()).find("allocation failed"));
+    }
 }
 
 TEST(DiagnosticsError, ResultSuccessHoldsValue) {
@@ -38,9 +45,9 @@ TEST(DiagnosticsError, ResultErrorHoldsError) {
     EXPECT_FALSE(result.has_value());
     EXPECT_TRUE(result.has_error());
     auto err = result.error();
-    EXPECT_EQ(diag::OrteafErrc::OperationFailed, static_cast<diag::OrteafErrc>(err.code().value()));
-    EXPECT_NE(std::string::npos, std::string(err.what()).find("op fail"));
-    EXPECT_THROW(result.value(), diag::OrteafError);
+    EXPECT_EQ(diag::OrteafErrc::OperationFailed, err.errc());
+    EXPECT_NE(std::string::npos, err.describe().find("op fail"));
+    EXPECT_THROW(result.value(), std::system_error);
 }
 
 TEST(DiagnosticsError, CaptureResultPropagatesValue) {
@@ -55,8 +62,7 @@ TEST(DiagnosticsError, CaptureResultPropagatesOrteafError) {
         return 0;
     });
     EXPECT_TRUE(result.has_error());
-    EXPECT_EQ(diag::OrteafErrc::BackendUnavailable,
-              static_cast<diag::OrteafErrc>(result.error().code().value()));
+    EXPECT_EQ(diag::OrteafErrc::BackendUnavailable, result.error().errc());
 }
 
 TEST(DiagnosticsError, CaptureResultMapsStdExceptionToUnknown) {
@@ -64,8 +70,7 @@ TEST(DiagnosticsError, CaptureResultMapsStdExceptionToUnknown) {
         throw std::logic_error("logic");
     });
     EXPECT_TRUE(result.has_error());
-    EXPECT_EQ(diag::OrteafErrc::Unknown,
-              static_cast<diag::OrteafErrc>(result.error().code().value()));
+    EXPECT_EQ(diag::OrteafErrc::Unknown, result.error().errc());
 }
 
 TEST(DiagnosticsError, CaptureResultVoidSpecialization) {
@@ -79,5 +84,5 @@ TEST(DiagnosticsError, UnwrapOrThrowReturnsOrThrows) {
     EXPECT_EQ(7, diag::unwrap_or_throw(std::move(ok)));
 
     auto bad = diag::OrteafResult<int>::failure(diag::OrteafErrc::InvalidState, "bad state");
-    EXPECT_THROW(diag::unwrap_or_throw(std::move(bad)), diag::OrteafError);
+    EXPECT_THROW(diag::unwrap_or_throw(std::move(bad)), std::system_error);
 }

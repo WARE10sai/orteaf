@@ -44,7 +44,7 @@ orteaf/
 - `Allocator` / `MemSafe`：メモリ確保と安全管理。
 - `Dispatcher` / `KernelRegister`：OPS と Kernel の橋渡し。
 - `Runtimes`：CPU / CUDA / MPS を抽象化したバックエンド。
-- `Diagnostics`（`error/`, `log/`）：共通の例外ラッパーやログインターフェースをまとめる。内部で統一的に throw / catch / logging を扱い、必要に応じて統計やトレースを連携させる。
+- `Diagnostics`（`error/`, `log/`）：共通のエラー情報 (`OrteafError`)、致命的エラー (`fatal_error`) と例外ラッパーを提供し、統一的に throw / ログ / 統計連携を扱う。
 
 ## ビルド時オプション
 
