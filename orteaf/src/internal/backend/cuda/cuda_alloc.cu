@@ -9,6 +9,16 @@
 
 namespace orteaf::internal::backend::cuda {
 
+/**
+ * @brief Allocate device memory on CUDA device.
+ *
+ * Implementation of alloc() declared in cuda_alloc.h.
+ * Uses cuMemAlloc to allocate device memory and updates statistics.
+ *
+ * @param size Size of memory to allocate in bytes.
+ * @return Opaque CUDA device pointer. Returns 0 if CUDA is not available.
+ * @throws std::runtime_error If CUDA allocation fails (when CUDA_AVAILABLE is defined).
+ */
 CUdeviceptr_t alloc(size_t size) {
 #ifdef CUDA_AVAILABLE
     CUdeviceptr ptr;
@@ -21,6 +31,15 @@ CUdeviceptr_t alloc(size_t size) {
 #endif
 }
 
+/**
+ * @brief Free device memory on CUDA device.
+ *
+ * Implementation of free() declared in cuda_alloc.h.
+ * Uses cuMemFree to free device memory and updates statistics.
+ *
+ * @param ptr Opaque CUDA device pointer to free.
+ * @param size Size of memory to free in bytes. Used for statistics update.
+ */
 void free(CUdeviceptr_t ptr, size_t size) {
 #ifdef CUDA_AVAILABLE
     CUdeviceptr objc_ptr = cu_deviceptr_from_opaque(ptr);
@@ -31,6 +50,17 @@ void free(CUdeviceptr_t ptr, size_t size) {
 #endif
 }
 
+/**
+ * @brief Allocate device memory on CUDA device asynchronously.
+ *
+ * Implementation of alloc_stream() declared in cuda_alloc.h.
+ * Uses cuMemAllocAsync to allocate device memory asynchronously on the specified stream.
+ *
+ * @param size Size of memory to allocate in bytes.
+ * @param stream CUDA stream handle for asynchronous allocation.
+ * @return Opaque CUDA device pointer. Returns 0 if CUDA is not available.
+ * @throws std::runtime_error If stream is nullptr or CUDA allocation fails.
+ */
 CUdeviceptr_t alloc_stream(size_t size, CUstream_t stream) {
 #ifdef CUDA_AVAILABLE
     CUdeviceptr ptr;
@@ -49,6 +79,17 @@ CUdeviceptr_t alloc_stream(size_t size, CUstream_t stream) {
 #endif
 }
 
+/**
+ * @brief Free device memory on CUDA device asynchronously.
+ *
+ * Implementation of free_stream() declared in cuda_alloc.h.
+ * Uses cuMemFreeAsync to free device memory asynchronously on the specified stream.
+ *
+ * @param ptr Opaque CUDA device pointer to free.
+ * @param size Size of memory to free in bytes. Used for statistics update.
+ * @param stream CUDA stream handle for asynchronous deallocation.
+ * @throws std::runtime_error If stream is nullptr or CUDA deallocation fails.
+ */
 void free_stream(CUdeviceptr_t ptr, size_t size, CUstream_t stream) {
 #ifdef CUDA_AVAILABLE
     CUdeviceptr objc_ptr = cu_deviceptr_from_opaque(ptr);
@@ -64,6 +105,16 @@ void free_stream(CUdeviceptr_t ptr, size_t size, CUstream_t stream) {
 #endif
 }
 
+/**
+ * @brief Allocate pinned host memory.
+ *
+ * Implementation of alloc_host() declared in cuda_alloc.h.
+ * Uses cuMemAllocHost to allocate page-locked (pinned) host memory.
+ *
+ * @param size Size of memory to allocate in bytes.
+ * @return Pointer to allocated pinned host memory. Returns nullptr if CUDA is not available.
+ * @throws std::runtime_error If CUDA allocation fails (when CUDA_AVAILABLE is defined).
+ */
 void* alloc_host(std::size_t size) {
 #ifdef CUDA_AVAILABLE
     void* ptr;
@@ -76,11 +127,22 @@ void* alloc_host(std::size_t size) {
 #endif
 }
 
+/**
+ * @brief Copy data from device to host memory.
+ *
+ * Implementation of copy_to_host() declared in cuda_alloc.h.
+ * Uses cuMemcpyDtoH to copy data synchronously from device to host memory.
+ * This operation does not allocate memory and does not update statistics.
+ *
+ * @param ptr Opaque CUDA device pointer to copy from.
+ * @param host_ptr Host memory pointer to copy to.
+ * @param size Number of bytes to copy.
+ * @throws std::runtime_error If CUDA copy operation fails (when CUDA_AVAILABLE is defined).
+ */
 void copy_to_host(CUdeviceptr_t ptr, void* host_ptr, size_t size) {
 #ifdef CUDA_AVAILABLE
     CUdeviceptr objc_ptr = cu_deviceptr_from_opaque(ptr);
     CU_CHECK(cuMemcpyDtoH(host_ptr, objc_ptr, size));
-    stats_on_alloc(size);
 #else
     (void)ptr;
     (void)host_ptr;
@@ -88,11 +150,22 @@ void copy_to_host(CUdeviceptr_t ptr, void* host_ptr, size_t size) {
 #endif
 }
 
+/**
+ * @brief Copy data from host to device memory.
+ *
+ * Implementation of copy_to_device() declared in cuda_alloc.h.
+ * Uses cuMemcpyHtoD to copy data synchronously from host to device memory.
+ * This operation does not allocate memory and does not update statistics.
+ *
+ * @param host_ptr Host memory pointer to copy from.
+ * @param ptr Opaque CUDA device pointer to copy to.
+ * @param size Number of bytes to copy.
+ * @throws std::runtime_error If CUDA copy operation fails (when CUDA_AVAILABLE is defined).
+ */
 void copy_to_device(void* host_ptr, CUdeviceptr_t ptr, size_t size) {
 #ifdef CUDA_AVAILABLE
     CUdeviceptr objc_ptr = cu_deviceptr_from_opaque(ptr);
     CU_CHECK(cuMemcpyHtoD(objc_ptr, host_ptr, size));
-    stats_on_alloc(size);
 #else
     (void)host_ptr;
     (void)ptr;
@@ -100,6 +173,16 @@ void copy_to_device(void* host_ptr, CUdeviceptr_t ptr, size_t size) {
 #endif
 }
 
+/**
+ * @brief Free pinned host memory.
+ *
+ * Implementation of free_host() declared in cuda_alloc.h.
+ * Uses cuMemFreeHost to free page-locked (pinned) host memory.
+ *
+ * @param ptr Pointer to pinned host memory to free.
+ * @param size Size of memory to free in bytes. Used for statistics update.
+ * @throws std::runtime_error If CUDA deallocation fails (when CUDA_AVAILABLE is defined).
+ */
 void free_host(void* ptr, size_t size) {
 #ifdef CUDA_AVAILABLE
     CU_CHECK(cuMemFreeHost(ptr));

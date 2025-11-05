@@ -1,5 +1,14 @@
 #pragma once
 
+/**
+ * @file cpu_alloc.h
+ * @brief CPU memory allocation functions and utilities.
+ *
+ * This header provides functions for allocating and deallocating CPU memory
+ * with configurable alignment. All allocation and deallocation operations
+ * automatically update CPU statistics when available.
+ */
+
 #include "orteaf/internal/backend/cpu/cpu_stats.h"
 
 #include <cstdlib>
