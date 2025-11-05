@@ -1,7 +1,7 @@
 #include "orteaf/internal/backend/mps/mps_compile_options.h"
 #include "orteaf/internal/backend/mps/mps_objc_bridge.h"
 
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 #import <Metal/Metal.h>
 #import <Foundation/Foundation.h>
 #endif
@@ -9,7 +9,7 @@
 namespace orteaf::internal::backend::mps {
 
 MPSCompileOptions_t create_compile_options() {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     MTLCompileOptions* options = [[MTLCompileOptions alloc] init];
     return (MPSCompileOptions_t)opaque_from_objc_retained(options);
 #else
@@ -18,7 +18,7 @@ MPSCompileOptions_t create_compile_options() {
 }
 
 void destroy_compile_options(MPSCompileOptions_t options) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (options != nullptr) {
         opaque_release_retained(options);
     }
@@ -28,7 +28,7 @@ void destroy_compile_options(MPSCompileOptions_t options) {
 }
 
 void set_compile_options_math_mode(MPSCompileOptions_t options, bool fast_math_enabled) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (options == nullptr) return;
     
     MTLCompileOptions* objc_options = objc_from_opaque_noown<MTLCompileOptions*>(options);
@@ -44,7 +44,7 @@ void set_compile_options_math_mode(MPSCompileOptions_t options, bool fast_math_e
 }
 
 void set_compile_options_preserve_invariance(MPSCompileOptions_t options, bool preserve_invariance) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (options == nullptr) return;
     
     MTLCompileOptions* objc_options = objc_from_opaque_noown<MTLCompileOptions*>(options);
@@ -56,7 +56,7 @@ void set_compile_options_preserve_invariance(MPSCompileOptions_t options, bool p
 }
 
 void set_compile_options_preprocessor_macros(MPSCompileOptions_t options, void* macros_dictionary) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (options == nullptr) return;
     
     MTLCompileOptions* objc_options = objc_from_opaque_noown<MTLCompileOptions*>(options);

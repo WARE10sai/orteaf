@@ -1,13 +1,13 @@
 #include "orteaf/internal/backend/mps/mps_string.h"
 #include "orteaf/internal/backend/mps/mps_objc_bridge.h"
 
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 #import <Foundation/Foundation.h>
 #endif
 
 namespace orteaf::internal::backend::mps {
 
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 
 MPSString_t to_ns_string(std::string_view view) {
     if (view.empty()) {
@@ -27,13 +27,13 @@ MPSString_t to_ns_string(std::string_view view) {
     return (MPSString_t)fallback;
 }
 
-#else // !(defined(MPS_AVAILABLE) && defined(__OBJC__))
+#else // !(defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__))
 
 MPSString_t to_ns_string(std::string_view view) {
     (void)view;
     return nullptr;
 }
 
-#endif // defined(MPS_AVAILABLE) && defined(__OBJC__)
+#endif // defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 
 } // namespace orteaf::internal::backend::mps

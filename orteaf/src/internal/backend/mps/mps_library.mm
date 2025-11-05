@@ -1,7 +1,7 @@
 #include "orteaf/internal/backend/mps/mps_library.h"
 #include "orteaf/internal/backend/mps/mps_objc_bridge.h"
 
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 #import <Metal/Metal.h>
 #import <Foundation/Foundation.h>
 #import <objc/message.h>
@@ -11,7 +11,7 @@
 namespace orteaf::internal::backend::mps {
 
 [[nodiscard]] MPSLibrary_t create_library(MPSDevice_t device, MPSString_t name, MPSError_t* error) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (name == nullptr) {
         if (error != nullptr) {
             *error = nullptr;
@@ -56,7 +56,7 @@ namespace orteaf::internal::backend::mps {
                                                       MPSString_t source,
                                                       MPSCompileOptions_t compile_options,
                                                       MPSError_t* error) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (source == nullptr) {
         if (error != nullptr) {
             *error = nullptr;
@@ -92,7 +92,7 @@ namespace orteaf::internal::backend::mps {
 }
 
 void destroy_library(MPSLibrary_t library) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (library != nullptr) {
         opaque_release_retained(library);
     }
@@ -105,7 +105,7 @@ void destroy_library(MPSLibrary_t library) {
                                                     const void* data,
                                                     std::size_t size,
                                                     MPSError_t* error) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (data == nullptr || size == 0) {
         if (error != nullptr) {
             *error = nullptr;

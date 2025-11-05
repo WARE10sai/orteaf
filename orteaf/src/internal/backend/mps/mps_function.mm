@@ -1,7 +1,7 @@
 #include "orteaf/internal/backend/mps/mps_function.h"
 #include "orteaf/internal/backend/mps/mps_objc_bridge.h"
 
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 #import <Metal/Metal.h>
 #import <Foundation/Foundation.h>
 #endif
@@ -9,7 +9,7 @@
 namespace orteaf::internal::backend::mps {
 
 MPSFunction_t create_function(MPSLibrary_t library, std::string_view name) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     NSString* function_name = [[[NSString alloc] initWithBytes:name.data()
                                                    length:name.size()
                                                  encoding:NSUTF8StringEncoding] autorelease];
@@ -27,7 +27,7 @@ MPSFunction_t create_function(MPSLibrary_t library, std::string_view name) {
 }
 
 void destroy_function(MPSFunction_t function) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (function != nullptr) {
         opaque_release_retained(function);
     }

@@ -1,7 +1,7 @@
 #include "orteaf/internal/backend/mps/mps_device.h"
 #include "orteaf/internal/backend/mps/mps_objc_bridge.h"
 
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 #import <Metal/Metal.h>
 #import <Foundation/Foundation.h>
 #endif
@@ -9,7 +9,7 @@
 namespace orteaf::internal::backend::mps {
 
 MPSDevice_t get_device() {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     id<MTLDevice> device = MTLCreateSystemDefaultDevice();
     if (device == nil) {
         return nullptr;
@@ -21,7 +21,7 @@ MPSDevice_t get_device() {
 }
 
 MPSDevice_t get_device(MPSInt_t device_id) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     NSArray<id<MTLDevice>>* devices = MTLCopyAllDevices();
     if (devices == nil) {
         return nullptr;
@@ -46,7 +46,7 @@ MPSDevice_t get_device(MPSInt_t device_id) {
 }
 
 int get_device_count() {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     NSArray<id<MTLDevice>>* devices = MTLCopyAllDevices();
     NSUInteger count = devices != nil ? [devices count] : 0;
     if (devices != nil) {
@@ -59,7 +59,7 @@ int get_device_count() {
 }
 
 void device_retain(MPSDevice_t device) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (device == nullptr) {
         return;
     }
@@ -71,7 +71,7 @@ void device_retain(MPSDevice_t device) {
 }
 
 void device_release(MPSDevice_t device) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (device == nullptr) {
         return;
     }
@@ -83,7 +83,7 @@ void device_release(MPSDevice_t device) {
 }
 
 MPSDeviceArray_t get_device_array() {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     NSArray<id<MTLDevice>>* devices = MTLCopyAllDevices();
     return (MPSDeviceArray_t)opaque_from_objc_noown(devices);
 #else

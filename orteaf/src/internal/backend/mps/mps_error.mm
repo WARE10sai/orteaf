@@ -2,13 +2,13 @@
 #include "orteaf/internal/backend/mps/mps_string.h"
 #include "orteaf/internal/backend/mps/mps_objc_bridge.h"
 
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 #import <Foundation/Foundation.h>
 #endif
 
 namespace orteaf::internal::backend::mps {
 
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 
 namespace {
 
@@ -37,10 +37,10 @@ namespace {
 
 } // namespace
 
-#endif // defined(MPS_AVAILABLE) && defined(__OBJC__)
+#endif // defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 
 MPSError_t create_error(const std::string& message) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     return make_error("NSCocoaErrorDomain", message);
 #else
     (void)message;
@@ -49,7 +49,7 @@ MPSError_t create_error(const std::string& message) {
 }
 
 MPSError_t create_error(std::string_view domain, std::string_view description) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     return make_error(domain, description);
 #else
     (void)domain;
@@ -61,7 +61,7 @@ MPSError_t create_error(std::string_view domain, std::string_view description) {
 MPSError_t create_error(std::string_view domain,
                         std::string_view description,
                         void* additional_user_info) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     NSDictionary* objc_user_info = objc_from_opaque_noown<NSDictionary*>(additional_user_info);
     return make_error(domain, description, objc_user_info);
 #else
@@ -73,7 +73,7 @@ MPSError_t create_error(std::string_view domain,
 }
 
 void destroy_error(MPSError_t error) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (error != nullptr) {
         opaque_release_retained(error);
     }

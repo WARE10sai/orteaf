@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef MPS_AVAILABLE
+#ifdef ORTEAF_ENABLE_MPS
 
 #if defined(__OBJC__)
 #import <Foundation/Foundation.h>
@@ -31,7 +31,7 @@ private:
 #define MPS_AUTORELEASE_POOL() \
   orteaf::internal::backend::mps::AutoreleasePool _BITS_CONCAT(_orteaf_mps_autorelease_, __LINE__)
 
-#else  // MPS_AVAILABLE
+#else  // ORTEAF_ENABLE_MPS
 
 namespace orteaf::internal::backend::mps {
 
@@ -45,6 +45,6 @@ public:
 
 #define MPS_AUTORELEASE_POOL()
 
-#endif // MPS_AVAILABLE
+#endif // ORTEAF_ENABLE_MPS
 
 

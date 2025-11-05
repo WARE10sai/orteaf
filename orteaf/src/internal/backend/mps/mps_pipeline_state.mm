@@ -1,7 +1,7 @@
 #include "orteaf/internal/backend/mps/mps_pipeline_state.h"
 #include "orteaf/internal/backend/mps/mps_objc_bridge.h"
 
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 #import <Metal/Metal.h>
 #import <Foundation/Foundation.h>
 #endif
@@ -9,7 +9,7 @@
 namespace orteaf::internal::backend::mps {
 
 MPSPipelineState_t create_pipeline_state(MPSDevice_t device, MPSFunction_t function, MPSError_t* error) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     id<MTLDevice> objc_device = objc_from_opaque_noown<id<MTLDevice>>(device);
     id<MTLFunction> objc_function = objc_from_opaque_noown<id<MTLFunction>>(function);
     NSError** objc_error = error ? (NSError**)error : nullptr;
@@ -25,7 +25,7 @@ MPSPipelineState_t create_pipeline_state(MPSDevice_t device, MPSFunction_t funct
 }
 
 void destroy_pipeline_state(MPSPipelineState_t pipeline_state) {
-#if defined(MPS_AVAILABLE) && defined(__OBJC__)
+#if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (pipeline_state) {
         opaque_release_retained(pipeline_state);
     }
