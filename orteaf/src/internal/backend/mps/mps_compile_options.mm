@@ -1,3 +1,7 @@
+/**
+ * @file mps_compile_options.mm
+ * @brief Implementation of MPS/Metal compile options helpers.
+ */
 #include "orteaf/internal/backend/mps/mps_compile_options.h"
 #include "orteaf/internal/backend/mps/mps_objc_bridge.h"
 
@@ -8,6 +12,9 @@
 
 namespace orteaf::internal::backend::mps {
 
+/**
+ * @copydoc orteaf::internal::backend::mps::create_compile_options
+ */
 MPSCompileOptions_t create_compile_options() {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     MTLCompileOptions* options = [[MTLCompileOptions alloc] init];
@@ -17,6 +24,9 @@ MPSCompileOptions_t create_compile_options() {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::destroy_compile_options
+ */
 void destroy_compile_options(MPSCompileOptions_t options) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (options != nullptr) {
@@ -27,6 +37,9 @@ void destroy_compile_options(MPSCompileOptions_t options) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::set_compile_options_math_mode
+ */
 void set_compile_options_math_mode(MPSCompileOptions_t options, bool fast_math_enabled) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (options == nullptr) return;
@@ -43,6 +56,9 @@ void set_compile_options_math_mode(MPSCompileOptions_t options, bool fast_math_e
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::set_compile_options_preserve_invariance
+ */
 void set_compile_options_preserve_invariance(MPSCompileOptions_t options, bool preserve_invariance) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (options == nullptr) return;
@@ -55,6 +71,9 @@ void set_compile_options_preserve_invariance(MPSCompileOptions_t options, bool p
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::set_compile_options_preprocessor_macros
+ */
 void set_compile_options_preprocessor_macros(MPSCompileOptions_t options, void* macros_dictionary) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (options == nullptr) return;

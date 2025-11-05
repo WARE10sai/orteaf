@@ -1,3 +1,7 @@
+/**
+ * @file mps_library.mm
+ * @brief Implementation of MPS/Metal library creation and destruction.
+ */
 #include "orteaf/internal/backend/mps/mps_library.h"
 #include "orteaf/internal/backend/mps/mps_objc_bridge.h"
 
@@ -10,6 +14,9 @@
 
 namespace orteaf::internal::backend::mps {
 
+/**
+ * @copydoc orteaf::internal::backend::mps::create_library
+ */
 [[nodiscard]] MPSLibrary_t create_library(MPSDevice_t device, MPSString_t name, MPSError_t* error) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (name == nullptr) {
@@ -52,6 +59,9 @@ namespace orteaf::internal::backend::mps {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::create_library_with_source
+ */
 [[nodiscard]] MPSLibrary_t create_library_with_source(MPSDevice_t device,
                                                       MPSString_t source,
                                                       MPSCompileOptions_t compile_options,
@@ -91,6 +101,9 @@ namespace orteaf::internal::backend::mps {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::destroy_library
+ */
 void destroy_library(MPSLibrary_t library) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (library != nullptr) {
@@ -101,6 +114,9 @@ void destroy_library(MPSLibrary_t library) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::create_library_with_data
+ */
 [[nodiscard]] MPSLibrary_t create_library_with_data(MPSDevice_t device,
                                                     const void* data,
                                                     std::size_t size,

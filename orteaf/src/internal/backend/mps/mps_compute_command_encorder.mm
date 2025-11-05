@@ -1,3 +1,7 @@
+/**
+ * @file mps_compute_command_encorder.mm
+ * @brief Implementation of MPS/Metal compute command encoder helpers.
+ */
 #include "orteaf/internal/backend/mps/mps_compute_command_encorder.h"
 #include "orteaf/internal/backend/mps/mps_objc_bridge.h"
 
@@ -7,6 +11,9 @@
 
 namespace orteaf::internal::backend::mps {
 
+/**
+ * @copydoc orteaf::internal::backend::mps::create_compute_command_encoder
+ */
 MPSComputeCommandEncoder_t create_compute_command_encoder(MPSCommandBuffer_t command_buffer) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     id<MTLCommandBuffer> objc_command_buffer = objc_from_opaque_noown<id<MTLCommandBuffer>>(command_buffer);
@@ -18,6 +25,9 @@ MPSComputeCommandEncoder_t create_compute_command_encoder(MPSCommandBuffer_t com
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::destroy_compute_command_encoder
+ */
 void destroy_compute_command_encoder(MPSComputeCommandEncoder_t compute_command_encoder) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (!compute_command_encoder) return;
@@ -27,6 +37,9 @@ void destroy_compute_command_encoder(MPSComputeCommandEncoder_t compute_command_
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::set_pipeline_state
+ */
 void set_pipeline_state(MPSComputeCommandEncoder_t compute_command_encoder, MPSPipelineState_t pipeline_state) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (!compute_command_encoder) return;
@@ -39,6 +52,9 @@ void set_pipeline_state(MPSComputeCommandEncoder_t compute_command_encoder, MPSP
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::end_encoding
+ */
 void end_encoding(MPSComputeCommandEncoder_t compute_command_encoder) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (!compute_command_encoder) return;
@@ -49,6 +65,9 @@ void end_encoding(MPSComputeCommandEncoder_t compute_command_encoder) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::set_buffer
+ */
 void set_buffer(MPSComputeCommandEncoder_t compute_command_encoder, MPSBuffer_t buffer, size_t offset, size_t index) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (!compute_command_encoder) return;
@@ -63,6 +82,9 @@ void set_buffer(MPSComputeCommandEncoder_t compute_command_encoder, MPSBuffer_t 
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::set_bytes
+ */
 void set_bytes(MPSComputeCommandEncoder_t compute_command_encoder, const void* bytes, size_t length, size_t index) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (!compute_command_encoder) return;
@@ -76,6 +98,9 @@ void set_bytes(MPSComputeCommandEncoder_t compute_command_encoder, const void* b
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::set_threadgroups
+ */
 void set_threadgroups(MPSComputeCommandEncoder_t compute_command_encoder,
                       MPSSize_t threadgroups,
                       MPSSize_t threads_per_threadgroup) {

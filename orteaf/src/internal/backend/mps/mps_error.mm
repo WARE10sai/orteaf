@@ -1,3 +1,7 @@
+/**
+ * @file mps_error.mm
+ * @brief Implementation of NSError construction/destruction helpers.
+ */
 #include "orteaf/internal/backend/mps/mps_error.h"
 #include "orteaf/internal/backend/mps/mps_string.h"
 #include "orteaf/internal/backend/mps/mps_objc_bridge.h"
@@ -12,6 +16,7 @@ namespace orteaf::internal::backend::mps {
 
 namespace {
 
+/** Internal helper to construct NSError with optional userInfo. */
 [[nodiscard]] MPSError_t make_error(std::string_view domain,
                                     std::string_view description,
                                     NSDictionary* additional_user_info = nil) {
@@ -39,6 +44,9 @@ namespace {
 
 #endif // defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 
+/**
+ * @copydoc orteaf::internal::backend::mps::create_error(const std::string&)
+ */
 MPSError_t create_error(const std::string& message) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     return make_error("NSCocoaErrorDomain", message);
@@ -48,6 +56,9 @@ MPSError_t create_error(const std::string& message) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::create_error(std::string_view,std::string_view)
+ */
 MPSError_t create_error(std::string_view domain, std::string_view description) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     return make_error(domain, description);
@@ -58,6 +69,9 @@ MPSError_t create_error(std::string_view domain, std::string_view description) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::create_error(std::string_view,std::string_view,void*)
+ */
 MPSError_t create_error(std::string_view domain,
                         std::string_view description,
                         void* additional_user_info) {
@@ -72,6 +86,9 @@ MPSError_t create_error(std::string_view domain,
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::destroy_error
+ */
 void destroy_error(MPSError_t error) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (error != nullptr) {

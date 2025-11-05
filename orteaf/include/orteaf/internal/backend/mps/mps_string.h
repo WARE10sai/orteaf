@@ -1,3 +1,7 @@
+/**
+ * @file mps_string.h
+ * @brief Thin bridge utilities for NSString conversions.
+ */
 #pragma once
 
 #include <string_view>
@@ -8,8 +12,10 @@ static_assert(sizeof(MPSString_t) == sizeof(void*), "MPSString must be pointer-s
 
 namespace orteaf::internal::backend::mps {
 
-/// Convert std::string_view to NSString*.
-/// Tries UTF-8 encoding first, falls back to ISO Latin-1 if UTF-8 fails.
+/**
+ * @brief Convert std::string_view to NSString*.
+ * Tries UTF-8 encoding first, then falls back to ISO Latin-1.
+ */
 [[nodiscard]] MPSString_t to_ns_string(std::string_view view);
 
 } // namespace orteaf::internal::backend::mps

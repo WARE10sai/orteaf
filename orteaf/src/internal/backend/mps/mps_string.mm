@@ -1,3 +1,7 @@
+/**
+ * @file mps_string.mm
+ * @brief Implementation of NSString conversion helpers.
+ */
 #include "orteaf/internal/backend/mps/mps_string.h"
 #include "orteaf/internal/backend/mps/mps_objc_bridge.h"
 
@@ -9,6 +13,9 @@ namespace orteaf::internal::backend::mps {
 
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 
+/**
+ * @copydoc orteaf::internal::backend::mps::to_ns_string
+ */
 MPSString_t to_ns_string(std::string_view view) {
     if (view.empty()) {
         return (MPSString_t)@"";
@@ -29,6 +36,7 @@ MPSString_t to_ns_string(std::string_view view) {
 
 #else // !(defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__))
 
+/** No-op on non-ObjC builds or when MPS is disabled. */
 MPSString_t to_ns_string(std::string_view view) {
     (void)view;
     return nullptr;

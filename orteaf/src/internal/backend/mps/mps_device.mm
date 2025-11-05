@@ -1,3 +1,7 @@
+/**
+ * @file mps_device.mm
+ * @brief Implementation of MPS/Metal device helpers (default/list/retain/release).
+ */
 #include "orteaf/internal/backend/mps/mps_device.h"
 #include "orteaf/internal/backend/mps/mps_objc_bridge.h"
 
@@ -8,6 +12,9 @@
 
 namespace orteaf::internal::backend::mps {
 
+/**
+ * @copydoc orteaf::internal::backend::mps::get_device
+ */
 MPSDevice_t get_device() {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     id<MTLDevice> device = MTLCreateSystemDefaultDevice();
@@ -20,6 +27,9 @@ MPSDevice_t get_device() {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::get_device(MPSInt_t)
+ */
 MPSDevice_t get_device(MPSInt_t device_id) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     NSArray<id<MTLDevice>>* devices = MTLCopyAllDevices();
@@ -45,6 +55,9 @@ MPSDevice_t get_device(MPSInt_t device_id) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::get_device_count
+ */
 int get_device_count() {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     NSArray<id<MTLDevice>>* devices = MTLCopyAllDevices();
@@ -58,6 +71,9 @@ int get_device_count() {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::device_retain
+ */
 void device_retain(MPSDevice_t device) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (device == nullptr) {
@@ -70,6 +86,9 @@ void device_retain(MPSDevice_t device) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::device_release
+ */
 void device_release(MPSDevice_t device) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (device == nullptr) {
@@ -82,6 +101,9 @@ void device_release(MPSDevice_t device) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::get_device_array
+ */
 MPSDeviceArray_t get_device_array() {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     NSArray<id<MTLDevice>>* devices = MTLCopyAllDevices();

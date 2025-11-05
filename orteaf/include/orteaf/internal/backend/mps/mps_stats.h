@@ -1,3 +1,7 @@
+/**
+ * @file mps_stats.h
+ * @brief MPS runtime statistics counters and update helpers.
+ */
 #pragma once
 
 #include <atomic>
@@ -7,6 +11,12 @@
 
 namespace orteaf::internal::backend::mps {
 
+/**
+ * @brief Aggregates allocation and object-lifetime statistics for MPS.
+ *
+ * Build-time macro `ORTEAF_STATS_LEVEL_MPS_VALUE` controls which counters are
+ * available: 2 = basic, 4 = extended; undefined = all updates are no-ops.
+ */
 class MpsStats {
 public:
     // STATS_BASIC(2) or STATS_EXTENDED(4) enabled

@@ -1,13 +1,19 @@
+/**
+ * @file mps_size.mm
+ * @brief Implementation for MPS size helpers and Metal conversions.
+ */
 #include "orteaf/internal/backend/mps/mps_size.h"
 
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 #import <Metal/Metal.h>
-static_assert(sizeof(MTLSize) == sizeof(MPSSize_t), "MTLSizeとMPSSize_tのサイズが一致する必要があります。");
-
+static_assert(sizeof(MTLSize) == sizeof(MPSSize_t), "MTLSize and MPSSize_t must match in size.");
 #endif
 
 namespace orteaf::internal::backend::mps {
 
+/**
+ * @copydoc orteaf::internal::backend::mps::make_size
+ */
 MPSSize_t make_size(MPSInt_t width, MPSInt_t height, MPSInt_t depth) {
     MPSSize_t size{};
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
@@ -22,6 +28,7 @@ MPSSize_t make_size(MPSInt_t width, MPSInt_t height, MPSInt_t depth) {
     return size;
 }
 
+/** Convert to `MTLSize`. */
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 MTLSize to_mtl_size(MPSSize_t size) {
     return MTLSizeMake(static_cast<NSUInteger>(size.width),
@@ -29,6 +36,7 @@ MTLSize to_mtl_size(MPSSize_t size) {
                        static_cast<NSUInteger>(size.depth));
 }
 
+/** Convert from `MTLSize`. */
 MPSSize_t from_mtl_size(MTLSize mtl_size) {
     MPSSize_t out{};
     out.width = static_cast<MPSInt_t>(mtl_size.width);

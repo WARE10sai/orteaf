@@ -1,3 +1,7 @@
+/**
+ * @file mps_buffer.mm
+ * @brief Implementation of MPS/Metal buffer helpers.
+ */
 #include "orteaf/internal/backend/mps/mps_buffer.h"
 #include "orteaf/internal/backend/mps/mps_stats.h"
 #include "orteaf/internal/backend/mps/mps_objc_bridge.h"
@@ -9,6 +13,9 @@
 
 namespace orteaf::internal::backend::mps {
 
+/**
+ * @copydoc orteaf::internal::backend::mps::create_buffer
+ */
 MPSBuffer_t create_buffer(MPSDevice_t device, size_t size, MPSBufferUsage_t usage) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     stats_on_create_buffer();
@@ -24,6 +31,9 @@ MPSBuffer_t create_buffer(MPSDevice_t device, size_t size, MPSBufferUsage_t usag
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::destroy_buffer
+ */
 void destroy_buffer(MPSBuffer_t buffer) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (buffer != nullptr) {
@@ -35,6 +45,9 @@ void destroy_buffer(MPSBuffer_t buffer) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::get_buffer_contents_const
+ */
 const void* get_buffer_contents_const(MPSBuffer_t buffer) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (!buffer) return nullptr;
@@ -46,6 +59,9 @@ const void* get_buffer_contents_const(MPSBuffer_t buffer) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::get_buffer_contents
+ */
 void* get_buffer_contents(MPSBuffer_t buffer) {
     return const_cast<void*>(get_buffer_contents_const(buffer));
 }

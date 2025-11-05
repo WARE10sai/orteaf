@@ -1,3 +1,7 @@
+/**
+ * @file mps_function.mm
+ * @brief Implementation of MPS/Metal function helpers.
+ */
 #include "orteaf/internal/backend/mps/mps_function.h"
 #include "orteaf/internal/backend/mps/mps_objc_bridge.h"
 
@@ -8,6 +12,9 @@
 
 namespace orteaf::internal::backend::mps {
 
+/**
+ * @copydoc orteaf::internal::backend::mps::create_function
+ */
 MPSFunction_t create_function(MPSLibrary_t library, std::string_view name) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     NSString* function_name = [[[NSString alloc] initWithBytes:name.data()
@@ -26,6 +33,9 @@ MPSFunction_t create_function(MPSLibrary_t library, std::string_view name) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::destroy_function
+ */
 void destroy_function(MPSFunction_t function) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (function != nullptr) {

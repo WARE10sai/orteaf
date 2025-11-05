@@ -1,3 +1,7 @@
+/**
+ * @file mps_autorelease_pool.h
+ * @brief RAII wrapper for NSAutoreleasePool with an easy macro.
+ */
 #pragma once
 
 #ifdef ORTEAF_ENABLE_MPS
@@ -12,7 +16,9 @@ namespace orteaf::internal::backend::mps {
 
 class AutoreleasePool {
 public:
+    /** Create a new autorelease pool. */
     AutoreleasePool();
+    /** Drain and destroy the autorelease pool. */
     ~AutoreleasePool();
 
     AutoreleasePool(const AutoreleasePool&) = delete;
@@ -28,6 +34,10 @@ private:
 
 #define _BITS_CONCAT2(a,b) a##b
 #define _BITS_CONCAT(a,b)  _BITS_CONCAT2(a,b)
+/**
+ * @def MPS_AUTORELEASE_POOL()
+ * @brief Declare a scoped autorelease pool instance.
+ */
 #define MPS_AUTORELEASE_POOL() \
   orteaf::internal::backend::mps::AutoreleasePool _BITS_CONCAT(_orteaf_mps_autorelease_, __LINE__)
 
@@ -43,6 +53,7 @@ public:
 
 } // namespace orteaf::internal::backend::mps
 
+/** No-op macro when MPS is disabled. */
 #define MPS_AUTORELEASE_POOL()
 
 #endif // ORTEAF_ENABLE_MPS

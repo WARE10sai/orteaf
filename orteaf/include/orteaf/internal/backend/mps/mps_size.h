@@ -1,9 +1,16 @@
+/**
+ * @file mps_size.h
+ * @brief POD size type and conversions for MPS/Metal.
+ */
 #pragma once
 
 #include <cstdint>
 
 using MPSInt_t = int64_t; // 8 bytes size
 
+/**
+ * @brief 3D integer size (width/height/depth), ABI-stable 24 bytes.
+ */
 struct MPSSize_st {
     MPSInt_t width;
     MPSInt_t height;
@@ -23,10 +30,13 @@ static_assert(sizeof(MPSInt_t) == 8, "MPSInt must be 8 bytes.");
 
 namespace orteaf::internal::backend::mps {
 
+/** Construct an `MPSSize_t` from components. */
 MPSSize_t make_size(MPSInt_t width, MPSInt_t height, MPSInt_t depth);
 
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
+/** Convert to `MTLSize`. */
 MTLSize to_mtl_size(MPSSize_t size);
+/** Convert from `MTLSize`. */
 MPSSize_t from_mtl_size(MTLSize mtl_size);
 #endif
 

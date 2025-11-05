@@ -1,3 +1,7 @@
+/**
+ * @file mps_event.mm
+ * @brief Implementation of MPS/Metal shared event helpers.
+ */
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 
 #import <Metal/Metal.h>
@@ -11,6 +15,9 @@
 
 namespace orteaf::internal::backend::mps {
 
+/**
+ * @copydoc orteaf::internal::backend::mps::create_event
+ */
 MPSEvent_t create_event(MPSDevice_t device) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     orteaf::internal::backend::mps::AutoreleasePool pool{};
@@ -29,6 +36,9 @@ MPSEvent_t create_event(MPSDevice_t device) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::destroy_event
+ */
 void destroy_event(MPSEvent_t event) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (!event) return;
@@ -40,6 +50,9 @@ void destroy_event(MPSEvent_t event) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::record_event
+ */
 void record_event(MPSEvent_t event, MPSCommandBuffer_t command_buffer, uint64_t value) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (!event) return;
@@ -57,6 +70,9 @@ void record_event(MPSEvent_t event, MPSCommandBuffer_t command_buffer, uint64_t 
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::query_event
+ */
 bool query_event(MPSEvent_t event, uint64_t expected_value) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (!event) return true;
@@ -69,6 +85,9 @@ bool query_event(MPSEvent_t event, uint64_t expected_value) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::event_value
+ */
 uint64_t event_value(MPSEvent_t event) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (!event) return 0;
@@ -79,6 +98,9 @@ uint64_t event_value(MPSEvent_t event) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::write_event_queue
+ */
 void write_event_queue(MPSCommandQueue_t command_queue, MPSEvent_t event, uint64_t value) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     MPSCommandBuffer_t command_buffer = create_command_buffer(command_queue);
@@ -92,6 +114,9 @@ void write_event_queue(MPSCommandQueue_t command_queue, MPSEvent_t event, uint64
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::wait_event
+ */
 void wait_event(MPSCommandBuffer_t command_buffer, MPSEvent_t event, uint64_t value) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (!command_buffer || !event) return;
@@ -105,6 +130,9 @@ void wait_event(MPSCommandBuffer_t command_buffer, MPSEvent_t event, uint64_t va
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::wait_event_queue
+ */
 void wait_event_queue(MPSCommandQueue_t command_queue, MPSEvent_t event, uint64_t value) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     MPSCommandBuffer_t command_buffer = create_command_buffer(command_queue);

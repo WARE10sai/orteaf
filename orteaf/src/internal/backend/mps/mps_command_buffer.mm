@@ -1,3 +1,7 @@
+/**
+ * @file mps_command_buffer.mm
+ * @brief Implementation of MPS/Metal command buffer helpers.
+ */
 #include "orteaf/internal/backend/mps/mps_command_buffer.h"
 #include "orteaf/internal/backend/mps/mps_command_queue.h"
 #include "orteaf/internal/backend/mps/mps_event.h"
@@ -12,6 +16,9 @@ namespace orteaf::internal::backend::mps {
 
 using orteaf::internal::backend::mps::AutoreleasePool;
 
+/**
+ * @copydoc orteaf::internal::backend::mps::create_command_buffer
+ */
 MPSCommandBuffer_t create_command_buffer(MPSCommandQueue_t command_queue) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     AutoreleasePool pool{};
@@ -24,6 +31,9 @@ MPSCommandBuffer_t create_command_buffer(MPSCommandQueue_t command_queue) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::destroy_command_buffer
+ */
 void destroy_command_buffer(MPSCommandBuffer_t command_buffer) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (command_buffer != nullptr) {
@@ -35,6 +45,9 @@ void destroy_command_buffer(MPSCommandBuffer_t command_buffer) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::encode_signal_event
+ */
 void encode_signal_event(MPSCommandBuffer_t command_buffer, MPSEvent_t event, uint32_t value) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     id<MTLCommandBuffer> objc_command_buffer = objc_from_opaque_noown<id<MTLCommandBuffer>>(command_buffer);
@@ -47,6 +60,9 @@ void encode_signal_event(MPSCommandBuffer_t command_buffer, MPSEvent_t event, ui
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::encode_wait
+ */
 void encode_wait(MPSCommandBuffer_t command_buffer, MPSEvent_t event, uint32_t value) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     id<MTLCommandBuffer> objc_command_buffer = objc_from_opaque_noown<id<MTLCommandBuffer>>(command_buffer);
@@ -59,6 +75,9 @@ void encode_wait(MPSCommandBuffer_t command_buffer, MPSEvent_t event, uint32_t v
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::commit
+ */
 void commit(MPSCommandBuffer_t command_buffer) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     id<MTLCommandBuffer> objc_command_buffer = objc_from_opaque_noown<id<MTLCommandBuffer>>(command_buffer);
@@ -68,6 +87,9 @@ void commit(MPSCommandBuffer_t command_buffer) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::wait_until_completed
+ */
 void wait_until_completed(MPSCommandBuffer_t command_buffer) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     id<MTLCommandBuffer> objc_command_buffer = objc_from_opaque_noown<id<MTLCommandBuffer>>(command_buffer);

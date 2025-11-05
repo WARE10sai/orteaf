@@ -1,3 +1,7 @@
+/**
+ * @file mps_command_queue.mm
+ * @brief Implementation of MPS/Metal command queue helpers.
+ */
 #include "orteaf/internal/backend/mps/mps_command_queue.h"
 #include "orteaf/internal/backend/mps/mps_stats.h"
 #include "orteaf/internal/backend/mps/mps_objc_bridge.h"
@@ -8,6 +12,9 @@
 
 namespace orteaf::internal::backend::mps {
 
+/**
+ * @copydoc orteaf::internal::backend::mps::create_command_queue
+ */
 MPSCommandQueue_t create_command_queue(MPSDevice_t device) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     stats_on_create_command_queue();
@@ -20,6 +27,9 @@ MPSCommandQueue_t create_command_queue(MPSDevice_t device) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::destroy_command_queue
+ */
 void destroy_command_queue(MPSCommandQueue_t command_queue) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (!command_queue) return;

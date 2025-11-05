@@ -1,3 +1,7 @@
+/**
+ * @file mps_pipeline_state.mm
+ * @brief Implementation of MPS/Metal compute pipeline state helpers.
+ */
 #include "orteaf/internal/backend/mps/mps_pipeline_state.h"
 #include "orteaf/internal/backend/mps/mps_objc_bridge.h"
 
@@ -8,6 +12,9 @@
 
 namespace orteaf::internal::backend::mps {
 
+/**
+ * @copydoc orteaf::internal::backend::mps::create_pipeline_state
+ */
 MPSPipelineState_t create_pipeline_state(MPSDevice_t device, MPSFunction_t function, MPSError_t* error) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     id<MTLDevice> objc_device = objc_from_opaque_noown<id<MTLDevice>>(device);
@@ -24,6 +31,9 @@ MPSPipelineState_t create_pipeline_state(MPSDevice_t device, MPSFunction_t funct
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::mps::destroy_pipeline_state
+ */
 void destroy_pipeline_state(MPSPipelineState_t pipeline_state) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (pipeline_state) {
