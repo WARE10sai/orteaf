@@ -1,3 +1,7 @@
+/**
+ * @file cuda_event.cu
+ * @brief Implementation of CUDA event helpers (create/destroy/record/query/wait).
+ */
 #include "orteaf/internal/backend/cuda/cuda_event.h"
 #include "orteaf/internal/backend/cuda/cuda_stats.h"
 #include "orteaf/internal/backend/cuda/cuda_check.h"
@@ -9,6 +13,9 @@
 
 namespace orteaf::internal::backend::cuda {
 
+/**
+ * @copydoc orteaf::internal::backend::cuda::create_event
+ */
 CUevent_t create_event() {
 #ifdef ORTEAF_ENABLE_CUDA
     CUevent event;
@@ -20,6 +27,9 @@ CUevent_t create_event() {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::cuda::destroy_event
+ */
 void destroy_event(CUevent_t event) {
 #ifdef ORTEAF_ENABLE_CUDA
     if (event == nullptr) return;
@@ -31,6 +41,9 @@ void destroy_event(CUevent_t event) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::cuda::record_event
+ */
 void record_event(CUevent_t event, CUstream_t stream) {
 #ifdef ORTEAF_ENABLE_CUDA
     if (event == nullptr || stream == nullptr) return;
@@ -43,6 +56,9 @@ void record_event(CUevent_t event, CUstream_t stream) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::cuda::query_event
+ */
 bool query_event(CUevent_t event) {
 #ifdef ORTEAF_ENABLE_CUDA
     if (event == nullptr) return true;
@@ -58,6 +74,9 @@ bool query_event(CUevent_t event) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::cuda::wait_event
+ */
 void wait_event(CUstream_t stream, CUevent_t event) {
 #ifdef ORTEAF_ENABLE_CUDA
     if (stream == nullptr || event == nullptr) return;
