@@ -30,6 +30,5 @@ CUdevice_t get_device(uint32_t device_id);
 void set_device(CUdevice_t device);
 ComputeCapability get_compute_capability(CUdevice_t device);
 int get_sm_count(ComputeCapability capability);
-ARCH detect_cuda_arch(ComputeCapability capability);
 
 } // namespace orteaf::internal::backend::cuda

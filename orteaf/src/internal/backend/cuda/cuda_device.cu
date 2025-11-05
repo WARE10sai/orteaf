@@ -47,17 +47,4 @@ int get_sm_count(ComputeCapability capability) {
     return capability.major * 10 + capability.minor;
 }
 
-ARCH detect_cuda_arch(ComputeCapability capability) {
-    const int sm = get_sm_count(capability);
-    switch (sm) {
-        case 70: return ARCH::CUDA_SM70;
-        case 75: return ARCH::CUDA_SM75;
-        case 80: return ARCH::CUDA_SM80;
-        case 86: return ARCH::CUDA_SM86;
-        case 89: return ARCH::CUDA_SM89;
-        case 90: return ARCH::CUDA_SM90;
-        default: return ARCH::CUDA_Generic;
-    }
-}
-
 } // namespace orteaf::internal::backend::cuda
