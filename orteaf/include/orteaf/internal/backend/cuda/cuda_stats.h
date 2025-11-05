@@ -5,10 +5,6 @@
 #include <sstream>
 #include <iostream>
 
-#ifdef ORTEAF_ENABLE_CUDA
-#include <cuda.h>
-#endif
-
 namespace orteaf::internal::backend::cuda {
 
 /**
