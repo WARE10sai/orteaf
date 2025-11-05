@@ -1,3 +1,7 @@
+/**
+ * @file cuda_module.cu
+ * @brief Implementation of CUDA module load/unload and function lookup.
+ */
 #include "orteaf/internal/backend/cuda/cuda_module.h"
 #include "orteaf/internal/backend/cuda/cuda_objc_bridge.h"
 
@@ -8,6 +12,9 @@
 
 namespace orteaf::internal::backend::cuda {
 
+/**
+ * @copydoc orteaf::internal::backend::cuda::load_module_from_file
+ */
 CUmodule_t load_module_from_file(const char* filepath) {
 #ifdef ORTEAF_ENABLE_CUDA
     CUmodule module;
@@ -19,6 +26,9 @@ CUmodule_t load_module_from_file(const char* filepath) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::cuda::load_module_from_image
+ */
 CUmodule_t load_module_from_image(const void* image) {
 #ifdef ORTEAF_ENABLE_CUDA
     CUmodule module;
@@ -30,6 +40,9 @@ CUmodule_t load_module_from_image(const void* image) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::cuda::get_function
+ */
 CUfunction_t get_function(CUmodule_t module, const char* kernel_name) {
 #ifdef ORTEAF_ENABLE_CUDA
     CUmodule objc_module = objc_from_opaque_noown<CUmodule>(module);
@@ -43,6 +56,9 @@ CUfunction_t get_function(CUmodule_t module, const char* kernel_name) {
 #endif
 }
 
+/**
+ * @copydoc orteaf::internal::backend::cuda::unload_module
+ */
 void unload_module(CUmodule_t module) {
 #ifdef ORTEAF_ENABLE_CUDA
     CUmodule objc_module = objc_from_opaque_noown<CUmodule>(module);
