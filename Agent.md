@@ -27,7 +27,7 @@ docs/
   developer/design.md  # Architecture + access boundaries
   developer/testing-strategy.md # Checklist-oriented TDD guidance
   developer/environment.md      # Docker/shared environment instructions
-  Doxyfile.* / Doxyfile.*.ja    # Doxygen configs (default=English, .ja=Japanese)
+  Doxyfile.*                      # Doxygen configs (English only)
 docker/dev/Dockerfile  # Linux dev container with cmake/clang/doxygen
 scripts/setup-mps.sh   # Placeholder for macOS Metal setup
 ```
@@ -46,7 +46,7 @@ scripts/setup-mps.sh   # Placeholder for macOS Metal setup
 - Architecture overview: `docs/developer/design.md`
 - Extension guidelines: `docs/developer/extension-guide.md`
 - Environment setup (Docker, MPS placeholder, WSL): `docs/developer/environment.md`
-- Doxygen configs: `docs/Doxyfile.user` (default=English), `docs/Doxyfile.user.ja` (Japanese), etc.
+- Doxygen configs: `docs/Doxyfile.user`, `docs/Doxyfile.developer`, `docs/Doxyfile.tests`
 - Testing checklist for TDD: `docs/developer/testing-strategy.md`
 - Roadmap / challenge log templates: `docs/roadmap.md`, `docs/challenge-log.md`
 

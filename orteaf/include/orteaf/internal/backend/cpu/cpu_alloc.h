@@ -9,27 +9,33 @@
 namespace orteaf::internal::backend::cpu {
 
 /**
- * @brief CPU メモリ割り当てのデフォルトアライメント値。
+ * @brief Default alignment value for CPU memory allocation.
  *
- * `std::max_align_t` のアライメント要件に基づく。
+ * Based on the alignment requirements of `std::max_align_t`.
+ * This value satisfies the platform's standard alignment requirements.
  */
 constexpr std::size_t kCpuDefaultAlign = alignof(std::max_align_t);
 
 /**
- * @brief 指定された値が2のべき乗かどうかを判定する。
+ * @brief Check if the specified value is a power of 2.
  *
- * @param x 判定対象の値。
- * @return `x` が2のべき乗であれば `true`、そうでなければ `false`。
- *         0 の場合は `false` を返す。
+ * Uses bitwise operations for efficient checking.
+ *
+ * @param x Value to check.
+ * @return `true` if `x` is a power of 2, `false` otherwise.
+ *         Returns `false` if `x` is 0.
  */
 inline bool is_pow2(std::size_t x) { return x && ((x & (x-1))==0); }
 
 /**
- * @brief 指定された値以上の最小の2のべき乗を計算する。
+ * @brief Calculate the smallest power of 2 greater than or equal to the specified value.
  *
- * @param x 基準となる値。
- * @return `x` 以上の最小の2のべき乗値。
- *         0 または 1 の場合は 1 を返す。
+ * Uses bit manipulation for efficient calculation.
+ * Used for alignment adjustment, etc.
+ *
+ * @param x Base value.
+ * @return Smallest power of 2 greater than or equal to `x`.
+ *         Returns 1 if `x` is 0 or 1.
  */
 inline std::size_t next_pow2(std::size_t x){
     if (x<=1) return 1u;
@@ -39,16 +45,6 @@ inline std::size_t next_pow2(std::size_t x){
 }
 
 /**
- * \if JA
- * @brief デフォルトアライメントでメモリを割り当てる。
- *
- * `alloc_aligned(size, kCpuDefaultAlign)` のラッパー関数。
- * 割り当て時に統計情報を自動的に更新する。
- *
- * @param size 割り当てるメモリのサイズ（バイト）。
- * @return 割り当てられたメモリへのポインタ。失敗時は `std::bad_alloc` を投げる。
- * @throws std::bad_alloc メモリ割り当てに失敗した場合。
- * \else
  * @brief Allocate memory with default CPU alignment.
  *
  * Wrapper for `alloc_aligned(size, kCpuDefaultAlign)`.
@@ -57,29 +53,28 @@ inline std::size_t next_pow2(std::size_t x){
  * @param size Size of memory to allocate in bytes.
  * @return Pointer to allocated memory; throws std::bad_alloc on failure.
  * @throws std::bad_alloc If memory allocation fails.
- * \endif
  */
 inline void* alloc(std::size_t size) {
     return alloc_aligned(size, kCpuDefaultAlign);
 }
 
 /**
- * @brief 指定されたアライメントでメモリを割り当てる。
+ * @brief Allocate memory with the specified alignment.
  *
- * プラットフォームに応じて以下のAPIを使用する：
+ * Uses the following APIs depending on the platform:
  * - Windows (`_MSC_VER`): `_aligned_malloc`
- * - その他: `posix_memalign`
+ * - Others: `posix_memalign`
  *
- * アライメントが2のべき乗でない場合は、自動的に次の2のべき乗に調整される。
- * また、`std::max_align_t` より小さいアライメントは最小値に調整される。
+ * If the alignment is not a power of 2, it is automatically adjusted to the next power of 2.
+ * Also, alignments smaller than `std::max_align_t` are adjusted to the minimum value.
  *
- * 割り当て時に統計情報を自動的に更新する。
+ * Statistics are automatically updated on allocation.
  *
- * @param size 割り当てるメモリのサイズ（バイト）。
- * @param alignment 要求するアライメント（バイト）。2のべき乗である必要がある。
- * @return 割り当てられたメモリへのポインタ。`size` が 0 の場合は `nullptr`。
- *         失敗時は `std::bad_alloc` を投げる。
- * @throws std::bad_alloc メモリ割り当てに失敗した場合。
+ * @param size Size of memory to allocate in bytes.
+ * @param alignment Requested alignment in bytes. Must be a power of 2.
+ * @return Pointer to allocated memory. Returns `nullptr` if `size` is 0.
+ *         Throws `std::bad_alloc` on failure.
+ * @throws std::bad_alloc If memory allocation fails.
  */
 inline void* alloc_aligned(std::size_t size, std::size_t alignment) {
     if (size == 0) return nullptr;
@@ -103,17 +98,17 @@ inline void* alloc_aligned(std::size_t size, std::size_t alignment) {
 }
 
 /**
- * @brief 割り当てられたメモリを解放する。
+ * @brief Free allocated memory.
  *
- * プラットフォームに応じて以下のAPIを使用する：
+ * Uses the following APIs depending on the platform:
  * - Windows (`_MSC_VER`): `_aligned_free`
- * - その他: `free`
+ * - Others: `free`
  *
- * `ptr` が `nullptr` の場合は何も行わない。
- * 解放時に統計情報を自動的に更新する。
+ * Does nothing if `ptr` is `nullptr`.
+ * Statistics are automatically updated on deallocation.
  *
- * @param ptr 解放するメモリへのポインタ。`nullptr` の場合は何も行わない。
- * @param size 解放するメモリのサイズ（バイト）。統計情報の更新に使用される。
+ * @param ptr Pointer to memory to free. Does nothing if `nullptr`.
+ * @param size Size of memory to free in bytes. Used for statistics update.
  */
 inline void dealloc(void* ptr, std::size_t size) noexcept {
     if (!ptr) return;
@@ -126,15 +121,6 @@ inline void dealloc(void* ptr, std::size_t size) noexcept {
 }
 
 /**
- * \if JA
- * @brief テスト用関数：メモリ使用量を取得する。
- *
- * この関数はテスト目的で追加されたものです。
- * 現在のメモリ使用量をバイト単位で返します。
- *
- * @return 現在のメモリ使用量（バイト）。
- * @note この関数はテスト用のため、実際の実装は含まれていません。
- * \else
  * @brief Test function: Get memory usage.
  *
  * This function is added for testing purposes.
@@ -142,10 +128,9 @@ inline void dealloc(void* ptr, std::size_t size) noexcept {
  *
  * @return Current memory usage in bytes.
  * @note This function is for testing purposes and does not contain actual implementation.
- * \endif
  */
 inline std::size_t get_memory_usage() {
-    // TODO: 実装が必要
+    // TODO: Implementation needed
     return 0;
 }
 
