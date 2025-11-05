@@ -13,7 +13,7 @@ CUstream_t get_stream() {
 #ifdef ORTEAF_ENABLE_CUDA
     CUstream stream;
     CU_CHECK(cuStreamCreate(&stream, CU_STREAM_NON_BLOCKING));
-    stats_on_create_stream();
+    update_create_stream();
     return opaque_from_objc_noown<CUstream_t, CUstream>(stream);
 #else
     return nullptr;
@@ -33,7 +33,7 @@ void release_stream(CUstream_t stream) {
     if (!stream) return;
     CUstream objc_stream = objc_from_opaque_noown<CUstream>(stream);
     CU_CHECK(cuStreamDestroy(objc_stream));
-    stats_on_destroy_stream();
+    update_destroy_stream();
 #else
     (void)stream;
 #endif

@@ -23,7 +23,7 @@ CUdeviceptr_t alloc(size_t size) {
 #ifdef ORTEAF_ENABLE_CUDA
     CUdeviceptr ptr;
     CU_CHECK(cuMemAlloc(&ptr, size));
-    stats_on_alloc(size);
+    update_alloc(size);
     return opaque_from_cu_deviceptr(ptr);
 #else
     (void)size;
@@ -44,7 +44,7 @@ void free(CUdeviceptr_t ptr, size_t size) {
 #ifdef ORTEAF_ENABLE_CUDA
     CUdeviceptr objc_ptr = cu_deviceptr_from_opaque(ptr);
     CU_CHECK(cuMemFree(objc_ptr));
-    stats_on_dealloc(size);
+    update_dealloc(size);
 #else
     (void)ptr;
 #endif
@@ -70,7 +70,7 @@ CUdeviceptr_t alloc_stream(size_t size, CUstream_t stream) {
     }
     CUstream objc_stream = objc_from_opaque_noown<CUstream>(stream);
     CU_CHECK(cuMemAllocAsync(&ptr, size, objc_stream));
-    stats_on_alloc(size);
+    update_alloc(size);
     return opaque_from_cu_deviceptr(ptr);
 #else
     (void)size;
@@ -98,7 +98,7 @@ void free_stream(CUdeviceptr_t ptr, size_t size, CUstream_t stream) {
     }
     CUstream objc_stream = objc_from_opaque_noown<CUstream>(stream);
     CU_CHECK(cuMemFreeAsync(objc_ptr, objc_stream));
-    stats_on_dealloc(size);
+    update_dealloc(size);
 #else
     (void)ptr;
     (void)stream;
@@ -119,7 +119,7 @@ void* alloc_host(std::size_t size) {
 #ifdef ORTEAF_ENABLE_CUDA
     void* ptr;
     CU_CHECK(cuMemAllocHost(&ptr, size));
-    stats_on_alloc(size);
+    update_alloc(size);
     return ptr;
 #else
     (void)size;
@@ -186,7 +186,7 @@ void copy_to_device(void* host_ptr, CUdeviceptr_t ptr, size_t size) {
 void free_host(void* ptr, size_t size) {
 #ifdef ORTEAF_ENABLE_CUDA
     CU_CHECK(cuMemFreeHost(ptr));
-    stats_on_dealloc(size);
+    update_dealloc(size);
 #else
     (void)ptr;
 #endif

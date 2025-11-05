@@ -13,7 +13,7 @@ CUevent_t create_event() {
 #ifdef ORTEAF_ENABLE_CUDA
     CUevent event;
     CU_CHECK(cuEventCreate(&event, CU_EVENT_DISABLE_TIMING));
-    stats_on_create_event();
+    update_create_event();
     return opaque_from_objc_noown<CUevent_t, CUevent>(event);
 #else
     return nullptr;
@@ -25,7 +25,7 @@ void destroy_event(CUevent_t event) {
     if (event == nullptr) return;
     CUevent objc_event = objc_from_opaque_noown<CUevent>(event);
     CU_CHECK(cuEventDestroy(objc_event));
-    stats_on_destroy_event();
+    update_destroy_event();
 #else
     (void)event;
 #endif
