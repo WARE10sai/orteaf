@@ -43,7 +43,7 @@ orteaf/
 - `SystemManager` と `CurrentStateImpl`：ランタイム初期化と状態保持。
 - `Allocator` / `MemSafe`：メモリ確保と安全管理。
 - `Dispatcher` / `KernelRegister`：OPS と Kernel の橋渡し。
-- `Runtimes`：CPU / CUDA / MPS を抽象化したバックエンド。
+- `Backends`：CPU / CUDA / MPS を抽象化したバックエンド。
 - `Diagnostics`（`error/`, `log/`）：共通のエラー情報 (`OrteafError`)、致命的エラー (`fatal_error`) と例外ラッパーを提供し、統一的に throw / ログ / 統計連携を扱う。
 
 ## ビルド時オプション
@@ -72,7 +72,7 @@ orteaf/
 ```mermaid
 graph BT
 
-    Runtimes --> SystemManager
+    Backends --> SystemManager
     SystemManager --> CurrentState
     CurrentState --> Allocator
     Allocator --> MemSafe
@@ -84,7 +84,7 @@ SystemManager がバックエンドを立ち上げ、CurrentState が環境情�
 ```mermaid
 graph BT
 
-    Runtimes --> Kernel
+    Backends --> Kernel
     Kernel --> KernelRegister
     KernelRegister --> Dispatcher
     Dispatcher --> OPS
@@ -101,13 +101,13 @@ graph BT
 ```mermaid
 graph BT
 
-    Runtimes --> SystemManager
+    Backends --> SystemManager
     SystemManager --> CurrentState
     CurrentState --> Allocator
     Allocator --> MemSafe
     MemSafe --> Tensor
 
-    Runtimes --> Kernel
+    Backends --> Kernel
     Kernel --> KernelRegister
     KernelRegister --> Dispatcher
     Dispatcher --> OPS
