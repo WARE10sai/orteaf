@@ -29,6 +29,11 @@ file(GLOB_RECURSE ORTEAF_TEST_SOURCES_CPP CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
 )
 
+# Filter out CUDA tests if CUDA is disabled
+if(NOT ORTEAF_ENABLE_CUDA_INT)
+    list(FILTER ORTEAF_TEST_SOURCES_CPP EXCLUDE REGEX ".*/cuda/.*\\.cpp$")
+endif()
+
 # Collect Objective-C++ test sources (for MPS tests)
 file(GLOB_RECURSE ORTEAF_TEST_SOURCES_MM CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/*.mm

@@ -103,7 +103,9 @@ uint64_t event_value(MPSEvent_t event) {
  */
 void write_event(MPSCommandQueue_t command_queue, MPSEvent_t event, uint64_t value) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
+    if (!command_queue || !event) return;
     MPSCommandBuffer_t command_buffer = create_command_buffer(command_queue);
+    if (!command_buffer) return;
     record_event(event, command_buffer, value);
     commit(command_buffer);
     destroy_command_buffer(command_buffer);
