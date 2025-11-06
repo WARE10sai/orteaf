@@ -62,8 +62,8 @@ if(ORTEAF_TEST_SOURCES)
     if(APPLE AND ORTEAF_TEST_SOURCES_MM)
         target_link_libraries(orteaf_tests
             PRIVATE
-                "-framework" "Metal"
-                "-framework" "MetalPerformanceShaders"
+                "-framework Metal"
+                "-framework MetalPerformanceShaders"
         )
     endif()
 

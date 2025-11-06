@@ -17,9 +17,9 @@ namespace orteaf::internal::backend::mps {
  */
 MPSCommandQueue_t create_command_queue(MPSDevice_t device) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    stats_on_create_command_queue();
     id<MTLDevice> objc_device = objc_from_opaque_noown<id<MTLDevice>>(device);
     id<MTLCommandQueue> objc_command_queue = [objc_device newCommandQueue];
+    update_create_command_queue();
     return (MPSCommandQueue_t)opaque_from_objc_retained(objc_command_queue);
 #else
     (void)device;
@@ -34,7 +34,7 @@ void destroy_command_queue(MPSCommandQueue_t command_queue) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (!command_queue) return;
     opaque_release_retained(command_queue);
-    stats_on_destroy_command_queue();
+    update_destroy_command_queue();
 #else
     (void)command_queue;
 #endif

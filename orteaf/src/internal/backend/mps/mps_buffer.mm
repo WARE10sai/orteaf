@@ -18,10 +18,10 @@ namespace orteaf::internal::backend::mps {
  */
 MPSBuffer_t create_buffer(MPSDevice_t device, size_t size, MPSBufferUsage_t usage) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    stats_on_create_buffer();
     id<MTLDevice> objc_device = objc_from_opaque_noown<id<MTLDevice>>(device);
     MTLResourceOptions objc_usage = static_cast<MTLResourceOptions>(usage);
     id<MTLBuffer> objc_buffer = [objc_device newBufferWithLength:size options:objc_usage];
+    update_alloc(size);
     return (MPSBuffer_t)opaque_from_objc_retained(objc_buffer);
 #else
     (void)device;
@@ -37,8 +37,10 @@ MPSBuffer_t create_buffer(MPSDevice_t device, size_t size, MPSBufferUsage_t usag
 void destroy_buffer(MPSBuffer_t buffer) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (buffer != nullptr) {
+        id<MTLBuffer> objc_buffer = objc_from_opaque_noown<id<MTLBuffer>>(buffer);
+        size_t size = objc_buffer ? [objc_buffer length] : 0;
         opaque_release_retained(buffer);
-        stats_on_destroy_buffer();
+        update_dealloc(size);
     }
 #else
     (void)buffer;

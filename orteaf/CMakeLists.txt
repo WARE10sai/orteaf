@@ -56,8 +56,8 @@ target_link_libraries(orteaf
 if(APPLE AND ORTEAF_ENABLE_MPS_INT)
     target_link_libraries(orteaf
         PUBLIC
-            "-framework" "Metal"
-            "-framework" "MetalPerformanceShaders"
+            "-framework Metal"
+            "-framework MetalPerformanceShaders"
     )
 endif()
 

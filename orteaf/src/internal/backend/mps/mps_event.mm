@@ -27,7 +27,7 @@ MPSEvent_t create_event(MPSDevice_t device) {
         return nullptr;
     }
     [objc_event setSignaledValue:0];
-    stats_on_create_event();
+    update_create_event();
     auto retained = opaque_from_objc_retained(objc_event);
     return (MPSEvent_t)retained;
 #else
@@ -44,7 +44,7 @@ void destroy_event(MPSEvent_t event) {
     if (!event) return;
     orteaf::internal::backend::mps::AutoreleasePool pool{};
     opaque_release_retained(event);
-    stats_on_destroy_event();
+    update_destroy_event();
 #else
     (void)event;
 #endif

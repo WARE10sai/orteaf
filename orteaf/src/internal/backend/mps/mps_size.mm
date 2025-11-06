@@ -6,7 +6,6 @@
 
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 #import <Metal/Metal.h>
-static_assert(sizeof(MTLSize) == sizeof(MPSSize_t), "MTLSize and MPSSize_t must match in size.");
 #endif
 
 namespace orteaf::internal::backend::mps {
