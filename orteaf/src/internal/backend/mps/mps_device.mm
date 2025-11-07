@@ -9,6 +9,7 @@
 #import <Metal/Metal.h>
 #import <Foundation/Foundation.h>
 #include "orteaf/internal/diagnostics/error/error_impl.h"
+#include "orteaf/internal/diagnostics/log/log.h"
 #endif
 
 namespace orteaf::internal::backend::mps {
@@ -39,17 +40,9 @@ MPSDevice_t get_device(MPSInt_t device_id) {
         using namespace orteaf::internal::diagnostics::error;
         throw_error(OrteafErrc::BackendUnavailable, "get_device: no Metal devices available");
     }
-    if (device_id < 0) {
-        [devices release];
-        using namespace orteaf::internal::diagnostics::error;
-        throw_error(OrteafErrc::OutOfRange, "get_device: device_id cannot be negative");
-    }
+    ORTEAF_LOG_WARN_IF(Mps, device_id < 0, "get_device: device_id cannot be negative, returning nullptr");
     NSUInteger index = static_cast<NSUInteger>(device_id);
-    if (index >= [devices count]) {
-        [devices release];
-        using namespace orteaf::internal::diagnostics::error;
-        throw_error(OrteafErrc::OutOfRange, "get_device: device_id out of range");
-    }
+    ORTEAF_LOG_WARN_IF(Mps, index >= [devices count], "get_device: device_id out of range, returning nullptr");
     id<MTLDevice> device = [devices objectAtIndex:index];
     MPSDevice_t handle = (MPSDevice_t)opaque_from_objc_retained(device);
     [devices release];

@@ -258,6 +258,29 @@ inline void log_lazy(MessageBuilder&& builder) {
     }
 }
 
+/**
+ * @brief Lazy-evaluated logging function with conditional check.
+ *
+ * Evaluates both the condition and message builder only if the log level meets
+ * the category threshold. This allows expensive condition checks and string
+ * formatting operations to be skipped when logging is disabled.
+ *
+ * @tparam Category The log category.
+ * @tparam Level The log level.
+ * @tparam ConditionBuilder Callable type that returns a bool when invoked.
+ * @tparam MessageBuilder Callable type that returns a std::string when invoked.
+ * @param condition_builder Functor or lambda that builds the condition check.
+ * @param message_builder Functor or lambda that builds the log message.
+ */
+template <LogCategory Category, LogLevel Level, typename ConditionBuilder, typename MessageBuilder>
+inline void log_lazy_if(ConditionBuilder&& condition_builder, MessageBuilder&& message_builder) {
+    if constexpr (level_to_int(Level) >= category_threshold<Category>()) {
+        if (std::forward<ConditionBuilder>(condition_builder)()) {
+            log_message(Category, Level, std::forward<MessageBuilder>(message_builder)());
+        }
+    }
+}
+
 }  // namespace detail
 
 /**
@@ -382,6 +405,86 @@ constexpr const char* category_to_string(LogCategory category) {
 #define ORTEAF_LOG_WARN(category, expr) ORTEAF_LOG_INTERNAL(category, Warn, expr)
 #define ORTEAF_LOG_ERROR(category, expr) ORTEAF_LOG_INTERNAL(category, Error, expr)
 #define ORTEAF_LOG_CRITICAL(category, expr) ORTEAF_LOG_INTERNAL(category, Critical, expr)
+
+/**
+ * @def ORTEAF_LOG_TRACE_IF(category, condition, expr)
+ * @brief Log a message at TRACE level if condition is true.
+ *
+ * The condition is only evaluated if logging is enabled for this category/level.
+ *
+ * @param category Log category (e.g., `Core`, `Tensor`, `Cuda`).
+ * @param condition Boolean expression that determines if the log should be emitted.
+ * @param expr Expression that evaluates to the log message.
+ */
+
+/**
+ * @def ORTEAF_LOG_DEBUG_IF(category, condition, expr)
+ * @brief Log a message at DEBUG level if condition is true.
+ *
+ * The condition is only evaluated if logging is enabled for this category/level.
+ *
+ * @param category Log category (e.g., `Core`, `Tensor`, `Cuda`).
+ * @param condition Boolean expression that determines if the log should be emitted.
+ * @param expr Expression that evaluates to the log message.
+ */
+
+/**
+ * @def ORTEAF_LOG_INFO_IF(category, condition, expr)
+ * @brief Log a message at INFO level if condition is true.
+ *
+ * The condition is only evaluated if logging is enabled for this category/level.
+ *
+ * @param category Log category (e.g., `Core`, `Tensor`, `Cuda`).
+ * @param condition Boolean expression that determines if the log should be emitted.
+ * @param expr Expression that evaluates to the log message.
+ */
+
+/**
+ * @def ORTEAF_LOG_WARN_IF(category, condition, expr)
+ * @brief Log a message at WARN level if condition is true.
+ *
+ * The condition is only evaluated if logging is enabled for this category/level.
+ *
+ * @param category Log category (e.g., `Core`, `Tensor`, `Cuda`).
+ * @param condition Boolean expression that determines if the log should be emitted.
+ * @param expr Expression that evaluates to the log message.
+ */
+
+/**
+ * @def ORTEAF_LOG_ERROR_IF(category, condition, expr)
+ * @brief Log a message at ERROR level if condition is true.
+ *
+ * The condition is only evaluated if logging is enabled for this category/level.
+ *
+ * @param category Log category (e.g., `Core`, `Tensor`, `Cuda`).
+ * @param condition Boolean expression that determines if the log should be emitted.
+ * @param expr Expression that evaluates to the log message.
+ */
+
+/**
+ * @def ORTEAF_LOG_CRITICAL_IF(category, condition, expr)
+ * @brief Log a message at CRITICAL level if condition is true.
+ *
+ * The condition is only evaluated if logging is enabled for this category/level.
+ *
+ * @param category Log category (e.g., `Core`, `Tensor`, `Cuda`).
+ * @param condition Boolean expression that determines if the log should be emitted.
+ * @param expr Expression that evaluates to the log message.
+ */
+
+#define ORTEAF_LOG_INTERNAL_IF(category, level, condition, expr)                                             \
+    ::orteaf::internal::diagnostics::log::detail::log_lazy_if<                                                \
+        ::orteaf::internal::diagnostics::log::LogCategory::category,                                         \
+        ::orteaf::internal::diagnostics::log::LogLevel::level>(                                              \
+        [&]() -> bool { return (condition); },                                                               \
+        [&]() -> std::string { return std::string(expr); })
+
+#define ORTEAF_LOG_TRACE_IF(category, condition, expr) ORTEAF_LOG_INTERNAL_IF(category, Trace, condition, expr)
+#define ORTEAF_LOG_DEBUG_IF(category, condition, expr) ORTEAF_LOG_INTERNAL_IF(category, Debug, condition, expr)
+#define ORTEAF_LOG_INFO_IF(category, condition, expr) ORTEAF_LOG_INTERNAL_IF(category, Info, condition, expr)
+#define ORTEAF_LOG_WARN_IF(category, condition, expr) ORTEAF_LOG_INTERNAL_IF(category, Warn, condition, expr)
+#define ORTEAF_LOG_ERROR_IF(category, condition, expr) ORTEAF_LOG_INTERNAL_IF(category, Error, condition, expr)
+#define ORTEAF_LOG_CRITICAL_IF(category, condition, expr) ORTEAF_LOG_INTERNAL_IF(category, Critical, condition, expr)
 
 /**
  * @def ORTEAF_ASSERT(expr, message)
