@@ -13,6 +13,7 @@
 #ifdef ORTEAF_ENABLE_CUDA
 #include <cuda.h>
 #include "orteaf/internal/backend/cuda/cuda_check.h"
+#include "orteaf/internal/diagnostics/error/error_impl.h"
 #endif
 
 namespace orteaf::internal::backend::cuda {
@@ -52,6 +53,10 @@ CUcontext_t create_context(CUdevice_t device) {
  */
 void set_context(CUcontext_t context) {
 #ifdef ORTEAF_ENABLE_CUDA
+    if (context == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "set_context: context cannot be nullptr");
+    }
     CUcontext objc_context = objc_from_opaque_noown<CUcontext>(context);
     CU_CHECK(cuCtxSetCurrent(objc_context));
 #else
@@ -76,6 +81,7 @@ void release_primary_context(CUdevice_t device) {
  */
 void release_context(CUcontext_t context) {
 #ifdef ORTEAF_ENABLE_CUDA
+    if (context == nullptr) return;
     CUcontext objc_context = objc_from_opaque_noown<CUcontext>(context);
     CU_CHECK(cuCtxDestroy(objc_context));
 #else

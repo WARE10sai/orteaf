@@ -8,6 +8,7 @@
 
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 #import <Metal/Metal.h>
+#include "orteaf/internal/diagnostics/error/error_impl.h"
 #endif
 
 namespace orteaf::internal::backend::mps {
@@ -17,6 +18,10 @@ namespace orteaf::internal::backend::mps {
  */
 MPSCommandQueue_t create_command_queue(MPSDevice_t device) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
+    if (device == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "create_command_queue: device cannot be nullptr");
+    }
     id<MTLDevice> objc_device = objc_from_opaque_noown<id<MTLDevice>>(device);
     id<MTLCommandQueue> objc_command_queue = [objc_device newCommandQueue];
     update_create_command_queue();

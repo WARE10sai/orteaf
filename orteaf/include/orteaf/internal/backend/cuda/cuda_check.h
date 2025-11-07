@@ -37,13 +37,110 @@ namespace orteaf::internal::backend::cuda {
 inline orteaf::internal::diagnostics::error::OrteafErrc map_runtime_errc(cudaError_t err) {
     using orteaf::internal::diagnostics::error::OrteafErrc;
     switch (err) {
+        case cudaSuccess:
+            return OrteafErrc::Success;
+        
+        // Memory errors
         case cudaErrorMemoryAllocation:
             return OrteafErrc::OutOfMemory;
+        
+        // Invalid parameters, handles, descriptors, transfer directions, symbols, etc. (low-level parameter violations)
         case cudaErrorInvalidValue:
-            return OrteafErrc::InvalidArgument;
+        case cudaErrorInvalidConfiguration:
+        case cudaErrorInvalidPitchValue:
+        case cudaErrorInvalidSymbol:
+        case cudaErrorInvalidDevicePointer:
+        case cudaErrorInvalidTexture:
+        case cudaErrorInvalidTextureBinding:
+        case cudaErrorInvalidChannelDescriptor:
+        case cudaErrorInvalidMemcpyDirection:
+        case cudaErrorInvalidResourceHandle:
+        case cudaErrorInvalidFilterSetting:
+        case cudaErrorInvalidNormSetting:
+        case cudaErrorInvalidAddressSpace:
+        case cudaErrorInvalidHandle:
+        case cudaErrorNotFound:
+        case cudaErrorFileNotFound:
+        case cudaErrorIllegalAddress:        // Invalid address reference from kernel
+            return OrteafErrc::InvalidParameter;
+        
+        // Out of range (device ID, etc.)
+        case cudaErrorInvalidDevice:
+            return OrteafErrc::OutOfRange;
+        
+        // Invalid state (initialization order, already enabled/disabled, destroyed, etc.)
+        case cudaErrorSetOnActiveProcess:
+        case cudaErrorDeviceUninitialized:
+        case cudaErrorPeerAccessAlreadyEnabled:
+        case cudaErrorPeerAccessNotEnabled:
+        case cudaErrorPrimaryContextActive:
+        case cudaErrorContextIsDestroyed:
+            return OrteafErrc::InvalidState;
+        
+        // Backend unavailable (environment/driver/initialization)
         case cudaErrorInitializationError:
+        case cudaErrorNoDevice:
+        case cudaErrorInsufficientDriver:
+        case cudaErrorStartupFailure:
+        case cudaErrorDeviceUnavailable:
             return OrteafErrc::BackendUnavailable;
+        
+        // Asynchronous operation not yet completed (not a failure, but "not ready yet")
+        case cudaErrorNotReady:
+            return OrteafErrc::NotReady;
+        
+        // Timeout
+        case cudaErrorLaunchTimeout:
+            return OrteafErrc::Timeout;
+        
+        // Device lost / hardware failure
+        case cudaErrorDeviceLost:
+        case cudaErrorHardwareStackError:
+            return OrteafErrc::DeviceLost;
+        
+        // Resource contention / busy
+        case cudaErrorLaunchOutOfResources:
+        case cudaErrorDeviceAlreadyInUse:
+            return OrteafErrc::ResourceBusy;
+        
+        // Permission denied
+        case cudaErrorNotPermitted:
+            return OrteafErrc::PermissionDenied;
+        
+        // Unsupported / incompatible
+        case cudaErrorInvalidDeviceFunction:
+        case cudaErrorUnsupportedLimit:
+        case cudaErrorPeerAccessUnsupported:
+        case cudaErrorNotSupported:
+        case cudaErrorLaunchIncompatibleTexturing:
+            return OrteafErrc::Unsupported;
+        
+        // Compilation / load failures (PTX/code generation/loading)
+        case cudaErrorInvalidPtx:
+        case cudaErrorNoKernelImageForDevice:
+        case cudaErrorJitCompilerNotFound:
+        case cudaErrorIllegalInstruction:
+        case cudaErrorInvalidPc:
+        case cudaErrorInvalidSource:
+        case cudaErrorSharedObjectSymbolNotFound:
+        case cudaErrorSharedObjectInitFailed:
+            return OrteafErrc::CompilationFailed;
+        
+        // Misalignment
+        case cudaErrorMisalignedAddress:
+            return OrteafErrc::Misaligned;
+        
+        // Known but miscellaneous failures (launch failure, OS-dependent, etc.) and unknown
+        case cudaErrorLaunchFailure:
+        case cudaErrorUnmapBufferObjectFailed:
+        case cudaErrorOperatingSystem:
+            return OrteafErrc::OperationFailed;
+        
+        case cudaErrorUnknown:
+            return OrteafErrc::Unknown;
+        
         default:
+            // Unknown future error codes fall back to safe side
             return OrteafErrc::OperationFailed;
     }
 }
@@ -132,14 +229,72 @@ inline void cuda_check_sync(cudaStream_t stream,
 inline orteaf::internal::diagnostics::error::OrteafErrc map_driver_errc(CUresult err) {
     using orteaf::internal::diagnostics::error::OrteafErrc;
     switch (err) {
+        case CUDA_SUCCESS:
+            return OrteafErrc::Success;
+        
+        // Backend unavailable (environment/driver/initialization)
         case CUDA_ERROR_DEINITIALIZED:
         case CUDA_ERROR_NOT_INITIALIZED:
+        case CUDA_ERROR_NO_DEVICE:
+        case CUDA_ERROR_DEVICE_UNAVAILABLE:
             return OrteafErrc::BackendUnavailable;
+        
+        // Memory errors
         case CUDA_ERROR_OUT_OF_MEMORY:
             return OrteafErrc::OutOfMemory;
+        
+        // Invalid parameters, handles, descriptors, etc. (low-level parameter violations)
         case CUDA_ERROR_INVALID_VALUE:
-            return OrteafErrc::InvalidArgument;
+        case CUDA_ERROR_INVALID_HANDLE:
+        case CUDA_ERROR_NOT_FOUND:
+        case CUDA_ERROR_ILLEGAL_ADDRESS:
+            return OrteafErrc::InvalidParameter;
+        
+        // Out of range (device ID, etc.)
+        case CUDA_ERROR_INVALID_DEVICE:
+            return OrteafErrc::OutOfRange;
+        
+        // Invalid state (initialization order, already enabled/disabled, destroyed, etc.)
+        case CUDA_ERROR_INVALID_CONTEXT:
+        case CUDA_ERROR_PEER_ACCESS_ALREADY_ENABLED:
+        case CUDA_ERROR_PEER_ACCESS_NOT_ENABLED:
+        case CUDA_ERROR_PRIMARY_CONTEXT_ACTIVE:
+        case CUDA_ERROR_CONTEXT_IS_DESTROYED:
+            return OrteafErrc::InvalidState;
+        
+        // Asynchronous operation not yet completed (not a failure, but "not ready yet")
+        case CUDA_ERROR_NOT_READY:
+            return OrteafErrc::NotReady;
+        
+        // Timeout
+        case CUDA_ERROR_LAUNCH_TIMEOUT:
+            return OrteafErrc::Timeout;
+        
+        // Device lost / hardware failure
+        case CUDA_ERROR_DEVICE_LOST:
+            return OrteafErrc::DeviceLost;
+        
+        // Resource contention / busy
+        case CUDA_ERROR_LAUNCH_OUT_OF_RESOURCES:
+            return OrteafErrc::ResourceBusy;
+        
+        // Permission denied
+        case CUDA_ERROR_DEVICE_NOT_LICENSED:
+            return OrteafErrc::PermissionDenied;
+        
+        // Unsupported / incompatible
+        case CUDA_ERROR_LAUNCH_INCOMPATIBLE_TEXTURING:
+        case CUDA_ERROR_UNSUPPORTED_LIMIT:
+            return OrteafErrc::Unsupported;
+        
+        // Compilation / load failures (PTX/code generation/loading)
+        case CUDA_ERROR_SHARED_OBJECT_SYMBOL_NOT_FOUND:
+        case CUDA_ERROR_SHARED_OBJECT_INIT_FAILED:
+            return OrteafErrc::CompilationFailed;
+        
+        // Known but miscellaneous failures and unknown
         default:
+            // Unknown future error codes fall back to safe side
             return OrteafErrc::OperationFailed;
     }
 }

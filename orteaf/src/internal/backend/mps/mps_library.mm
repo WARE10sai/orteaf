@@ -10,6 +10,7 @@
 #import <Foundation/Foundation.h>
 #import <objc/message.h>
 #import <dispatch/dispatch.h>
+#include "orteaf/internal/diagnostics/error/error_impl.h"
 #endif
 
 namespace orteaf::internal::backend::mps {
@@ -19,14 +20,29 @@ namespace orteaf::internal::backend::mps {
  */
 [[nodiscard]] MPSLibrary_t create_library(MPSDevice_t device, MPSString_t name, MPSError_t* error) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
+    if (device == nullptr) {
+        if (error != nullptr) {
+            *error = nullptr;
+        }
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "create_library: device cannot be nullptr");
+    }
     if (name == nullptr) {
         if (error != nullptr) {
             *error = nullptr;
         }
-        return nullptr;
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "create_library: name cannot be nullptr");
     }
 
     NSString* library_name = objc_from_opaque_noown<NSString*>(name);
+    if ([library_name length] == 0) {
+        if (error != nullptr) {
+            *error = nullptr;
+        }
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::InvalidParameter, "create_library: name cannot be empty");
+    }
     id<MTLDevice> objc_device = objc_from_opaque_noown<id<MTLDevice>>(device);
     
     NSError* objc_error = nil;
@@ -67,14 +83,29 @@ namespace orteaf::internal::backend::mps {
                                                       MPSCompileOptions_t compile_options,
                                                       MPSError_t* error) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
+    if (device == nullptr) {
+        if (error != nullptr) {
+            *error = nullptr;
+        }
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "create_library_with_source: device cannot be nullptr");
+    }
     if (source == nullptr) {
         if (error != nullptr) {
             *error = nullptr;
         }
-        return nullptr;
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "create_library_with_source: source cannot be nullptr");
     }
 
     NSString* source_string = objc_from_opaque_noown<NSString*>(source);
+    if ([source_string length] == 0) {
+        if (error != nullptr) {
+            *error = nullptr;
+        }
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::InvalidParameter, "create_library_with_source: source cannot be empty");
+    }
     MTLCompileOptions* objc_compile_options = compile_options != nullptr
         ? objc_from_opaque_noown<MTLCompileOptions*>(compile_options)
         : nil;
@@ -122,11 +153,26 @@ void destroy_library(MPSLibrary_t library) {
                                                     std::size_t size,
                                                     MPSError_t* error) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (data == nullptr || size == 0) {
+    if (device == nullptr) {
         if (error != nullptr) {
             *error = nullptr;
         }
-        return nullptr;
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "create_library_with_data: device cannot be nullptr");
+    }
+    if (data == nullptr) {
+        if (error != nullptr) {
+            *error = nullptr;
+        }
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "create_library_with_data: data cannot be nullptr");
+    }
+    if (size == 0) {
+        if (error != nullptr) {
+            *error = nullptr;
+        }
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::InvalidParameter, "create_library_with_data: size cannot be 0");
     }
 
     dispatch_data_t dispatch_data = dispatch_data_create(data, size, nullptr, DISPATCH_DATA_DESTRUCTOR_DEFAULT);

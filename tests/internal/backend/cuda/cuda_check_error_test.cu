@@ -19,7 +19,7 @@ namespace diag = orteaf::internal::diagnostics::error;
 TEST(CudaCheckError, MapRuntimeErrcMapsCorrectly) {
     EXPECT_EQ(cuda::map_runtime_errc(cudaSuccess), diag::OrteafErrc::OperationFailed);
     EXPECT_EQ(cuda::map_runtime_errc(cudaErrorMemoryAllocation), diag::OrteafErrc::OutOfMemory);
-    EXPECT_EQ(cuda::map_runtime_errc(cudaErrorInvalidValue), diag::OrteafErrc::InvalidArgument);
+    EXPECT_EQ(cuda::map_runtime_errc(cudaErrorInvalidValue), diag::OrteafErrc::InvalidParameter);
     EXPECT_EQ(cuda::map_runtime_errc(cudaErrorInitializationError), diag::OrteafErrc::BackendUnavailable);
     EXPECT_EQ(cuda::map_runtime_errc(cudaErrorInitializationError), diag::OrteafErrc::BackendUnavailable);
     EXPECT_EQ(cuda::map_runtime_errc(cudaErrorUnknown), diag::OrteafErrc::OperationFailed);
@@ -33,7 +33,7 @@ TEST(CudaCheckError, MapDriverErrcMapsCorrectly) {
     EXPECT_EQ(cuda::map_driver_errc(CUDA_ERROR_DEINITIALIZED), diag::OrteafErrc::BackendUnavailable);
     EXPECT_EQ(cuda::map_driver_errc(CUDA_ERROR_NOT_INITIALIZED), diag::OrteafErrc::BackendUnavailable);
     EXPECT_EQ(cuda::map_driver_errc(CUDA_ERROR_OUT_OF_MEMORY), diag::OrteafErrc::OutOfMemory);
-    EXPECT_EQ(cuda::map_driver_errc(CUDA_ERROR_INVALID_VALUE), diag::OrteafErrc::InvalidArgument);
+    EXPECT_EQ(cuda::map_driver_errc(CUDA_ERROR_INVALID_VALUE), diag::OrteafErrc::InvalidParameter);
     EXPECT_EQ(cuda::map_driver_errc(CUDA_ERROR_INVALID_CONTEXT), diag::OrteafErrc::OperationFailed);
 }
 
@@ -113,7 +113,7 @@ TEST(CudaCheckError, CuDriverCheckThrowsCorrectErrorCode) {
         cuda::cu_driver_check(CUDA_ERROR_INVALID_VALUE, "driver_test", "driver.cpp", 200);
         FAIL() << "Expected std::system_error to be thrown";
     } catch (const std::system_error& ex) {
-        EXPECT_EQ(static_cast<diag::OrteafErrc>(ex.code().value()), diag::OrteafErrc::InvalidArgument);
+        EXPECT_EQ(static_cast<diag::OrteafErrc>(ex.code().value()), diag::OrteafErrc::InvalidParameter);
         std::string what = ex.what();
         EXPECT_NE(what.find("driver_test"), std::string::npos);
         EXPECT_NE(what.find("driver.cpp"), std::string::npos);

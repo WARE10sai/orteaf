@@ -8,6 +8,7 @@
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 #import <Metal/Metal.h>
 #import <Foundation/Foundation.h>
+#include "orteaf/internal/diagnostics/error/error_impl.h"
 #endif
 
 namespace orteaf::internal::backend::mps {
@@ -19,7 +20,8 @@ MPSDevice_t get_device() {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     id<MTLDevice> device = MTLCreateSystemDefaultDevice();
     if (device == nil) {
-        return nullptr;
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::BackendUnavailable, "get_device: no default Metal device available");
     }
     return (MPSDevice_t)opaque_from_objc_retained(device);
 #else
@@ -34,16 +36,19 @@ MPSDevice_t get_device(MPSInt_t device_id) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     NSArray<id<MTLDevice>>* devices = MTLCopyAllDevices();
     if (devices == nil) {
-        return nullptr;
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::BackendUnavailable, "get_device: no Metal devices available");
     }
     if (device_id < 0) {
         [devices release];
-        return nullptr;
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::OutOfRange, "get_device: device_id cannot be negative");
     }
     NSUInteger index = static_cast<NSUInteger>(device_id);
     if (index >= [devices count]) {
         [devices release];
-        return nullptr;
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::OutOfRange, "get_device: device_id out of range");
     }
     id<MTLDevice> device = [devices objectAtIndex:index];
     MPSDevice_t handle = (MPSDevice_t)opaque_from_objc_retained(device);

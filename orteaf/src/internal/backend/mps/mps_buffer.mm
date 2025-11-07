@@ -9,6 +9,7 @@
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 #import <Metal/Metal.h>
 #import <Foundation/Foundation.h>
+#include "orteaf/internal/diagnostics/error/error_impl.h"
 #endif
 
 namespace orteaf::internal::backend::mps {
@@ -18,6 +19,14 @@ namespace orteaf::internal::backend::mps {
  */
 MPSBuffer_t create_buffer(MPSDevice_t device, size_t size, MPSBufferUsage_t usage) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
+    if (device == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "create_buffer: device cannot be nullptr");
+    }
+    if (size == 0) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::InvalidParameter, "create_buffer: size cannot be 0");
+    }
     id<MTLDevice> objc_device = objc_from_opaque_noown<id<MTLDevice>>(device);
     MTLResourceOptions objc_usage = static_cast<MTLResourceOptions>(usage);
     id<MTLBuffer> objc_buffer = [objc_device newBufferWithLength:size options:objc_usage];

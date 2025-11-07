@@ -8,6 +8,7 @@
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 #import <Metal/Metal.h>
 #import <Foundation/Foundation.h>
+#include "orteaf/internal/diagnostics/error/error_impl.h"
 #endif
 
 namespace orteaf::internal::backend::mps {
@@ -17,6 +18,14 @@ namespace orteaf::internal::backend::mps {
  */
 MPSFunction_t create_function(MPSLibrary_t library, std::string_view name) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
+    if (library == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "create_function: library cannot be nullptr");
+    }
+    if (name.empty()) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::InvalidParameter, "create_function: name cannot be empty");
+    }
     NSString* function_name = [[[NSString alloc] initWithBytes:name.data()
                                                    length:name.size()
                                                  encoding:NSUTF8StringEncoding] autorelease];

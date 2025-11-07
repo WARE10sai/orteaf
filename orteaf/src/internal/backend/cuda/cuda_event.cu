@@ -9,6 +9,7 @@
 
 #ifdef ORTEAF_ENABLE_CUDA
 #include <cuda.h>
+#include "orteaf/internal/diagnostics/error/error_impl.h"
 #endif
 
 namespace orteaf::internal::backend::cuda {
@@ -46,7 +47,14 @@ void destroy_event(CUevent_t event) {
  */
 void record_event(CUevent_t event, CUstream_t stream) {
 #ifdef ORTEAF_ENABLE_CUDA
-    if (event == nullptr || stream == nullptr) return;
+    if (event == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "record_event: event cannot be nullptr");
+    }
+    if (stream == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "record_event: stream cannot be nullptr");
+    }
     CUevent objc_event = objc_from_opaque_noown<CUevent>(event);
     CUstream objc_stream = objc_from_opaque_noown<CUstream>(stream);
     CU_CHECK(cuEventRecord(objc_event, objc_stream));
@@ -79,7 +87,14 @@ bool query_event(CUevent_t event) {
  */
 void wait_event(CUstream_t stream, CUevent_t event) {
 #ifdef ORTEAF_ENABLE_CUDA
-    if (stream == nullptr || event == nullptr) return;
+    if (stream == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "wait_event: stream cannot be nullptr");
+    }
+    if (event == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "wait_event: event cannot be nullptr");
+    }
     CUstream objc_stream = objc_from_opaque_noown<CUstream>(stream);
     CUevent objc_event = objc_from_opaque_noown<CUevent>(event);
     CU_CHECK(cuStreamWaitEvent(objc_stream, objc_event, 0));

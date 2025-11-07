@@ -8,6 +8,7 @@
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 #import <Metal/Metal.h>
 #import <Foundation/Foundation.h>
+#include "orteaf/internal/diagnostics/error/error_impl.h"
 #endif
 
 namespace orteaf::internal::backend::mps {
@@ -42,7 +43,10 @@ void destroy_compile_options(MPSCompileOptions_t options) {
  */
 void set_compile_options_math_mode(MPSCompileOptions_t options, bool fast_math_enabled) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (options == nullptr) return;
+    if (options == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "set_compile_options_math_mode: options cannot be nullptr");
+    }
     
     MTLCompileOptions* objc_options = objc_from_opaque_noown<MTLCompileOptions*>(options);
 #if defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 150000
@@ -61,7 +65,10 @@ void set_compile_options_math_mode(MPSCompileOptions_t options, bool fast_math_e
  */
 void set_compile_options_preserve_invariance(MPSCompileOptions_t options, bool preserve_invariance) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (options == nullptr) return;
+    if (options == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "set_compile_options_preserve_invariance: options cannot be nullptr");
+    }
     
     MTLCompileOptions* objc_options = objc_from_opaque_noown<MTLCompileOptions*>(options);
     objc_options.preserveInvariance = preserve_invariance;
@@ -76,7 +83,10 @@ void set_compile_options_preserve_invariance(MPSCompileOptions_t options, bool p
  */
 void set_compile_options_preprocessor_macros(MPSCompileOptions_t options, void* macros_dictionary) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (options == nullptr) return;
+    if (options == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "set_compile_options_preprocessor_macros: options cannot be nullptr");
+    }
     
     MTLCompileOptions* objc_options = objc_from_opaque_noown<MTLCompileOptions*>(options);
     NSDictionary* objc_dict = objc_from_opaque_noown<NSDictionary*>(macros_dictionary);

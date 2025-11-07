@@ -10,6 +10,7 @@
 
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
 #import <Metal/Metal.h>
+#include "orteaf/internal/diagnostics/error/error_impl.h"
 #endif
 
 namespace orteaf::internal::backend::mps {
@@ -21,6 +22,10 @@ using orteaf::internal::backend::mps::AutoreleasePool;
  */
 MPSCommandBuffer_t create_command_buffer(MPSCommandQueue_t command_queue) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
+    if (command_queue == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "create_command_buffer: command_queue cannot be nullptr");
+    }
     AutoreleasePool pool{};
     id<MTLCommandQueue> objc_command_queue = objc_from_opaque_noown<id<MTLCommandQueue>>(command_queue);
     id<MTLCommandBuffer> objc_command_buffer = [objc_command_queue commandBuffer];
@@ -50,6 +55,14 @@ void destroy_command_buffer(MPSCommandBuffer_t command_buffer) {
  */
 void encode_signal_event(MPSCommandBuffer_t command_buffer, MPSEvent_t event, uint32_t value) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
+    if (command_buffer == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "encode_signal_event: command_buffer cannot be nullptr");
+    }
+    if (event == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "encode_signal_event: event cannot be nullptr");
+    }
     id<MTLCommandBuffer> objc_command_buffer = objc_from_opaque_noown<id<MTLCommandBuffer>>(command_buffer);
     id<MTLSharedEvent> objc_event = objc_from_opaque_noown<id<MTLSharedEvent>>(event);
     [objc_command_buffer encodeSignalEvent:objc_event value:value];
@@ -65,6 +78,14 @@ void encode_signal_event(MPSCommandBuffer_t command_buffer, MPSEvent_t event, ui
  */
 void encode_wait(MPSCommandBuffer_t command_buffer, MPSEvent_t event, uint32_t value) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
+    if (command_buffer == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "encode_wait: command_buffer cannot be nullptr");
+    }
+    if (event == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "encode_wait: event cannot be nullptr");
+    }
     id<MTLCommandBuffer> objc_command_buffer = objc_from_opaque_noown<id<MTLCommandBuffer>>(command_buffer);
     id<MTLSharedEvent> objc_event = objc_from_opaque_noown<id<MTLSharedEvent>>(event);
     [objc_command_buffer encodeWaitForEvent:objc_event value:value];
@@ -80,6 +101,10 @@ void encode_wait(MPSCommandBuffer_t command_buffer, MPSEvent_t event, uint32_t v
  */
 void commit(MPSCommandBuffer_t command_buffer) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
+    if (command_buffer == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "commit: command_buffer cannot be nullptr");
+    }
     id<MTLCommandBuffer> objc_command_buffer = objc_from_opaque_noown<id<MTLCommandBuffer>>(command_buffer);
     [objc_command_buffer commit];
 #else
@@ -92,6 +117,10 @@ void commit(MPSCommandBuffer_t command_buffer) {
  */
 void wait_until_completed(MPSCommandBuffer_t command_buffer) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
+    if (command_buffer == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "wait_until_completed: command_buffer cannot be nullptr");
+    }
     id<MTLCommandBuffer> objc_command_buffer = objc_from_opaque_noown<id<MTLCommandBuffer>>(command_buffer);
     [objc_command_buffer waitUntilCompleted];
 #else

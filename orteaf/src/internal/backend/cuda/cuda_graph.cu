@@ -8,6 +8,7 @@
 
 #ifdef ORTEAF_ENABLE_CUDA
 #include <cuda.h>
+#include "orteaf/internal/diagnostics/error/error_impl.h"
 #endif
 
 namespace orteaf::internal::backend::cuda {
@@ -30,6 +31,10 @@ CUgraph_t create_graph() {
  */
 CUgraphExec_t create_graph_exec(CUgraph_t graph) {
 #ifdef ORTEAF_ENABLE_CUDA
+    if (graph == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "create_graph_exec: graph cannot be nullptr");
+    }
     CUgraph objc_graph = objc_from_opaque_noown<CUgraph>(graph);
     CUgraphExec graph_exec;
     CU_CHECK(cuGraphInstantiateWithFlags(&graph_exec, objc_graph, 0));
@@ -69,6 +74,10 @@ void destroy_graph_exec(CUgraphExec_t graph_exec) {
  */
 void begin_graph_capture(CUstream_t stream) {
 #ifdef ORTEAF_ENABLE_CUDA
+    if (stream == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "begin_graph_capture: stream cannot be nullptr");
+    }
     CUstream objc_stream = objc_from_opaque_noown<CUstream>(stream);
     CU_CHECK(cuStreamBeginCapture(objc_stream, CU_STREAM_CAPTURE_MODE_GLOBAL));
 #else
@@ -81,6 +90,14 @@ void begin_graph_capture(CUstream_t stream) {
  */
 void end_graph_capture(CUstream_t stream, CUgraph_t* graph) {
 #ifdef ORTEAF_ENABLE_CUDA
+    if (stream == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "end_graph_capture: stream cannot be nullptr");
+    }
+    if (graph == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "end_graph_capture: graph cannot be nullptr");
+    }
     CUstream objc_stream = objc_from_opaque_noown<CUstream>(stream);
     CUgraph objc_graph;
     CU_CHECK(cuStreamEndCapture(objc_stream, &objc_graph));
@@ -96,6 +113,14 @@ void end_graph_capture(CUstream_t stream, CUgraph_t* graph) {
  */
 void instantiate_graph(CUgraph_t graph, CUgraphExec_t* graph_exec) {
 #ifdef ORTEAF_ENABLE_CUDA
+    if (graph == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "instantiate_graph: graph cannot be nullptr");
+    }
+    if (graph_exec == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "instantiate_graph: graph_exec cannot be nullptr");
+    }
     CUgraph objc_graph = objc_from_opaque_noown<CUgraph>(graph);
     CUgraphExec objc_graph_exec;
     CU_CHECK(cuGraphInstantiateWithFlags(&objc_graph_exec, objc_graph, 0));
@@ -111,6 +136,14 @@ void instantiate_graph(CUgraph_t graph, CUgraphExec_t* graph_exec) {
  */
 void graph_launch(CUgraphExec_t graph_exec, CUstream_t stream) {
 #ifdef ORTEAF_ENABLE_CUDA
+    if (graph_exec == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "graph_launch: graph_exec cannot be nullptr");
+    }
+    if (stream == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "graph_launch: stream cannot be nullptr");
+    }
     CUgraphExec objc_graph_exec = objc_from_opaque_noown<CUgraphExec>(graph_exec);
     CUstream objc_stream = objc_from_opaque_noown<CUstream>(stream);
     CU_CHECK(cuGraphLaunch(objc_graph_exec, objc_stream));

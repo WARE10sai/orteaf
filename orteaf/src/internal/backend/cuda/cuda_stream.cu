@@ -9,6 +9,7 @@
 
 #ifdef ORTEAF_ENABLE_CUDA
 #include <cuda.h>
+#include "orteaf/internal/diagnostics/error/error_impl.h"
 #endif
 
 namespace orteaf::internal::backend::cuda {
@@ -57,6 +58,10 @@ void release_stream(CUstream_t stream) {
  */
 void synchronize_stream(CUstream_t stream) {
 #ifdef ORTEAF_ENABLE_CUDA
+    if (stream == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "synchronize_stream: stream cannot be nullptr");
+    }
     CUstream objc_stream = objc_from_opaque_noown<CUstream>(stream);
     CU_CHECK(cuStreamSynchronize(objc_stream));
 #else
@@ -69,6 +74,14 @@ void synchronize_stream(CUstream_t stream) {
  */
 void wait_stream(CUstream_t stream, CUdeviceptr_t addr, uint32_t value) {
 #ifdef ORTEAF_ENABLE_CUDA
+    if (stream == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "wait_stream: stream cannot be nullptr");
+    }
+    if (addr == 0) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::InvalidParameter, "wait_stream: addr cannot be 0");
+    }
     CUstream objc_stream = objc_from_opaque_noown<CUstream>(stream);
     CUdeviceptr objc_addr = cu_deviceptr_from_opaque(addr);
     CU_CHECK(cuStreamWaitValue32(objc_stream, objc_addr, value, CU_STREAM_WAIT_VALUE_GEQ));
@@ -84,6 +97,14 @@ void wait_stream(CUstream_t stream, CUdeviceptr_t addr, uint32_t value) {
  */
 void write_stream(CUstream_t stream, CUdeviceptr_t addr, uint32_t value) {
 #ifdef ORTEAF_ENABLE_CUDA
+    if (stream == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "write_stream: stream cannot be nullptr");
+    }
+    if (addr == 0) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::InvalidParameter, "write_stream: addr cannot be 0");
+    }
     CUstream objc_stream = objc_from_opaque_noown<CUstream>(stream);
     CUdeviceptr objc_addr = cu_deviceptr_from_opaque(addr);
     CU_CHECK(cuStreamWriteValue32(objc_stream, objc_addr, value, CU_STREAM_WRITE_VALUE_DEFAULT));

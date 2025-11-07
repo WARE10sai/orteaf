@@ -5,6 +5,7 @@
 
 #ifdef ORTEAF_ENABLE_CUDA
 #include <cuda.h>
+#include "orteaf/internal/diagnostics/error/error_impl.h"
 #endif
 
 namespace orteaf::internal::backend::cuda {
@@ -21,6 +22,10 @@ namespace orteaf::internal::backend::cuda {
  */
 CUdeviceptr_t alloc(size_t size) {
 #ifdef ORTEAF_ENABLE_CUDA
+    if (size == 0) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::InvalidParameter, "alloc: size cannot be 0");
+    }
     CUdeviceptr ptr;
     CU_CHECK(cuMemAlloc(&ptr, size));
     update_alloc(size);
@@ -63,11 +68,15 @@ void free(CUdeviceptr_t ptr, size_t size) {
  */
 CUdeviceptr_t alloc_stream(size_t size, CUstream_t stream) {
 #ifdef ORTEAF_ENABLE_CUDA
-    CUdeviceptr ptr;
-    if (stream == nullptr) {
-        // errorで落ちる
-        throw std::runtime_error("stream is nullptr");
+    if (size == 0) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::InvalidParameter, "alloc_stream: size cannot be 0");
     }
+    if (stream == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "alloc_stream: stream cannot be nullptr");
+    }
+    CUdeviceptr ptr;
     CUstream objc_stream = objc_from_opaque_noown<CUstream>(stream);
     CU_CHECK(cuMemAllocAsync(&ptr, size, objc_stream));
     update_alloc(size);
@@ -94,7 +103,8 @@ void free_stream(CUdeviceptr_t ptr, size_t size, CUstream_t stream) {
 #ifdef ORTEAF_ENABLE_CUDA
     CUdeviceptr objc_ptr = cu_deviceptr_from_opaque(ptr);
     if (stream == nullptr) {
-        throw std::runtime_error("stream is nullptr");
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "free_stream: stream cannot be nullptr");
     }
     CUstream objc_stream = objc_from_opaque_noown<CUstream>(stream);
     CU_CHECK(cuMemFreeAsync(objc_ptr, objc_stream));
@@ -117,6 +127,10 @@ void free_stream(CUdeviceptr_t ptr, size_t size, CUstream_t stream) {
  */
 void* alloc_host(std::size_t size) {
 #ifdef ORTEAF_ENABLE_CUDA
+    if (size == 0) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::InvalidParameter, "alloc_host: size cannot be 0");
+    }
     void* ptr;
     CU_CHECK(cuMemAllocHost(&ptr, size));
     update_alloc(size);
@@ -141,6 +155,14 @@ void* alloc_host(std::size_t size) {
  */
 void copy_to_host(CUdeviceptr_t ptr, void* host_ptr, size_t size) {
 #ifdef ORTEAF_ENABLE_CUDA
+    if (ptr == 0) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::InvalidParameter, "copy_to_host: ptr cannot be 0");
+    }
+    if (host_ptr == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "copy_to_host: host_ptr cannot be nullptr");
+    }
     CUdeviceptr objc_ptr = cu_deviceptr_from_opaque(ptr);
     CU_CHECK(cuMemcpyDtoH(host_ptr, objc_ptr, size));
 #else
@@ -164,6 +186,14 @@ void copy_to_host(CUdeviceptr_t ptr, void* host_ptr, size_t size) {
  */
 void copy_to_device(void* host_ptr, CUdeviceptr_t ptr, size_t size) {
 #ifdef ORTEAF_ENABLE_CUDA
+    if (ptr == 0) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::InvalidParameter, "copy_to_device: ptr cannot be 0");
+    }
+    if (host_ptr == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "copy_to_device: host_ptr cannot be nullptr");
+    }
     CUdeviceptr objc_ptr = cu_deviceptr_from_opaque(ptr);
     CU_CHECK(cuMemcpyHtoD(objc_ptr, host_ptr, size));
 #else
@@ -185,6 +215,10 @@ void copy_to_device(void* host_ptr, CUdeviceptr_t ptr, size_t size) {
  */
 void free_host(void* ptr, size_t size) {
 #ifdef ORTEAF_ENABLE_CUDA
+    if (ptr == nullptr) {
+        using namespace orteaf::internal::diagnostics::error;
+        throw_error(OrteafErrc::NullPointer, "free_host: ptr cannot be nullptr");
+    }
     CU_CHECK(cuMemFreeHost(ptr));
     update_dealloc(size);
 #else
