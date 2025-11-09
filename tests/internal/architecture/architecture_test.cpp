@@ -17,9 +17,11 @@ TEST(ArchitectureBasic, GenericLocalIndexIsZero) {
 
 TEST(ArchitectureBasic, LocalIndicesIncrementPerBackend) {
     EXPECT_EQ(arch::LocalIndexOf(arch::Architecture::cuda_sm80), 1);
-    EXPECT_EQ(arch::LocalIndexOf(arch::Architecture::cuda_sm90), 2);
+    EXPECT_EQ(arch::LocalIndexOf(arch::Architecture::cuda_sm86), 2);
+    EXPECT_EQ(arch::LocalIndexOf(arch::Architecture::cuda_sm90), 3);
     EXPECT_EQ(arch::LocalIndexOf(arch::Architecture::mps_m2), 1);
     EXPECT_EQ(arch::LocalIndexOf(arch::Architecture::mps_m3), 2);
+    EXPECT_EQ(arch::LocalIndexOf(arch::Architecture::mps_m4), 3);
 }
 
 TEST(ArchitectureMetadata, BackendAssociationMatches) {
@@ -39,15 +41,16 @@ TEST(ArchitectureMetadata, IdAndDisplayNameMatchYaml) {
 }
 
 TEST(ArchitectureLookup, BackendCountsIncludeGeneric) {
-    EXPECT_EQ(arch::CountForBackend(backend::Backend::cuda), 3u);
-    EXPECT_EQ(arch::CountForBackend(backend::Backend::mps), 3u);
+    EXPECT_EQ(arch::CountForBackend(backend::Backend::cuda), 4u);
+    EXPECT_EQ(arch::CountForBackend(backend::Backend::mps), 4u);
     EXPECT_EQ(arch::CountForBackend(backend::Backend::cpu), 3u);
 }
 
 TEST(ArchitectureLookup, ArchitecturesOfReturnsContiguousSpan) {
     const auto cuda_archs = arch::ArchitecturesOf(backend::Backend::cuda);
-    ASSERT_EQ(cuda_archs.size(), 3u);
+    ASSERT_EQ(cuda_archs.size(), 4u);
     EXPECT_EQ(cuda_archs.front(), arch::Architecture::cuda_generic);
+    EXPECT_EQ(cuda_archs[1], arch::Architecture::cuda_sm80);
     EXPECT_EQ(cuda_archs.back(), arch::Architecture::cuda_sm90);
 
     const auto cpu_archs = arch::ArchitecturesOf(backend::Backend::cpu);
@@ -56,8 +59,8 @@ TEST(ArchitectureLookup, ArchitecturesOfReturnsContiguousSpan) {
 }
 
 TEST(ArchitectureLookup, FromBackendAndLocalIndexRoundsTrip) {
-    const auto arch_id = arch::FromBackendAndLocalIndex(backend::Backend::cuda, 2);
+    const auto arch_id = arch::FromBackendAndLocalIndex(backend::Backend::cuda, 3);
     EXPECT_EQ(arch_id, arch::Architecture::cuda_sm90);
-    EXPECT_TRUE(arch::HasLocalIndex(backend::Backend::cuda, 2));
+    EXPECT_TRUE(arch::HasLocalIndex(backend::Backend::cuda, 3));
     EXPECT_FALSE(arch::HasLocalIndex(backend::Backend::cuda, 5));
 }

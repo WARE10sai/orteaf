@@ -7,6 +7,12 @@ architectures:
     metadata:
       description: "Ampere 世代 GPU (A100 など) 向け最適化"
 
+  - id: "sm86"
+    display_name: "CUDA SM86"
+    backend: "cuda"
+    metadata:
+      description: "Ampere 世代 GPU (RTX 30 シリーズ) 向け最適化"
+
   - id: "sm90"
     display_name: "CUDA SM90"
     backend: "cuda"
@@ -24,6 +30,12 @@ architectures:
     backend: "mps"
     metadata:
       description: "Apple Silicon M3 世代 GPU 向け最適化"
+
+  - id: "m4"
+    display_name: "Apple M4 GPU"
+    backend: "mps"
+    metadata:
+      description: "Apple Silicon M4 世代 GPU 向け最適化"
 
   - id: "zen4"
     display_name: "Zen 4 AVX512"
