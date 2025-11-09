@@ -1,12 +1,13 @@
 #pragma once
 
-#include <bit>
 #include <cstdint>
 #include <type_traits>
 
 #if defined(__CUDACC__)
 #include <cuda_fp16.h>
 #endif
+
+#include "detail/bit_cast.h"
 
 namespace orteaf::internal {
 
@@ -17,22 +18,6 @@ namespace orteaf::internal {
 #endif
 
 namespace detail {
-
-template <class To, class From>
-ORTEAF_INTERNAL_FLOAT16_HD constexpr To BitCast(From value) {
-#if defined(__cpp_lib_bit_cast)
-    return std::bit_cast<To>(value);
-#else
-    static_assert(sizeof(To) == sizeof(From), "BitCast requires identical sizes");
-    static_assert(std::is_trivially_copyable_v<To>, "BitCast requires trivially copyable types");
-    static_assert(std::is_trivially_copyable_v<From>, "BitCast requires trivially copyable types");
-    union {
-        From from;
-        To to;
-    } u{value};
-    return u.to;
-#endif
-}
 
 // Convert IEEE-754 binary32 to binary16 bits (round-to-nearest-even).
 ORTEAF_INTERNAL_FLOAT16_HD constexpr std::uint16_t Float32ToHalfBits(float value) {

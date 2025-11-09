@@ -1,9 +1,10 @@
 #pragma once
 
-#include <bit>
 #include <cstdint>
 #include <limits>
 #include <type_traits>
+
+#include "detail/bit_cast.h"
 
 namespace orteaf::internal {
 
@@ -14,22 +15,6 @@ namespace orteaf::internal {
 #endif
 
 namespace detail {
-
-template <class To, class From>
-ORTEAF_INTERNAL_FLOAT8_HD constexpr To BitCast(From value) {
-#if defined(__cpp_lib_bit_cast)
-    return std::bit_cast<To>(value);
-#else
-    static_assert(sizeof(To) == sizeof(From), "BitCast requires identical sizes");
-    static_assert(std::is_trivially_copyable_v<To>, "BitCast requires trivially copyable types");
-    static_assert(std::is_trivially_copyable_v<From>, "BitCast requires trivially copyable types");
-    union {
-        From from;
-        To to;
-    } u{value};
-    return u.to;
-#endif
-}
 
 constexpr float Pow2(int exp) {
     float value = 1.0f;
@@ -87,7 +72,7 @@ constexpr std::uint8_t PackFp8Bits(std::uint8_t sign, std::uint8_t exponent_fiel
 }
 
 constexpr std::uint8_t Float32ToFp8(float value, const Fp8FormatSpec& spec) {
-    const std::uint32_t bits = BitCast<std::uint32_t>(value);
+    const std::uint32_t bits = detail::BitCast<std::uint32_t>(value);
     const std::uint8_t sign = static_cast<std::uint8_t>(bits >> 31);
     const std::uint32_t exponent = (bits >> 23) & 0xffu;
     const std::uint32_t mantissa = bits & 0x7fffffu;

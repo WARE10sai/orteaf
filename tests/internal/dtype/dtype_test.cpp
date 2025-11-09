@@ -450,7 +450,19 @@ TEST(DTypeComputeType, AllTypesHaveComputeType) {
 TEST(DTypeComputeType, Idempotency) {
     // 動作の順序: 計算用型の一貫性（べき等性）
     for (const auto dtype : dtype::kAllDTypes) {
-        const auto compute_type = dtype::ComputeType(dtype);
-        EXPECT_EQ(dtype::ComputeType(compute_type), compute_type);
+        auto current = dtype::ComputeType(dtype);
+        std::size_t guard = 0;
+        while (true) {
+            auto next = dtype::ComputeType(current);
+            if (next == current) {
+                break;
+            }
+            current = next;
+            ++guard;
+            ASSERT_LT(guard, dtype::kDTypeCount)
+                << "ComputeType did not converge for " << dtype::IdOf(dtype);
+        }
+        EXPECT_EQ(dtype::ComputeType(current), current)
+            << "ComputeType should converge to a fixed point";
     }
 }
