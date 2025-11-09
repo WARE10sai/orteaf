@@ -114,22 +114,13 @@ function(orteaf_add_metal_kernel_binaries)
         "${BACKEND_GEN_DIR}/mps/metal_kernel_registry.cpp"
         ABSOLUTE
     )
-    set(GENERATED_SOURCE_MIRROR
-        "${CMAKE_BINARY_DIR}/orteaf/generated/orteaf/backend/mps/metal_kernel_registry.cpp"
-    )
     add_custom_command(
         OUTPUT
             "${GENERATED_SOURCE_CANONICAL}"
-            "${GENERATED_SOURCE_MIRROR}"
         COMMAND "${CMAKE_COMMAND}"
-            -DOUTPUT:PATH="${GENERATED_SOURCE_CANONICAL}"
-            -DKERNEL_RECORDS:STRING="${KERNEL_RECORDS_SERIALIZED}"
+            -DOUTPUT:PATH=${GENERATED_SOURCE_CANONICAL}
+            -DKERNEL_RECORDS:STRING=${KERNEL_RECORDS_SERIALIZED}
             -P "${CMAKE_SOURCE_DIR}/cmake/modules/OrteafMetalKernelEmbedGenerate.cmake"
-        COMMAND "${CMAKE_COMMAND}" -E make_directory
-            "${CMAKE_BINARY_DIR}/orteaf/generated/orteaf/backend/mps"
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-            "${GENERATED_SOURCE_CANONICAL}"
-            "${GENERATED_SOURCE_MIRROR}"
         DEPENDS
             ${EMBEDDED_OBJECTS}
             "${CMAKE_SOURCE_DIR}/cmake/modules/OrteafMetalKernelEmbedGenerate.cmake"
@@ -141,10 +132,9 @@ function(orteaf_add_metal_kernel_binaries)
         DEPENDS
             ${EMBEDDED_OBJECTS}
             "${GENERATED_SOURCE_CANONICAL}"
-            "${GENERATED_SOURCE_MIRROR}"
     )
 
-    set(ORTEAF_METAL_EMBED_SOURCE "${GENERATED_SOURCE_MIRROR}" PARENT_SCOPE)
+    set(ORTEAF_METAL_EMBED_SOURCE "${GENERATED_SOURCE_CANONICAL}" PARENT_SCOPE)
     set(ORTEAF_METAL_EMBED_OBJECTS "${EMBEDDED_OBJECTS}" PARENT_SCOPE)
     set(ORTEAF_METAL_GENERATED_LIBS "${ALL_METALLIBS}" PARENT_SCOPE)
 endfunction()
