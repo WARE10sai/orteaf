@@ -36,6 +36,9 @@ configure_file(
 set(ORTEAF_GENERATED_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated CACHE INTERNAL "")
 set(DTYPE_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/orteaf/dtype CACHE INTERNAL "")
 set(OPS_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/orteaf/ops CACHE INTERNAL "")
+set(BACKEND_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/orteaf/backend CACHE INTERNAL "")
+set(ARCHITECTURE_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/orteaf/architecture CACHE INTERNAL "")
+set(DEVICE_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/orteaf/device CACHE INTERNAL "")
 
 add_subdirectory(tools/codegen)
 
@@ -74,6 +77,74 @@ add_custom_target(generate_ops
     DEPENDS
         ${OPS_GEN_DIR}/ops.def
         ${OPS_GEN_DIR}/ops_tables.h
+)
+
+add_custom_command(
+    OUTPUT
+        ${BACKEND_GEN_DIR}/backend.def
+        ${BACKEND_GEN_DIR}/backend_tables.h
+    COMMAND $<TARGET_FILE:gen_backends> ${CMAKE_CURRENT_SOURCE_DIR}/configs/backend/backends.yml ${BACKEND_GEN_DIR}
+    DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/configs/backend/backends.yml
+        gen_backends
+    COMMENT "Generating backend metadata"
+    VERBATIM
+)
+
+add_custom_target(generate_backends
+    DEPENDS
+        ${BACKEND_GEN_DIR}/backend.def
+        ${BACKEND_GEN_DIR}/backend_tables.h
+)
+
+add_custom_command(
+    OUTPUT
+        ${ARCHITECTURE_GEN_DIR}/architecture.def
+        ${ARCHITECTURE_GEN_DIR}/architecture_tables.h
+    COMMAND $<TARGET_FILE:gen_architectures>
+            ${CMAKE_CURRENT_SOURCE_DIR}/configs/architecture/architectures.yml
+            ${CMAKE_CURRENT_SOURCE_DIR}/configs/backend/backends.yml
+            ${ARCHITECTURE_GEN_DIR}
+    DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/configs/architecture/architectures.yml
+        ${CMAKE_CURRENT_SOURCE_DIR}/configs/backend/backends.yml
+        gen_architectures
+    COMMENT "Generating architecture metadata"
+    VERBATIM
+)
+
+add_custom_target(generate_architectures
+    DEPENDS
+        ${ARCHITECTURE_GEN_DIR}/architecture.def
+        ${ARCHITECTURE_GEN_DIR}/architecture_tables.h
+)
+
+add_custom_command(
+    OUTPUT
+        ${DEVICE_GEN_DIR}/device.def
+        ${DEVICE_GEN_DIR}/device_tables.h
+    COMMAND $<TARGET_FILE:gen_devices>
+            ${CMAKE_CURRENT_SOURCE_DIR}/configs/device/devices.yml
+            ${CMAKE_CURRENT_SOURCE_DIR}/configs/backend/backends.yml
+            ${CMAKE_CURRENT_SOURCE_DIR}/configs/architecture/architectures.yml
+            ${CMAKE_CURRENT_SOURCE_DIR}/configs/dtype/dtypes.yml
+            ${CMAKE_CURRENT_SOURCE_DIR}/configs/ops/ops.yml
+            ${DEVICE_GEN_DIR}
+    DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/configs/device/devices.yml
+        ${CMAKE_CURRENT_SOURCE_DIR}/configs/backend/backends.yml
+        ${CMAKE_CURRENT_SOURCE_DIR}/configs/architecture/architectures.yml
+        ${CMAKE_CURRENT_SOURCE_DIR}/configs/dtype/dtypes.yml
+        ${CMAKE_CURRENT_SOURCE_DIR}/configs/ops/ops.yml
+        gen_devices
+    COMMENT "Generating device metadata"
+    VERBATIM
+)
+
+add_custom_target(generate_devices
+    DEPENDS
+        ${DEVICE_GEN_DIR}/device.def
+        ${DEVICE_GEN_DIR}/device_tables.h
 )
 
 # Warn if CPU backend is disabled (unusual)
@@ -188,8 +259,8 @@ orteaf_bool_to_int(ORTEAF_ENABLE_CUDA_INT ENABLE_CUDA)
 orteaf_bool_to_int(ORTEAF_ENABLE_MPS_INT ENABLE_MPS)
 
 add_subdirectory(orteaf)
-add_dependencies(orteaf generate_ops generate_dtypes)
+add_dependencies(orteaf generate_backends generate_ops generate_dtypes generate_architectures generate_devices)
 add_subdirectory(tests)
 if(TARGET orteaf_tests)
-    add_dependencies(orteaf_tests generate_ops generate_dtypes)
+    add_dependencies(orteaf_tests generate_backends generate_ops generate_dtypes generate_architectures generate_devices)
 endif()
