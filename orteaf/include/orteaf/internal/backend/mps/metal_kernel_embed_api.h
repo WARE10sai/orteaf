@@ -43,11 +43,11 @@ struct MetallibBlob {
     std::size_t size;
 };
 
-MetallibBlob find_library_data(std::string_view library_name);
+MetallibBlob findLibraryData(std::string_view library_name);
 
 bool available(std::string_view library_name);
 
-MPSFunction_t load_embedded_function(MPSDevice_t device,
+MPSFunction_t loadEmbeddedFunction(MPSDevice_t device,
                                      std::string_view library_name,
                                      std::string_view function_name,
                                      MPSError_t* error = nullptr);

@@ -20,9 +20,9 @@
 namespace orteaf::internal::backend::cuda {
 
 /**
- * @copydoc orteaf::internal::backend::cuda::get_device_count
+ * @copydoc orteaf::internal::backend::cuda::getDeviceCount
  */
-int get_device_count() {
+int getDeviceCount() {
 #ifdef ORTEAF_ENABLE_CUDA
     int device_count;
     CU_CHECK(cuDeviceGetCount(&device_count));
@@ -33,9 +33,9 @@ int get_device_count() {
 }
 
 /**
- * @copydoc orteaf::internal::backend::cuda::get_device
+ * @copydoc orteaf::internal::backend::cuda::getDevice
  */
-CUdevice_t get_device(uint32_t device_id) {
+CUdevice_t getDevice(uint32_t device_id) {
 #ifdef ORTEAF_ENABLE_CUDA
     CUdevice device;
     CU_CHECK(cuDeviceGet(&device, static_cast<int>(device_id)));
@@ -47,9 +47,9 @@ CUdevice_t get_device(uint32_t device_id) {
 }
 
 /**
- * @copydoc orteaf::internal::backend::cuda::get_compute_capability
+ * @copydoc orteaf::internal::backend::cuda::getComputeCapability
  */
-ComputeCapability get_compute_capability(CUdevice_t device) {
+ComputeCapability getComputeCapability(CUdevice_t device) {
 #ifdef ORTEAF_ENABLE_CUDA
     CUdevice objc_device = cu_device_from_opaque(device);
     ComputeCapability capability;
@@ -63,16 +63,16 @@ ComputeCapability get_compute_capability(CUdevice_t device) {
 }
 
 /**
- * @copydoc orteaf::internal::backend::cuda::get_sm_count
+ * @copydoc orteaf::internal::backend::cuda::getSmCount
  */
-int get_sm_count(ComputeCapability capability) {
+int getSmCount(ComputeCapability capability) {
     return capability.major * 10 + capability.minor;
 }
 
 /**
- * @copydoc orteaf::internal::backend::cuda::get_device_name
+ * @copydoc orteaf::internal::backend::cuda::getDeviceName
  */
-std::string get_device_name(CUdevice_t device) {
+std::string getDeviceName(CUdevice_t device) {
 #ifdef ORTEAF_ENABLE_CUDA
     CUdevice objc_device = cu_device_from_opaque(device);
     char name[256];
@@ -85,9 +85,9 @@ std::string get_device_name(CUdevice_t device) {
 }
 
 /**
- * @copydoc orteaf::internal::backend::cuda::get_device_vendor
+ * @copydoc orteaf::internal::backend::cuda::getDeviceVendor
  */
-std::string get_device_vendor(CUdevice_t device) {
+std::string getDeviceVendor(CUdevice_t device) {
 #ifdef ORTEAF_ENABLE_CUDA
     (void)device;
     return "nvidia";

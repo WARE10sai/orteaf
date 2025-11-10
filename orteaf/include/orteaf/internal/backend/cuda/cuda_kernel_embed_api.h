@@ -61,7 +61,7 @@ struct Blob {
     std::size_t size;
 };
 
-Blob find_kernel_data(std::string_view name,
+Blob findKernelData(std::string_view name,
                       CudaKernelFmt prefer = CudaKernelFmt::Fatbin,
                       Blob fallback = {nullptr, 0});
 

@@ -36,7 +36,7 @@ public:
     ScopedDevice& operator=(const ScopedDevice&) = delete;
     ~ScopedDevice() {
         if (device_ != nullptr) {
-            backend::mps::device_release(device_);
+            backend::mps::deviceRelease(device_);
         }
     }
 
@@ -48,7 +48,7 @@ private:
 
 } // namespace
 
-Architecture detect_mps_architecture(std::string_view metal_family, std::string_view vendor_hint) {
+Architecture detectMpsArchitecture(std::string_view metal_family, std::string_view vendor_hint) {
     const auto metal_lower = ToLowerCopy(metal_family);
     const auto vendor_lower = ToLowerCopy(vendor_hint);
     const auto count = tables::kArchitectureCount;
@@ -79,25 +79,25 @@ Architecture detect_mps_architecture(std::string_view metal_family, std::string_
     return fallback;
 }
 
-Architecture detect_mps_architecture_for_device_index(std::uint32_t device_index) {
+Architecture detectMpsArchitectureForDeviceIndex(std::uint32_t device_index) {
 #if ORTEAF_ENABLE_MPS
-    int count = backend::mps::get_device_count();
+    int count = backend::mps::getDeviceCount();
     if (count <= 0 || device_index >= static_cast<std::uint32_t>(count)) {
         return Architecture::mps_generic;
     }
 
-    backend::mps::MPSDevice_t device = backend::mps::get_device(static_cast<backend::mps::MPSInt_t>(device_index));
+    backend::mps::MPSDevice_t device = backend::mps::getDevice(static_cast<backend::mps::MPSInt_t>(device_index));
     if (device == nullptr) {
         return Architecture::mps_generic;
     }
 
     ScopedDevice guard(device);
-    std::string metal_family = backend::mps::get_device_metal_family(device);
-    std::string vendor = backend::mps::get_device_vendor(device);
+    std::string metal_family = backend::mps::getDeviceMetalFamily(device);
+    std::string vendor = backend::mps::getDeviceVendor(device);
     if (vendor.empty()) {
         vendor = "apple";
     }
-    return detect_mps_architecture(metal_family, vendor);
+    return detectMpsArchitecture(metal_family, vendor);
 #else
     (void)device_index;
     return Architecture::mps_generic;

@@ -21,12 +21,12 @@ static_assert(sizeof(MPSCommandQueue_t) == sizeof(void*), "MPSCommandQueue must 
  * @param device Opaque Metal device handle
  * @return Opaque command queue handle, or nullptr when unavailable/disabled.
  */
-MPSCommandQueue_t create_command_queue(MPSDevice_t device);
+MPSCommandQueue_t createCommandQueue(MPSDevice_t device);
 
 /**
  * @brief Destroy a command queue.
  * @param command_queue Opaque queue handle; nullptr is ignored.
  */
-void destroy_command_queue(MPSCommandQueue_t command_queue);
+void destroyCommandQueue(MPSCommandQueue_t command_queue);
 
 } // namespace orteaf::internal::backend::mps

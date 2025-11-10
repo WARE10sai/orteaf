@@ -27,7 +27,7 @@ static_assert(sizeof(CUstream_t) == sizeof(void*), "CUstream_t must be pointer-s
  *
  * Also updates internal CUDA statistics on success.
  */
-CUstream_t get_stream();
+CUstream_t getStream();
 
 /**
  * @brief Set the current stream (no-op for CUDA Driver API).
@@ -35,7 +35,7 @@ CUstream_t get_stream();
  *
  * Provided for API symmetry; Driver API has no notion of a global current stream.
  */
-void set_stream(CUstream_t stream);
+void setStream(CUstream_t stream);
 
 /**
  * @brief Destroy a CUDA stream.
@@ -44,14 +44,14 @@ void set_stream(CUstream_t stream);
  *
  * Also updates internal CUDA statistics on success.
  */
-void release_stream(CUstream_t stream);
+void releaseStream(CUstream_t stream);
 
 /**
  * @brief Synchronize the given CUDA stream.
  * @param stream Opaque stream handle
  * @throws std::system_error On CUDA driver error (via `OrteafErrc`).
  */
-void synchronize_stream(CUstream_t stream);
+void synchronizeStream(CUstream_t stream);
 
 /**
  * @brief Make a stream wait until a device memory value reaches a threshold.
@@ -60,7 +60,7 @@ void synchronize_stream(CUstream_t stream);
  * @param value Wait until value >= this threshold
  * @throws std::system_error On CUDA driver error (via `OrteafErrc`).
  */
-void wait_stream(CUstream_t stream, CUdeviceptr_t addr, uint32_t value);
+void waitStream(CUstream_t stream, CUdeviceptr_t addr, uint32_t value);
 
 /**
  * @brief Write a 32-bit value to device memory from a stream.
@@ -69,5 +69,5 @@ void wait_stream(CUstream_t stream, CUdeviceptr_t addr, uint32_t value);
  * @param value Value to write
  * @throws std::system_error On CUDA driver error (via `OrteafErrc`).
  */
-void write_stream(CUstream_t stream, CUdeviceptr_t addr, uint32_t value);
+void writeStream(CUstream_t stream, CUdeviceptr_t addr, uint32_t value);
 } // namespace orteaf::internal::backend::cuda

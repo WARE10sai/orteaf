@@ -18,14 +18,14 @@
 namespace orteaf::internal::backend::mps {
 
 /**
- * @copydoc orteaf::internal::backend::mps::get_device
+ * @copydoc orteaf::internal::backend::mps::getDevice
  */
-MPSDevice_t get_device() {
+MPSDevice_t getDevice() {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     id<MTLDevice> device = MTLCreateSystemDefaultDevice();
     if (device == nil) {
         using namespace orteaf::internal::diagnostics::error;
-        throw_error(OrteafErrc::BackendUnavailable, "get_device: no default Metal device available");
+        throw_error(OrteafErrc::BackendUnavailable, "getDevice: no default Metal device available");
     }
     return (MPSDevice_t)opaque_from_objc_retained(device);
 #else
@@ -34,18 +34,18 @@ MPSDevice_t get_device() {
 }
 
 /**
- * @copydoc orteaf::internal::backend::mps::get_device(MPSInt_t)
+ * @copydoc orteaf::internal::backend::mps::getDevice(MPSInt_t)
  */
-MPSDevice_t get_device(MPSInt_t device_id) {
+MPSDevice_t getDevice(MPSInt_t device_id) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     NSArray<id<MTLDevice>>* devices = MTLCopyAllDevices();
     if (devices == nil) {
         using namespace orteaf::internal::diagnostics::error;
-        throw_error(OrteafErrc::BackendUnavailable, "get_device: no Metal devices available");
+        throw_error(OrteafErrc::BackendUnavailable, "getDevice: no Metal devices available");
     }
-    ORTEAF_LOG_WARN_IF(Mps, device_id < 0, "get_device: device_id cannot be negative, returning nullptr");
+    ORTEAF_LOG_WARN_IF(Mps, device_id < 0, "getDevice: device_id cannot be negative, returning nullptr");
     NSUInteger index = static_cast<NSUInteger>(device_id);
-    ORTEAF_LOG_WARN_IF(Mps, index >= [devices count], "get_device: device_id out of range, returning nullptr");
+    ORTEAF_LOG_WARN_IF(Mps, index >= [devices count], "getDevice: device_id out of range, returning nullptr");
     id<MTLDevice> device = [devices objectAtIndex:index];
     MPSDevice_t handle = (MPSDevice_t)opaque_from_objc_retained(device);
     [devices release];
@@ -57,9 +57,9 @@ MPSDevice_t get_device(MPSInt_t device_id) {
 }
 
 /**
- * @copydoc orteaf::internal::backend::mps::get_device_count
+ * @copydoc orteaf::internal::backend::mps::getDeviceCount
  */
-int get_device_count() {
+int getDeviceCount() {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     NSArray<id<MTLDevice>>* devices = MTLCopyAllDevices();
     NSUInteger count = devices != nil ? [devices count] : 0;
@@ -73,9 +73,9 @@ int get_device_count() {
 }
 
 /**
- * @copydoc orteaf::internal::backend::mps::device_retain
+ * @copydoc orteaf::internal::backend::mps::deviceRetain
  */
-void device_retain(MPSDevice_t device) {
+void deviceRetain(MPSDevice_t device) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (device == nullptr) {
         return;
@@ -88,9 +88,9 @@ void device_retain(MPSDevice_t device) {
 }
 
 /**
- * @copydoc orteaf::internal::backend::mps::device_release
+ * @copydoc orteaf::internal::backend::mps::deviceRelease
  */
-void device_release(MPSDevice_t device) {
+void deviceRelease(MPSDevice_t device) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (device == nullptr) {
         return;
@@ -103,9 +103,9 @@ void device_release(MPSDevice_t device) {
 }
 
 /**
- * @copydoc orteaf::internal::backend::mps::get_device_array
+ * @copydoc orteaf::internal::backend::mps::getDeviceArray
  */
-MPSDeviceArray_t get_device_array() {
+MPSDeviceArray_t getDeviceArray() {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     NSArray<id<MTLDevice>>* devices = MTLCopyAllDevices();
     return (MPSDeviceArray_t)opaque_from_objc_noown(devices);
@@ -175,9 +175,9 @@ std::string GuessFamilyFromName(id<MTLDevice> device) {
 } // namespace
 
 /**
- * @copydoc orteaf::internal::backend::mps::get_device_name
+ * @copydoc orteaf::internal::backend::mps::getDeviceName
  */
-std::string get_device_name(MPSDevice_t device) {
+std::string getDeviceName(MPSDevice_t device) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (device == nullptr) {
         return {};
@@ -191,9 +191,9 @@ std::string get_device_name(MPSDevice_t device) {
 }
 
 /**
- * @copydoc orteaf::internal::backend::mps::get_device_vendor
+ * @copydoc orteaf::internal::backend::mps::getDeviceVendor
  */
-std::string get_device_vendor(MPSDevice_t device) {
+std::string getDeviceVendor(MPSDevice_t device) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     (void)device;
     return "apple";
@@ -204,9 +204,9 @@ std::string get_device_vendor(MPSDevice_t device) {
 }
 
 /**
- * @copydoc orteaf::internal::backend::mps::get_device_metal_family
+ * @copydoc orteaf::internal::backend::mps::getDeviceMetalFamily
  */
-std::string get_device_metal_family(MPSDevice_t device) {
+std::string getDeviceMetalFamily(MPSDevice_t device) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
     if (device == nullptr) {
         return {};

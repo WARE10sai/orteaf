@@ -128,7 +128,7 @@ inline constexpr int kLogLevelIo =
  * @param level The log level to convert.
  * @return Integer value corresponding to the log level.
  */
-constexpr int level_to_int(LogLevel level) {
+constexpr int levelToInt(LogLevel level) {
     return static_cast<int>(level);
 }
 
@@ -215,15 +215,15 @@ using LogSink = void (*)(LogCategory category, LogLevel level, std::string_view 
  * @param sink Pointer to the log sink function, or `nullptr` to use default.
  * @param context Optional user-provided context pointer passed to the sink function.
  */
-void set_log_sink(LogSink sink, void* context = nullptr);
+void setLogSink(LogSink sink, void* context = nullptr);
 
 /**
  * @brief Reset the log sink to the default behavior.
  *
- * Equivalent to calling `set_log_sink(nullptr, nullptr)`.
+ * Equivalent to calling `setLogSink(nullptr, nullptr)`.
  * After resetting, log messages are sent to stderr with default formatting.
  */
-void reset_log_sink();
+void resetLogSink();
 
 namespace detail {
 
@@ -237,7 +237,7 @@ namespace detail {
  * @param level The severity level of the log message.
  * @param message The log message content.
  */
-void log_message(LogCategory category, LogLevel level, std::string message);
+void logMessage(LogCategory category, LogLevel level, std::string message);
 
 /**
  * @brief Lazy-evaluated logging function.
@@ -253,8 +253,8 @@ void log_message(LogCategory category, LogLevel level, std::string message);
  */
 template <LogCategory Category, LogLevel Level, typename MessageBuilder>
 inline void log_lazy(MessageBuilder&& builder) {
-    if constexpr (level_to_int(Level) >= category_threshold<Category>()) {
-        log_message(Category, Level, std::forward<MessageBuilder>(builder)());
+    if constexpr (levelToInt(Level) >= category_threshold<Category>()) {
+        logMessage(Category, Level, std::forward<MessageBuilder>(builder)());
     }
 }
 
@@ -274,9 +274,9 @@ inline void log_lazy(MessageBuilder&& builder) {
  */
 template <LogCategory Category, LogLevel Level, typename ConditionBuilder, typename MessageBuilder>
 inline void log_lazy_if(ConditionBuilder&& condition_builder, MessageBuilder&& message_builder) {
-    if constexpr (level_to_int(Level) >= category_threshold<Category>()) {
+    if constexpr (levelToInt(Level) >= category_threshold<Category>()) {
         if (std::forward<ConditionBuilder>(condition_builder)()) {
-            log_message(Category, Level, std::forward<MessageBuilder>(message_builder)());
+            logMessage(Category, Level, std::forward<MessageBuilder>(message_builder)());
         }
     }
 }
@@ -289,7 +289,7 @@ inline void log_lazy_if(ConditionBuilder&& condition_builder, MessageBuilder&& m
  * @param level The log level to convert.
  * @return String representation of the log level (e.g., "TRACE", "DEBUG", "INFO").
  */
-constexpr const char* level_to_string(LogLevel level) {
+constexpr const char* levelToString(LogLevel level) {
     switch (level) {
         case LogLevel::Trace:
             return "TRACE";
@@ -315,7 +315,7 @@ constexpr const char* level_to_string(LogLevel level) {
  * @param category The log category to convert.
  * @return String representation of the category (e.g., "core", "tensor", "cuda").
  */
-constexpr const char* category_to_string(LogCategory category) {
+constexpr const char* categoryToString(LogCategory category) {
     switch (category) {
         case LogCategory::Core:
             return "core";

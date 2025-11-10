@@ -35,10 +35,10 @@ std::atomic<void*> g_context{nullptr};
  * @param level The log severity level.
  * @param message The log message content.
  */
-void default_sink(LogCategory category, LogLevel level, std::string_view message) {
+void defaultSink(LogCategory category, LogLevel level, std::string_view message) {
     std::fprintf(stderr, "[ORTEAF][%s][%s] %.*s\n",
-                 category_to_string(category),
-                 level_to_string(level),
+                 categoryToString(category),
+                 levelToString(level),
                  static_cast<int>(message.size()),
                  message.data());
 }
@@ -65,8 +65,8 @@ void set_log_sink(LogSink sink, void* context) {
  * Implementation of reset_log_sink() declared in log.h.
  * Equivalent to calling set_log_sink(nullptr, nullptr).
  */
-void reset_log_sink() {
-    set_log_sink(nullptr, nullptr);
+void resetLogSink() {
+    setLogSink(nullptr, nullptr);
 }
 
 namespace detail {
@@ -82,12 +82,12 @@ namespace detail {
  * @param level The severity level of the log message.
  * @param message The log message content.
  */
-void log_message(LogCategory category, LogLevel level, std::string message) {
+void logMessage(LogCategory category, LogLevel level, std::string message) {
     if (auto sink = g_sink.load(std::memory_order_acquire)) {
         sink(category, level, message, g_context.load(std::memory_order_acquire));
         return;
     }
-    default_sink(category, level, message);
+    defaultSink(category, level, message);
 }
 
 }  // namespace detail

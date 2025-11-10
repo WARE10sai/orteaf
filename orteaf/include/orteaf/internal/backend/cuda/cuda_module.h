@@ -25,7 +25,7 @@ static_assert(sizeof(CUfunction_t) == sizeof(void*), "CUfunction_t must be point
  * @return Opaque module handle, or nullptr when CUDA is disabled.
  * @throws std::system_error On CUDA driver error (via `OrteafErrc`).
  */
-CUmodule_t load_module_from_file(const char* filepath);
+CUmodule_t loadModuleFromFile(const char* filepath);
 
 /**
  * @brief Load a CUDA module from an in-memory image (PTX/CUBIN/FATBIN supported).
@@ -33,7 +33,7 @@ CUmodule_t load_module_from_file(const char* filepath);
  * @return Opaque module handle, or nullptr when CUDA is disabled.
  * @throws std::system_error On CUDA driver error (via `OrteafErrc`).
  */
-CUmodule_t load_module_from_image(const void* image);
+CUmodule_t loadModuleFromImage(const void* image);
 
 /**
  * @brief Retrieve a kernel function handle from a module by name.
@@ -42,13 +42,13 @@ CUmodule_t load_module_from_image(const void* image);
  * @return Opaque function handle, or nullptr when CUDA is disabled.
  * @throws std::system_error On CUDA driver error (via `OrteafErrc`).
  */
-CUfunction_t get_function(CUmodule_t module, const char* kernel_name);
+CUfunction_t getFunction(CUmodule_t module, const char* kernel_name);
 
 /**
  * @brief Unload a CUDA module.
  * @param module Opaque module handle (ignored if nullptr)
  * @throws std::system_error On CUDA driver error (via `OrteafErrc`).
  */
-void unload_module(CUmodule_t module);
+void unloadModule(CUmodule_t module);
 
 } // namespace orteaf::internal::backend::cuda

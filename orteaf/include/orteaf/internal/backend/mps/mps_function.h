@@ -20,11 +20,11 @@ static_assert(sizeof(MPSFunction_t) == sizeof(void*), "MPSFunction must be point
  * @param name Function name (UTF-8)
  * @return Opaque function handle, or nullptr when unavailable/disabled.
  */
-MPSFunction_t create_function(MPSLibrary_t library, std::string_view name);
+MPSFunction_t createFunction(MPSLibrary_t library, std::string_view name);
 
 /**
  * @brief Destroy a Metal function; ignores nullptr.
  */
-void destroy_function(MPSFunction_t function);
+void destroyFunction(MPSFunction_t function);
 
 } // namespace orteaf::internal::backend::mps

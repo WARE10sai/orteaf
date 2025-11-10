@@ -61,28 +61,28 @@ Architecture detect_cuda_architecture(int compute_capability, std::string_view v
     return fallback;
 }
 
-Architecture detect_cuda_architecture_for_device_index(std::uint32_t device_index) {
+Architecture detectCudaArchitectureForDeviceIndex(std::uint32_t device_index) {
 #if ORTEAF_ENABLE_CUDA
     using backend::cuda::ComputeCapability;
     using backend::cuda::CUdevice_t;
 
-    int count = backend::cuda::get_device_count();
+    int count = backend::cuda::getDeviceCount();
     if (count <= 0 || device_index >= static_cast<std::uint32_t>(count)) {
         return Architecture::cuda_generic;
     }
 
-    CUdevice_t device = backend::cuda::get_device(device_index);
+    CUdevice_t device = backend::cuda::getDevice(device_index);
     if (!device) {
         return Architecture::cuda_generic;
     }
 
-    ComputeCapability capability = backend::cuda::get_compute_capability(device);
+    ComputeCapability capability = backend::cuda::getComputeCapability(device);
     const int cc_value = capability.major * 10 + capability.minor;
-    std::string vendor = backend::cuda::get_device_vendor(device);
+    std::string vendor = backend::cuda::getDeviceVendor(device);
     if (vendor.empty()) {
         vendor = "nvidia";
     }
-    return detect_cuda_architecture(cc_value, vendor);
+    return detectCudaArchitecture(cc_value, vendor);
 #else
     (void)device_index;
     return Architecture::cuda_generic;

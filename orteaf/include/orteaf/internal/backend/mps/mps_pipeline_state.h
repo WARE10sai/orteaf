@@ -21,11 +21,11 @@ static_assert(sizeof(MPSPipelineState_t) == sizeof(void*), "MPSPipelineState mus
  * @param error Optional error object out (bridged to NSError**)
  * @return Opaque pipeline state, or nullptr when unavailable/disabled.
  */
-MPSPipelineState_t create_pipeline_state(MPSDevice_t device, MPSFunction_t function, MPSError_t* error = nullptr);
+MPSPipelineState_t createPipelineState(MPSDevice_t device, MPSFunction_t function, MPSError_t* error = nullptr);
 
 /**
  * @brief Destroy a pipeline state; ignores nullptr.
  */
-void destroy_pipeline_state(MPSPipelineState_t pipeline_state);
+void destroyPipelineState(MPSPipelineState_t pipeline_state);
 
 } // namespace orteaf::internal::backend::mps

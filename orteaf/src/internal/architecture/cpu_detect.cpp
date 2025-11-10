@@ -297,7 +297,7 @@ bool MatchesDetectSpec(std::size_t index, const CpuInfo& info) {
 
 }  // namespace
 
-Architecture detect_cpu_architecture() {
+Architecture detectCpuArchitecture() {
     const CpuInfo info = CollectCpuInfo();
     const std::size_t count = tables::kArchitectureCount;
     Architecture fallback = Architecture::cpu_generic;
