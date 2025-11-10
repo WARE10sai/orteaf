@@ -8,7 +8,7 @@ ORTEAF は「ユーザーが触れる API」「拡張開発者が編集できる
 | --- | --- | --- |
 | User | `include/orteaf/user` | ラッパー API。利用者は `Tensor` や `Model` を通じてフレームワークを操作する。|
 | Extension | `include/orteaf/extension` | カスタム演算やストレージを追加するための抽象クラス群 (`Kernel`, `Ops`, `TensorImpl` など)。|
-| Internal | `include/orteaf/internal` | 実行時制御と資源管理 (`RuntimeManager`, `CurrentStateImpl`, `Dispatcher`, `KernelRegister` 等)。基本的に編集禁止。|
+| Internal | `include/orteaf/internal` | 実行時制御と資源管理 (`RuntimeManager`, `RuntimeContextImpl`, `Dispatcher`, `KernelRegister` 等)。基本的に編集禁止。|
 
 ユーザー向け API は PImpl（実体は `extension` / `internal` 側）で提供し、所有権管理の詳細はコード側で扱う。ここではライフサイクルやスマートポインタの種類など、実装の細部には踏み込まない。
 
@@ -31,7 +31,7 @@ orteaf/
 ## コンポーネント概要
 
 ### User 層
-- `Tensor` / `Parameter` / `CurrentState`：拡張層へ委譲する軽量ラッパー。
+- `Tensor` / `Parameter` / `RuntimeContext`：拡張層へ委譲する軽量ラッパー。
 - `Module` / `Layer` / `Model`：モジュール構成を定義する基底クラス。継承してカスタム構造を構築できる。
 
 ### Extension 層
@@ -39,14 +39,14 @@ orteaf/
 - `Kernel` と `Ops`：演算を登録・実装するための抽象クラス。
 - `ModuleImpl` / `Layer` 実装：標準レイヤや Model の実相。
 
--### Internal（runtime）層
-- `RuntimeManager` と `CurrentStateImpl`：ランタイム初期化と状態保持。
-- `Allocator` / `MemSafe`：メモリ確保と安全管理。
+### Internal 層
+- `RuntimeManager` と `RuntimeContextImpl`：ランタイム初期化と状態保持。Runtime 関連の詳細は [runtime 層アーキテクチャ計画](runtime-architecture.md) を参照。
+- `Allocator` / `MemSafe`：メモリ確保と安全管理。Allocator は runtime/allocator 以下で分類される。
 - `Dispatcher` / `KernelRegister`：OPS と Kernel の橋渡し。
 - `Backends`：CPU / CUDA / MPS を抽象化したバックエンド。
 - `Diagnostics`（`error/`, `log/`）：共通のエラー情報 (`OrteafError`)、致命的エラー (`fatal_error`) と例外ラッパーを提供し、統一的に throw / ログ / 統計連携を扱う。
 
-この層の中核となる `runtime` 構成については [runtime 層アーキテクチャ計画](runtime-architecture.md) にまとめている。ここでは manager/allocator/context を単一のまとまりとして扱い、後続の ops 層で便利機能を追加する方針だ。
+Internal 層の一角として runtime 特有のマネージャ群（RuntimeManager/RuntimeContext/Allocator）は `runtime/` 配下に配置し、manager と allocator の責務分離を明確化する。
 
 ## ビルド時オプション
 
@@ -75,12 +75,12 @@ orteaf/
 graph BT
 
     Backends --> RuntimeManager
-    RuntimeManager --> CurrentState
-    CurrentState --> Allocator
+    RuntimeManager --> RuntimeContext
+    RuntimeContext --> Allocator
     Allocator --> MemSafe
     MemSafe --> Tensor
 ```
-RuntimeManager がバックエンドを立ち上げ、CurrentState が環境情報を集約する。Allocator と MemSafe がメモリを準備し、最終的に TensorImpl を通じて Tensor ラッパーへ供給する。
+RuntimeManager がバックエンドを立ち上げ、RuntimeContext が環境情報を集約する。Allocator と MemSafe がメモリを準備し、最終的に TensorImpl を通じて Tensor ラッパーへ供給する。
 
 ### 演算パイプライン
 ```mermaid
@@ -91,21 +91,21 @@ graph BT
     KernelRegister --> Dispatcher
     Dispatcher --> OPS
 
-    CurrentState --> Dispatcher
+    RuntimeContext --> Dispatcher
     Tensor --> Dispatcher
     Tensor --> OPS
 
     OPS --> Module
 ```
-拡張層で実装された Kernel は KernelRegister へ登録され、Dispatcher が CurrentState や Tensor の情報をもとに最適な実体を選択する。OPS は Module/Layer の演算ノードとして利用される。
+拡張層で実装された Kernel は KernelRegister へ登録され、Dispatcher が RuntimeContext や Tensor の情報をもとに最適な実体を選択する。OPS は Module/Layer の演算ノードとして利用される。
 
 ### 全体像
 ```mermaid
 graph BT
 
     Backends --> RuntimeManager
-    RuntimeManager --> CurrentState
-    CurrentState --> Allocator
+    RuntimeManager --> RuntimeContext
+    RuntimeContext --> Allocator
     Allocator --> MemSafe
     MemSafe --> Tensor
 
@@ -114,7 +114,7 @@ graph BT
     KernelRegister --> Dispatcher
     Dispatcher --> OPS
 
-    CurrentState --> Dispatcher
+    RuntimeContext --> Dispatcher
     Tensor --> Dispatcher
     Tensor --> OPS
     OPS --> Module
