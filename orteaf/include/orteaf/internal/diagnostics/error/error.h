@@ -53,8 +53,6 @@ namespace std {
 template <>
 struct is_error_code_enum<orteaf::internal::diagnostics::error::OrteafErrc> : true_type {};
 
-error_code make_error_code(orteaf::internal::diagnostics::error::OrteafErrc errc);
-
 }  // namespace std
 
 namespace orteaf::internal::diagnostics::error {
@@ -258,12 +256,3 @@ OrteafResult<void> captureResult(void (*fn)());
 }  // namespace orteaf::internal::diagnostics::error
 
 #include "error_impl.h"
-
-namespace std {
-
-/// @brief std::error_code のコンストラクタで使用される make_error_code のオーバーロード。
-inline error_code make_error_code(orteaf::internal::diagnostics::error::OrteafErrc errc) {
-    return orteaf::internal::diagnostics::error::make_error_code(errc);
-}
-
-}  // namespace std
