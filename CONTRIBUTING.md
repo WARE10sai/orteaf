@@ -38,7 +38,7 @@ See [docs/developer/environment.md](docs/developer/environment.md) for details.
 ## Editing boundaries
 - **User**: Stable API wrapper. When adding new types or changing interfaces, please be mindful of backward compatibility.
 - **Extension**: Area for adding new Kernel / Ops / TensorImpl / ModuleImpl. Update the design documents when making changes here.
-- **Internal**: Implementations such as `SystemManager`, `Allocator`, and `Dispatcher`. Edit only for bug fixes or major improvements and ensure sufficient discussion takes place during review.
+- **Internal**: Implementations such as `RuntimeManager`, `Allocator`, and `Dispatcher`. Edit only for bug fixes or major improvements and ensure sufficient discussion takes place during review.
 
 ---
 

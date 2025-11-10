@@ -8,7 +8,7 @@ ORTEAF は「ユーザーが触れる API」「拡張開発者が編集できる
 | --- | --- | --- |
 | User | `include/orteaf/user` | ラッパー API。利用者は `Tensor` や `Model` を通じてフレームワークを操作する。|
 | Extension | `include/orteaf/extension` | カスタム演算やストレージを追加するための抽象クラス群 (`Kernel`, `Ops`, `TensorImpl` など)。|
-| Internal | `include/orteaf/internal` | 実行時制御と資源管理 (`SystemManager`, `CurrentStateImpl`, `Dispatcher`, `KernelRegister` 等)。基本的に編集禁止。|
+| Internal | `include/orteaf/internal` | 実行時制御と資源管理 (`RuntimeManager`, `CurrentStateImpl`, `Dispatcher`, `KernelRegister` 等)。基本的に編集禁止。|
 
 ユーザー向け API は PImpl（実体は `extension` / `internal` 側）で提供し、所有権管理の詳細はコード側で扱う。ここではライフサイクルやスマートポインタの種類など、実装の細部には踏み込まない。
 
@@ -19,7 +19,7 @@ orteaf/
 ├── include/orteaf/
 │   ├── user/          # ユーザーが触れるラッパー層
 │   ├── extension/     # 拡張ポイント（Kernel, Ops, TensorImpl など）
-│   └── internal/      # 実行基盤（SystemManager, Diagnostics 等）
+│   └── internal/      # 実行基盤（RuntimeManager, Diagnostics 等）
 └── src/
     ├── user/
     ├── extension/
@@ -40,7 +40,7 @@ orteaf/
 - `ModuleImpl` / `Layer` 実装：標準レイヤや Model の実相。
 
 ### Internal 層
-- `SystemManager` と `CurrentStateImpl`：ランタイム初期化と状態保持。
+- `RuntimeManager` と `CurrentStateImpl`：ランタイム初期化と状態保持。
 - `Allocator` / `MemSafe`：メモリ確保と安全管理。
 - `Dispatcher` / `KernelRegister`：OPS と Kernel の橋渡し。
 - `Backends`：CPU / CUDA / MPS を抽象化したバックエンド。
@@ -72,13 +72,13 @@ orteaf/
 ```mermaid
 graph BT
 
-    Backends --> SystemManager
-    SystemManager --> CurrentState
+    Backends --> RuntimeManager
+    RuntimeManager --> CurrentState
     CurrentState --> Allocator
     Allocator --> MemSafe
     MemSafe --> Tensor
 ```
-SystemManager がバックエンドを立ち上げ、CurrentState が環境情報を集約する。Allocator と MemSafe がメモリを準備し、最終的に TensorImpl を通じて Tensor ラッパーへ供給する。
+RuntimeManager がバックエンドを立ち上げ、CurrentState が環境情報を集約する。Allocator と MemSafe がメモリを準備し、最終的に TensorImpl を通じて Tensor ラッパーへ供給する。
 
 ### 演算パイプライン
 ```mermaid
@@ -101,8 +101,8 @@ graph BT
 ```mermaid
 graph BT
 
-    Backends --> SystemManager
-    SystemManager --> CurrentState
+    Backends --> RuntimeManager
+    RuntimeManager --> CurrentState
     CurrentState --> Allocator
     Allocator --> MemSafe
     MemSafe --> Tensor
@@ -117,4 +117,4 @@ graph BT
     Tensor --> OPS
     OPS --> Module
 ```
-ユーザーは `Model`（= Module の集合）を操作し、内部では上記フローに従ってメモリ確保と演算が実行される。extension 層を拡張すれば Tensor 表現や Kernel を差し替えられるが、SystemManager など internal 層は既存実装を尊重する形で扱う。
+ユーザーは `Model`（= Module の集合）を操作し、内部では上記フローに従ってメモリ確保と演算が実行される。extension 層を拡張すれば Tensor 表現や Kernel を差し替えられるが、RuntimeManager など internal 層は既存実装を尊重する形で扱う。
