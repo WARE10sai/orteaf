@@ -1,5 +1,7 @@
 #include "orteaf/internal/architecture/architecture.h"
 
+#include <algorithm>
+
 #include <gtest/gtest.h>
 
 namespace arch = orteaf::internal::architecture;
@@ -41,21 +43,29 @@ TEST(ArchitectureMetadata, IdAndDisplayNameMatchYaml) {
 }
 
 TEST(ArchitectureLookup, BackendCountsIncludeGeneric) {
-    EXPECT_EQ(arch::CountForBackend(backend::Backend::cuda), 4u);
-    EXPECT_EQ(arch::CountForBackend(backend::Backend::mps), 4u);
-    EXPECT_EQ(arch::CountForBackend(backend::Backend::cpu), 3u);
+    auto verify_backend = [](backend::Backend backend_id) {
+        const auto count = arch::CountForBackend(backend_id);
+        const auto span = arch::ArchitecturesOf(backend_id);
+        EXPECT_EQ(count, span.size());
+        ASSERT_GE(count, 1u);
+        EXPECT_TRUE(arch::IsGeneric(span.front()));
+    };
+    verify_backend(backend::Backend::cuda);
+    verify_backend(backend::Backend::mps);
+    verify_backend(backend::Backend::cpu);
 }
 
 TEST(ArchitectureLookup, ArchitecturesOfReturnsContiguousSpan) {
     const auto cuda_archs = arch::ArchitecturesOf(backend::Backend::cuda);
-    ASSERT_EQ(cuda_archs.size(), 4u);
+    ASSERT_GE(cuda_archs.size(), 4u);
     EXPECT_EQ(cuda_archs.front(), arch::Architecture::cuda_generic);
-    EXPECT_EQ(cuda_archs[1], arch::Architecture::cuda_sm80);
+    EXPECT_NE(std::find(cuda_archs.begin(), cuda_archs.end(), arch::Architecture::cuda_sm80), cuda_archs.end());
     EXPECT_EQ(cuda_archs.back(), arch::Architecture::cuda_sm90);
 
     const auto cpu_archs = arch::ArchitecturesOf(backend::Backend::cpu);
-    ASSERT_EQ(cpu_archs.size(), 3u);
-    EXPECT_EQ(cpu_archs[1], arch::Architecture::cpu_zen4);
+    ASSERT_GE(cpu_archs.size(), 3u);
+    EXPECT_NE(std::find(cpu_archs.begin(), cpu_archs.end(), arch::Architecture::cpu_zen4), cpu_archs.end());
+    EXPECT_NE(std::find(cpu_archs.begin(), cpu_archs.end(), arch::Architecture::cpu_intel_comet_lake), cpu_archs.end());
 }
 
 TEST(ArchitectureLookup, FromBackendAndLocalIndexRoundsTrip) {

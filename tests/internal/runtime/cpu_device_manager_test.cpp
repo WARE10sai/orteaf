@@ -1,31 +1,46 @@
 #include <gtest/gtest.h>
 #include "orteaf/internal/runtime/manager/cpu/device_manager.h"
 #include "orteaf/internal/architecture/architecture.h"
+#include "orteaf/internal/architecture/cpu_detect.h"
 
-using namespace orteaf::internal::runtime;
-using namespace orteaf::internal::runtime::cpu;
-using namespace orteaf::internal::architecture;
+#include <cstdlib>
+
+namespace runtime = orteaf::internal::runtime;
+namespace cpu_rt = orteaf::internal::runtime::cpu;
+namespace architecture = orteaf::internal::architecture;
 
 class CpuDeviceManagerTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        CpuDeviceManager.initialize_devices();
+        cpu_rt::CpuDeviceManager.initialize_devices();
     }
     void TearDown() override {
-        CpuDeviceManager.shutdown();
+        cpu_rt::CpuDeviceManager.shutdown();
     }
 };
 
 TEST_F(CpuDeviceManagerTest, GetDeviceCount) {
-    EXPECT_EQ(CpuDeviceManager.get_device_count(), 1);
+    EXPECT_EQ(cpu_rt::CpuDeviceManager.get_device_count(), 1);
+}
+
+#define ORTEAF_CPU_ENV_VAR "ORTEAF_EXPECT_CPU_MANAGER_ARCH"
+
+/// Manual test hook: set ORTEAF_EXPECT_CPU_MANAGER_ARCH=apple_m4_pro (など) で検証。
+TEST_F(CpuDeviceManagerTest, ManualEnvironmentCheck) {
+    const char* expected_env = std::getenv(ORTEAF_CPU_ENV_VAR);
+    if (!expected_env) {
+        GTEST_SKIP() << "Set " ORTEAF_CPU_ENV_VAR " to run this test on your environment.";
+    }
+    const auto arch = cpu_rt::CpuDeviceManager.get_arch(runtime::DeviceId{0});
+    EXPECT_STREQ(expected_env, architecture::IdOf(arch).data());
 }
 
 TEST_F(CpuDeviceManagerTest, GetArchitecture) {
-    DeviceId device_id{0};
-    EXPECT_EQ(CpuDeviceManager.get_arch(device_id), Architecture::cpu_generic);
+    runtime::DeviceId device_id{0};
+    EXPECT_EQ(cpu_rt::CpuDeviceManager.get_arch(device_id), architecture::detect_cpu_architecture());
 }
 
 TEST_F(CpuDeviceManagerTest, GetIsAlive) {
-    DeviceId device_id{0};
-    EXPECT_TRUE(CpuDeviceManager.is_alive(device_id));
+    runtime::DeviceId device_id{0};
+    EXPECT_TRUE(cpu_rt::CpuDeviceManager.is_alive(device_id));
 }

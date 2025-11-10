@@ -1,6 +1,7 @@
 #pragma once
 
 #include "orteaf/internal/architecture/architecture.h"
+#include "orteaf/internal/architecture/cpu_detect.h"
 #include "orteaf/internal/runtime/strong_id.h"
 
 #include <stdexcept>
@@ -12,7 +13,7 @@ struct CpuDeviceManager {
         if (initialized_) {
             return;
         }
-        state_.arch = ::orteaf::internal::architecture::Architecture::cpu_generic;
+        state_.arch = ::orteaf::internal::architecture::detect_cpu_architecture();
         state_.is_alive = true;
         initialized_ = true;
     }

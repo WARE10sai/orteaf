@@ -4,8 +4,6 @@
 
 namespace orteaf::internal::architecture {
 
-inline Architecture detect_cpu_architecture() {
-    return Architecture::cpu_generic;
-}
+Architecture detect_cpu_architecture();
 
 } // namespace orteaf::internal::architecture
