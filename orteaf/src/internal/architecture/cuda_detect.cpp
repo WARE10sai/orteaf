@@ -72,11 +72,12 @@ Architecture detectCudaArchitecture(int compute_capability, std::string_view ven
 /**
  * @copydoc orteaf::internal::architecture::detectCudaArchitectureForDeviceIndex
  */
-Architecture detectCudaArchitectureForDeviceIndex(std::uint32_t device_index) {
+Architecture detectCudaArchitectureForDeviceIndex(::orteaf::internal::runtime::DeviceId device_id) {
 #if ORTEAF_ENABLE_CUDA
     using backend::cuda::ComputeCapability;
     using backend::cuda::CUdevice_t;
 
+    const std::uint32_t device_index = static_cast<std::uint32_t>(device_id);
     int count = backend::cuda::getDeviceCount();
     if (count <= 0 || device_index >= static_cast<std::uint32_t>(count)) {
         return Architecture::cuda_generic;

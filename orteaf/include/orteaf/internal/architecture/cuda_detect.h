@@ -1,6 +1,7 @@
 #pragma once
 
 #include "orteaf/internal/architecture/architecture.h"
+#include "orteaf/internal/runtime/strong_id.h"
 
 #include <cstdint>
 #include <string_view>
@@ -22,16 +23,16 @@ namespace orteaf::internal::architecture {
 Architecture detectCudaArchitecture(int compute_capability, std::string_view vendor_hint = "nvidia");
 
 /**
- * @brief Enumerate CUDA devices and detect the architecture for the selected index.
+ * @brief Enumerate CUDA devices and detect the architecture for the requested `DeviceId`.
  *
  * When CUDA is enabled, the helper queries `backend::cuda` for the device count, extracts
  * the compute capability and vendor for the requested device, and then delegates to
- * `detectCudaArchitecture`. Out-of-range indices or missing CUDA support result in
+ * `detectCudaArchitecture`. Out-of-range devices or missing CUDA support result in
  * `Architecture::cuda_generic`.
  *
- * @param device_index Zero-based CUDA device index.
+ * @param device_id Strong-typed CUDA device identifier.
  * @return The detected CUDA `Architecture`, or `Architecture::cuda_generic` when enumeration fails.
  */
-Architecture detectCudaArchitectureForDeviceIndex(std::uint32_t device_index);
+Architecture detectCudaArchitectureForDeviceIndex(::orteaf::internal::runtime::DeviceId device_id);
 
 } // namespace orteaf::internal::architecture
