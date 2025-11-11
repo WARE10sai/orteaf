@@ -109,7 +109,7 @@ Architecture detectMpsArchitectureForDeviceIndex(::orteaf::internal::runtime::De
     }
     return detectMpsArchitecture(metal_family, vendor);
 #else
-    (void)device_index;
+    (void)device_id;
     return Architecture::mps_generic;
 #endif
 }

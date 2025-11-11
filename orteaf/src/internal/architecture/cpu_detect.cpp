@@ -128,6 +128,7 @@ bool cpuId(unsigned int leaf, unsigned int subleaf, unsigned int& eax, unsigned 
     return __get_cpuid_count(leaf, subleaf, &eax, &ebx, &ecx, &edx);
 }
 #endif
+#endif
 /**
  * @brief Gather the signals used to match the host CPU against the architecture tables.
  *

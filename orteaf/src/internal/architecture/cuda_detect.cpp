@@ -96,7 +96,7 @@ Architecture detectCudaArchitectureForDeviceIndex(::orteaf::internal::runtime::D
     }
     return detectCudaArchitecture(cc_value, vendor);
 #else
-    (void)device_index;
+    (void)device_id;
     return Architecture::cuda_generic;
 #endif
 }
