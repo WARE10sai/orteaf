@@ -10,6 +10,7 @@
  */
 
 #include "orteaf/internal/backend/cpu/cpu_stats.h"
+#include "orteaf/internal/base/math_utils.h"
 
 #include <cstdlib>
 #include <new>
@@ -35,7 +36,9 @@ constexpr std::size_t kCpuDefaultAlign = alignof(std::max_align_t);
  * @return `true` if `x` is a power of 2, `false` otherwise.
  *         Returns `false` if `x` is 0.
  */
-inline bool ispow2(std::size_t x) { return x && ((x & (x-1))==0); }
+inline bool ispow2(std::size_t x) {
+    return ::orteaf::internal::base::isPowerOfTwo(x);
+}
 
 /**
  * @brief Calculate the smallest power of 2 greater than or equal to the specified value.
@@ -48,10 +51,7 @@ inline bool ispow2(std::size_t x) { return x && ((x & (x-1))==0); }
  *         Returns 1 if `x` is 0 or 1.
  */
 inline std::size_t nextpow2(std::size_t x){
-    if (x<=1) return 1u;
-    --x; x|=x>>1; x|=x>>2; x|=x>>4; x|=x>>8; x|=x>>16;
-    if constexpr (sizeof(std::size_t)==8) x|=x>>32;
-    return x+1;
+    return ::orteaf::internal::base::nextPowerOfTwo(x);
 }
 
 /**
