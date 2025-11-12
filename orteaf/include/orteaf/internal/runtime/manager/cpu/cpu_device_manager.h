@@ -1,9 +1,9 @@
 #pragma once
 
 #include "orteaf/internal/architecture/architecture.h"
-#include "orteaf/internal/architecture/cpu_detect.h"
 #include "orteaf/internal/base/strong_id.h"
 #include "orteaf/internal/diagnostics/error/error.h"
+#include "orteaf/internal/runtime/backend_ops/cpu/cpu_backend_ops.h"
 
 namespace orteaf::internal::runtime::cpu {
 
@@ -14,12 +14,13 @@ namespace orteaf::internal::runtime::cpu {
  * CPU implementation currently exposes only a single device with `Architecture` metadata and an
  * `is_alive` flag, driven by the lightweight detector in `orteaf/internal/architecture/cpu_detect.h`.
  */
+template <class BackendOps = ::orteaf::internal::runtime::backend_ops::cpu::CpuBackendOps>
 struct CpuDeviceManager {
     void initializeDevices() {
         if (initialized_) {
             return;
         }
-        state_.arch = ::orteaf::internal::architecture::detectCpuArchitecture();
+        state_.arch = BackendOps::detectArchitecture();
         state_.is_alive = true;
         initialized_ = true;
     }
@@ -93,6 +94,10 @@ private:
     bool initialized_{false};
 };
 
-inline CpuDeviceManager CpuDeviceManager{};
+inline CpuDeviceManager<> CpuDeviceManagerInstance{};
+
+inline CpuDeviceManager<>& GetCpuDeviceManager() {
+    return CpuDeviceManagerInstance;
+}
 
 } // namespace orteaf::internal::runtime::cpu
