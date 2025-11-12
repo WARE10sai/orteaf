@@ -5,7 +5,7 @@
 
 #include "orteaf/internal/runtime/manager/cpu/cpu_device_manager.h"
 #include "orteaf/internal/architecture/architecture.h"
-#include "../../tests/internal/testing/static_mock.h"
+#include "tests/internal/testing/static_mock.h"
 
 namespace architecture = orteaf::internal::architecture;
 namespace base = orteaf::internal::base;
