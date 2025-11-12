@@ -21,6 +21,16 @@ protected:
 };
 
 #define ORTEAF_MPS_ENV_COUNT "ORTEAF_EXPECT_MPS_DEVICE_COUNT"
+#define ORTEAF_MPS_ENV_ARCH "ORTEAF_EXPECT_MPS_DEVICE_ARCH"
+
+namespace {
+
+bool shouldRunHardwareTests() {
+    const char* expected_env = std::getenv(ORTEAF_MPS_ENV_COUNT);
+    return expected_env != nullptr && std::stoi(expected_env) > 0;
+}
+
+}  // namespace
 
 TEST_F(MpsDeviceManagerTest, GetDeviceCount) {
     const char* expected_env = std::getenv(ORTEAF_MPS_ENV_COUNT);
@@ -32,11 +42,13 @@ TEST_F(MpsDeviceManagerTest, GetDeviceCount) {
 }
 
 TEST_F(MpsDeviceManagerTest, GetDevice) {
-    backend::mps::MPSDevice_t device = backend::mps::getDevice();
+    if (!shouldRunHardwareTests()) {
+        GTEST_SKIP() << "Set " ORTEAF_MPS_ENV_COUNT " to a positive integer to run this test.";
+    }
+    base::DeviceId device_id{0};
+    backend::mps::MPSDevice_t device = mps_rt::MpsDeviceManager.getDevice(device_id);
     EXPECT_NE(device, nullptr);
 }
-
-#define ORTEAF_MPS_ENV_ARCH "ORTEAF_EXPECT_MPS_DEVICE_ARCH"
 
 TEST_F(MpsDeviceManagerTest, GetArch) {
     const char* expected_env = std::getenv(ORTEAF_MPS_ENV_ARCH);
@@ -48,6 +60,9 @@ TEST_F(MpsDeviceManagerTest, GetArch) {
 }
 
 TEST_F(MpsDeviceManagerTest, GetIsAlive) {
+    if (!shouldRunHardwareTests()) {
+        GTEST_SKIP() << "Set " ORTEAF_MPS_ENV_COUNT " to a positive integer to run this test.";
+    }
     base::DeviceId device_id{0};
     EXPECT_TRUE(mps_rt::MpsDeviceManager.isAlive(device_id));
 }
