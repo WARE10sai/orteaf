@@ -59,6 +59,7 @@ if(ORTEAF_TEST_SOURCES)
         PRIVATE
             orteaf
             GTest::gtest_main
+            GTest::gmock
     )
     target_include_directories(orteaf_tests
         PRIVATE
