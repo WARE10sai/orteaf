@@ -51,6 +51,7 @@ See [docs/developer/environment.md](docs/developer/environment.md) for details.
 - Namespace: lowercase (e.g. `orteaf::runtime`)
 - Class names: PascalCase
 - Function names: camelCase
+- Member variables: snake_case with a trailing underscore (e.g. `is_alive_`); constants use `k` + PascalCase (e.g. `kPrimaryDevice`)
 - Use Doxygen comments for public interfaces
 
 ---
