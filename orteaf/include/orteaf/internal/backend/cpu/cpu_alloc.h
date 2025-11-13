@@ -36,6 +36,7 @@ constexpr std::size_t kCpuDefaultAlign = alignof(std::max_align_t);
  *
  * @param size Size of memory to allocate in bytes.
  * @return Pointer to allocated memory; throws std::bad_alloc on failure.
+ * @throws std::system_error If @p size is 0 (OrteafErrc::InvalidParameter).
  * @throws std::bad_alloc If memory allocation fails.
  */
 inline void* alloc(std::size_t size);
@@ -54,8 +55,8 @@ inline void* alloc(std::size_t size);
  *
  * @param size Size of memory to allocate in bytes.
  * @param alignment Requested alignment in bytes. Must be a power of 2.
- * @return Pointer to allocated memory. Returns `nullptr` if `size` is 0.
- *         Throws `std::bad_alloc` on failure.
+ * @return Pointer to allocated memory.
+ * @throws std::system_error If @p size is 0 (OrteafErrc::InvalidParameter).
  * @throws std::bad_alloc If memory allocation fails.
  */
 inline void* allocAligned(std::size_t size, std::size_t alignment) {
