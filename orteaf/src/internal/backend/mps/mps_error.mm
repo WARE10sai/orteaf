@@ -91,7 +91,7 @@ MPSError_t createError(std::string_view domain,
  */
 void destroyError(MPSError_t error) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!error) return;
+    if (error == nullptr) return;
     opaqueReleaseRetained(error);
 #else
     (void)error;

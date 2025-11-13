@@ -48,7 +48,7 @@ MPSBuffer_t createBuffer(MPSHeap_t heap, size_t size, MPSBufferUsage_t usage) {
  */
 void destroyBuffer(MPSBuffer_t buffer) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!buffer) return;
+    if (buffer == nullptr) return;
     opaqueReleaseRetained(buffer);
 #else
     (void)buffer;
@@ -60,7 +60,7 @@ void destroyBuffer(MPSBuffer_t buffer) {
  */
 const void* getBufferContentsConst(MPSBuffer_t buffer) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!buffer) return nullptr;
+    if (buffer == nullptr) return nullptr;
     id<MTLBuffer> objc_buffer = objcFromOpaqueNoown<id<MTLBuffer>>(buffer);
     return [objc_buffer contents];
 #else

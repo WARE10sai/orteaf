@@ -24,7 +24,7 @@ MPSEvent_t createEvent(MPSDevice_t device) {
     orteaf::internal::backend::mps::AutoreleasePool pool{};
     id<MTLDevice> objc_device = objcFromOpaqueNoown<id<MTLDevice>>(device);
     id<MTLSharedEvent> objc_event = [objc_device newSharedEvent];
-    if (!objc_event) {
+    if (objc_event == nil) {
         return nullptr;
     }
     [objc_event setSignaledValue:0];
@@ -42,7 +42,7 @@ MPSEvent_t createEvent(MPSDevice_t device) {
  */
 void destroyEvent(MPSEvent_t event) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!event) return;
+    if (event == nullptr) return;
     orteaf::internal::backend::mps::AutoreleasePool pool{};
     opaqueReleaseRetained(event);
     updateDestroyEvent();
@@ -56,7 +56,7 @@ void destroyEvent(MPSEvent_t event) {
  */
 void recordEvent(MPSEvent_t event, MPSCommandBuffer_t command_buffer, uint64_t value) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!event) {
+    if (event == nullptr) {
         using namespace orteaf::internal::diagnostics::error;
         throwError(OrteafErrc::NullPointer, "recordEvent: event cannot be nullptr");
     }
@@ -79,7 +79,7 @@ void recordEvent(MPSEvent_t event, MPSCommandBuffer_t command_buffer, uint64_t v
  */
 bool queryEvent(MPSEvent_t event, uint64_t expected_value) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!event) {
+    if (event == nullptr) {
         using namespace orteaf::internal::diagnostics::error;
         throwError(OrteafErrc::NullPointer, "queryEvent: event cannot be nullptr");
     }
@@ -97,7 +97,7 @@ bool queryEvent(MPSEvent_t event, uint64_t expected_value) {
  */
 uint64_t eventValue(MPSEvent_t event) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!event) {
+    if (event == nullptr) {
         using namespace orteaf::internal::diagnostics::error;
         throwError(OrteafErrc::NullPointer, "eventValue: event cannot be nullptr");
     }
@@ -113,11 +113,11 @@ uint64_t eventValue(MPSEvent_t event) {
  */
 void waitEvent(MPSCommandBuffer_t command_buffer, MPSEvent_t event, uint64_t value) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!command_buffer) {
+    if (command_buffer == nullptr) {
         using namespace orteaf::internal::diagnostics::error;
         throwError(OrteafErrc::NullPointer, "waitEvent: command_buffer cannot be nullptr");
     }
-    if (!event) {
+    if (event == nullptr) {
         using namespace orteaf::internal::diagnostics::error;
         throwError(OrteafErrc::NullPointer, "waitEvent: event cannot be nullptr");
     }

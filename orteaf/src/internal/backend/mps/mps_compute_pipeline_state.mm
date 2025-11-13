@@ -18,7 +18,7 @@ namespace orteaf::internal::backend::mps {
  */
 MPSComputePipelineState_t createComputePipelineState(MPSDevice_t device, MPSFunction_t function, MPSError_t* error) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!device || !function) {
+    if (device == nullptr || function == nullptr) {
         (void)error;
         using namespace orteaf::internal::diagnostics::error;
         throwError(OrteafErrc::NullPointer, "createComputePipelineState: device and function cannot be nullptr");
@@ -42,7 +42,7 @@ MPSComputePipelineState_t createComputePipelineState(MPSDevice_t device, MPSFunc
  */
 void destroyComputePipelineState(MPSComputePipelineState_t pipeline_state) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!pipeline_state) return;
+    if (pipeline_state == nullptr) return;
     opaqueReleaseRetained(pipeline_state);
 #else
     (void)pipeline_state;

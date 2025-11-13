@@ -21,14 +21,14 @@ using orteaf::internal::diagnostics::error::OrteafErrc;
 using orteaf::internal::diagnostics::error::throwError;
 
 MTLTextureDescriptor* objcDescriptor(MPSTextureDescriptor_t descriptor) {
-    if (!descriptor) {
+    if (descriptor == nullptr) {
         throwError(OrteafErrc::NullPointer, "Texture descriptor cannot be nullptr");
     }
     return objcFromOpaqueNoown<MTLTextureDescriptor*>(descriptor);
 }
 
 id<MTLTexture> objcTexture(MPSTexture_t texture) {
-    if (!texture) {
+    if (texture == nullptr) {
         throwError(OrteafErrc::NullPointer, "Texture cannot be nullptr");
     }
     return objcFromOpaqueNoown<id<MTLTexture>>(texture);
@@ -63,7 +63,7 @@ MPSTextureDescriptor_t createTextureDescriptor() {
 
 void destroyTextureDescriptor(MPSTextureDescriptor_t descriptor) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!descriptor) return;
+    if (descriptor == nullptr) return;
     opaqueReleaseRetained(descriptor);
 #else
     (void)descriptor;
@@ -157,12 +157,12 @@ void setTextureDescriptorHazardTrackingMode(MPSTextureDescriptor_t descriptor, M
 
 MPSTexture_t createTexture(MPSDevice_t device, MPSTextureDescriptor_t descriptor) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!device) {
+    if (device == nullptr) {
         throwError(OrteafErrc::NullPointer, "createTexture: device cannot be nullptr");
     }
     id<MTLDevice> objc_device = objcFromOpaqueNoown<id<MTLDevice>>(device);
     id<MTLTexture> texture = [objc_device newTextureWithDescriptor:objcDescriptor(descriptor)];
-    if (!texture) {
+    if (texture == nil) {
         throwError(OrteafErrc::OperationFailed, "createTexture: Metal returned null texture");
     }
     return reinterpret_cast<MPSTexture_t>(opaqueFromObjcRetained(texture));
@@ -174,12 +174,12 @@ MPSTexture_t createTexture(MPSDevice_t device, MPSTextureDescriptor_t descriptor
 
 MPSTexture_t createTextureFromHeap(MPSHeap_t heap, MPSTextureDescriptor_t descriptor) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!heap) {
+    if (heap == nullptr) {
         throwError(OrteafErrc::NullPointer, "createTextureFromHeap: heap cannot be nullptr");
     }
     id<MTLHeap> objc_heap = objcFromOpaqueNoown<id<MTLHeap>>(heap);
     id<MTLTexture> texture = [objc_heap newTextureWithDescriptor:objcDescriptor(descriptor)];
-    if (!texture) {
+    if (texture == nil) {
         throwError(OrteafErrc::OperationFailed, "createTextureFromHeap: Metal returned null texture");
     }
     return reinterpret_cast<MPSTexture_t>(opaqueFromObjcRetained(texture));
@@ -191,7 +191,7 @@ MPSTexture_t createTextureFromHeap(MPSHeap_t heap, MPSTextureDescriptor_t descri
 
 void destroyTexture(MPSTexture_t texture) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!texture) return;
+    if (texture == nullptr) return;
     opaqueReleaseRetained(texture);
 #else
     (void)texture;
@@ -259,7 +259,7 @@ void getTextureBytes(MPSTexture_t texture,
                      std::size_t mip_level,
                      std::size_t slice) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!out_bytes) {
+    if (out_bytes == nullptr) {
         throwError(OrteafErrc::NullPointer, "getTextureBytes: out_bytes cannot be nullptr");
     }
     MTLRegion region = MTLRegionMake3D(region_x, region_y, region_z, width, height, depth);
@@ -289,7 +289,7 @@ void replaceTextureRegion(MPSTexture_t texture,
                           std::size_t mip_level,
                           std::size_t slice) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!bytes) {
+    if (bytes == nullptr) {
         throwError(OrteafErrc::NullPointer, "replaceTextureRegion: bytes cannot be nullptr");
     }
     MTLRegion region = MTLRegionMake3D(region_x, region_y, region_z, width, height, depth);

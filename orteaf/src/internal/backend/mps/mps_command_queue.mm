@@ -37,7 +37,7 @@ MPSCommandQueue_t createCommandQueue(MPSDevice_t device) {
  */
 void destroyCommandQueue(MPSCommandQueue_t command_queue) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!command_queue) return;
+    if (command_queue == nullptr) return;
     opaqueReleaseRetained(command_queue);
     updateDestroyCommandQueue();
 #else

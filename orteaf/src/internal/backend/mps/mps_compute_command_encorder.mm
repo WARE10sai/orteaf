@@ -35,7 +35,7 @@ MPSComputeCommandEncoder_t createComputeCommandEncoder(MPSCommandBuffer_t comman
  */
 void destroyComputeCommandEncoder(MPSComputeCommandEncoder_t compute_command_encoder) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!compute_command_encoder) return;
+    if (compute_command_encoder == nullptr) return;
     opaqueReleaseRetained(compute_command_encoder);
 #else
     (void)compute_command_encoder;

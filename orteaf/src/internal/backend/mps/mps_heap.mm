@@ -57,7 +57,7 @@ MPSHeapDescriptor_t createHeapDescriptor() {
 
 void destroyHeapDescriptor(MPSHeapDescriptor_t descriptor) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!descriptor) return;
+    if (descriptor == nullptr) return;
     opaqueReleaseRetained(descriptor);
 #else
     (void)descriptor;
@@ -80,7 +80,7 @@ void setHeapDescriptorSize(MPSHeapDescriptor_t descriptor, std::size_t size) {
 
 std::size_t getHeapDescriptorSize(MPSHeapDescriptor_t descriptor) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!descriptor) {
+    if (descriptor == nullptr) {
         return 0;
     }
     MTLHeapDescriptor* objc_descriptor = objcFromOpaqueNoown<MTLHeapDescriptor*>(descriptor);
@@ -155,7 +155,7 @@ MPSHeap_t createHeap(MPSDevice_t device, MPSHeapDescriptor_t descriptor) {
     id<MTLDevice> objc_device = objcFromOpaqueNoown<id<MTLDevice>>(device);
     MTLHeapDescriptor* objc_descriptor = objcFromOpaqueNoown<MTLHeapDescriptor*>(descriptor);
     id<MTLHeap> objc_heap = [objc_device newHeapWithDescriptor:objc_descriptor];
-    if (!objc_heap) {
+    if (objc_heap == nil) {
         throwError(OrteafErrc::OperationFailed, "createHeap: failed to create Metal heap");
     }
     const std::size_t bytes = [objc_heap size];
@@ -170,7 +170,7 @@ MPSHeap_t createHeap(MPSDevice_t device, MPSHeapDescriptor_t descriptor) {
 
 void destroyHeap(MPSHeap_t heap) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!heap) {
+    if (heap == nullptr) {
         return;
     }
     const std::size_t bytes = heapSize(heap);
@@ -185,7 +185,7 @@ void destroyHeap(MPSHeap_t heap) {
 
 std::size_t heapSize(MPSHeap_t heap) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!heap) return 0;
+    if (heap == nullptr) return 0;
     id<MTLHeap> objc_heap = objcFromOpaqueNoown<id<MTLHeap>>(heap);
     return objc_heap ? [objc_heap size] : 0;
 #else
@@ -196,7 +196,7 @@ std::size_t heapSize(MPSHeap_t heap) {
 
 std::size_t heapUsedSize(MPSHeap_t heap) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!heap) return 0;
+    if (heap == nullptr) return 0;
     id<MTLHeap> objc_heap = objcFromOpaqueNoown<id<MTLHeap>>(heap);
     return objc_heap ? [objc_heap usedSize] : 0;
 #else
@@ -222,7 +222,7 @@ std::size_t heapMaxAvailableSize(MPSHeap_t heap, std::size_t alignment) {
 
 MPSResourceOptions_t heapResourceOptions(MPSHeap_t heap) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!heap) return kMPSDefaultResourceOptions;
+    if (heap == nullptr) return kMPSDefaultResourceOptions;
     id<MTLHeap> objc_heap = objcFromOpaqueNoown<id<MTLHeap>>(heap);
     return objc_heap ? static_cast<MPSResourceOptions_t>(objc_heap.resourceOptions) : kMPSDefaultResourceOptions;
 #else
@@ -233,7 +233,7 @@ MPSResourceOptions_t heapResourceOptions(MPSHeap_t heap) {
 
 MPSStorageMode_t heapStorageMode(MPSHeap_t heap) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!heap) return kMPSStorageModeShared;
+    if (heap == nullptr) return kMPSStorageModeShared;
     id<MTLHeap> objc_heap = objcFromOpaqueNoown<id<MTLHeap>>(heap);
     return objc_heap ? static_cast<MPSStorageMode_t>(objc_heap.storageMode) : kMPSStorageModeShared;
 #else
@@ -244,7 +244,7 @@ MPSStorageMode_t heapStorageMode(MPSHeap_t heap) {
 
 MPSCPUCacheMode_t heapCPUCacheMode(MPSHeap_t heap) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!heap) return kMPSCPUCacheModeDefaultCache;
+    if (heap == nullptr) return kMPSCPUCacheModeDefaultCache;
     id<MTLHeap> objc_heap = objcFromOpaqueNoown<id<MTLHeap>>(heap);
     return objc_heap ? static_cast<MPSCPUCacheMode_t>(objc_heap.cpuCacheMode) : kMPSCPUCacheModeDefaultCache;
 #else
@@ -255,7 +255,7 @@ MPSCPUCacheMode_t heapCPUCacheMode(MPSHeap_t heap) {
 
 MPSHazardTrackingMode_t heapHazardTrackingMode(MPSHeap_t heap) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!heap) return kMPSHazardTrackingModeDefault;
+    if (heap == nullptr) return kMPSHazardTrackingModeDefault;
     id<MTLHeap> objc_heap = objcFromOpaqueNoown<id<MTLHeap>>(heap);
     return objc_heap ? static_cast<MPSHazardTrackingMode_t>(objc_heap.hazardTrackingMode) : kMPSHazardTrackingModeDefault;
 #else
@@ -266,7 +266,7 @@ MPSHazardTrackingMode_t heapHazardTrackingMode(MPSHeap_t heap) {
 
 MPSHeapType_t heapType(MPSHeap_t heap) {
 #if defined(ORTEAF_ENABLE_MPS) && defined(__OBJC__)
-    if (!heap) return kMPSHeapTypeAutomatic;
+    if (heap == nullptr) return kMPSHeapTypeAutomatic;
     id<MTLHeap> objc_heap = objcFromOpaqueNoown<id<MTLHeap>>(heap);
     return objc_heap ? static_cast<MPSHeapType_t>(objc_heap.type) : kMPSHeapTypeAutomatic;
 #else
