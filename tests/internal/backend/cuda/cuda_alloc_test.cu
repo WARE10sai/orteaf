@@ -8,6 +8,7 @@
 #include "orteaf/internal/backend/cuda/cuda_device.h"
 #include "orteaf/internal/backend/cuda/cuda_context.h"
 #include "orteaf/internal/backend/cuda/cuda_stream.h"
+#include "tests/internal/testing/error_assert.h"
 
 #include <gtest/gtest.h>
 #include <cstring>
@@ -59,7 +60,9 @@ TEST_F(CudaAllocCopyTest, AllocDeviceMemorySucceeds) {
  */
 TEST_F(CudaAllocCopyTest, AllocZeroBytesFails) {
     // CUDA's cuMemAlloc does not allow zero-size allocation
-    EXPECT_THROW(cuda::alloc(0), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidParameter,
+        [] { cuda::alloc(0); });
 }
 
 /**
@@ -68,7 +71,9 @@ TEST_F(CudaAllocCopyTest, AllocZeroBytesFails) {
 TEST_F(CudaAllocCopyTest, AllocLargeSizeFails) {
     // Allocate an unreasonably large size (e.g., all address space)
     size_t huge_size = SIZE_MAX;
-    EXPECT_THROW(cuda::alloc(huge_size), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfMemory,
+        [&] { cuda::alloc(huge_size); });
 }
 
 /**
@@ -130,7 +135,9 @@ TEST_F(CudaAllocCopyTest, AllocStreamSucceeds) {
  */
 TEST_F(CudaAllocCopyTest, AllocStreamNullptrThrows) {
     constexpr size_t size = 1024;
-    EXPECT_THROW(cuda::alloc_stream(size, nullptr), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [&] { cuda::alloc_stream(size, nullptr); });
 }
 
 /**
@@ -138,7 +145,9 @@ TEST_F(CudaAllocCopyTest, AllocStreamNullptrThrows) {
  */
 TEST_F(CudaAllocCopyTest, AllocStreamZeroBytesFails) {
     cuda::CUstream_t stream = cuda::get_stream();
-    EXPECT_THROW(cuda::alloc_stream(0, stream), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidParameter,
+        [&] { cuda::alloc_stream(0, stream); });
     cuda::release_stream(stream);
 }
 
@@ -163,7 +172,9 @@ TEST_F(CudaAllocCopyTest, FreeStreamSucceeds) {
 TEST_F(CudaAllocCopyTest, FreeStreamNullptrThrows) {
     constexpr size_t size = 1024;
     cuda::CUdeviceptr_t ptr = cuda::alloc(size);
-    EXPECT_THROW(cuda::free_stream(ptr, size, nullptr), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [&] { cuda::free_stream(ptr, size, nullptr); });
     cuda::free(ptr, size);
 }
 
@@ -182,7 +193,9 @@ TEST_F(CudaAllocCopyTest, AllocHostSucceeds) {
  * @brief Test that allocating zero bytes for host memory throws.
  */
 TEST_F(CudaAllocCopyTest, AllocHostZeroBytesFails) {
-    EXPECT_THROW(cuda::alloc_host(0), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidParameter,
+        [] { cuda::alloc_host(0); });
 }
 
 /**
@@ -216,7 +229,9 @@ TEST_F(CudaAllocCopyTest, FreeHostSucceeds) {
  */
 TEST_F(CudaAllocCopyTest, FreeHostNullptrThrows) {
     constexpr size_t size = 1024;
-    EXPECT_THROW(cuda::free_host(nullptr, size), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [&] { cuda::free_host(nullptr, size); });
 }
 
 /**
@@ -288,7 +303,9 @@ TEST_F(CudaAllocCopyTest, CopyToHostInvalidPointerThrows) {
     void* host_ptr = nullptr;
     cuda::CUdeviceptr_t invalid_ptr = static_cast<cuda::CUdeviceptr_t>(-1);
     
-    EXPECT_THROW(cuda::copy_to_host(invalid_ptr, host_ptr, size), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidParameter,
+        [&] { cuda::copy_to_host(invalid_ptr, host_ptr, size); });
 }
 
 /**
@@ -297,7 +314,9 @@ TEST_F(CudaAllocCopyTest, CopyToHostInvalidPointerThrows) {
 TEST_F(CudaAllocCopyTest, CopyToHostZeroPtrThrows) {
     constexpr size_t size = sizeof(int);
     int host_value = 0;
-    EXPECT_THROW(cuda::copy_to_host(0, &host_value, size), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidParameter,
+        [&] { cuda::copy_to_host(0, &host_value, size); });
 }
 
 /**
@@ -308,7 +327,9 @@ TEST_F(CudaAllocCopyTest, CopyToHostNullptrHostPtrThrows) {
     cuda::CUdeviceptr_t dev_ptr = cuda::alloc(size);
     EXPECT_NE(dev_ptr, 0);
     
-    EXPECT_THROW(cuda::copy_to_host(dev_ptr, nullptr, size), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [&] { cuda::copy_to_host(dev_ptr, nullptr, size); });
     
     cuda::free(dev_ptr, size);
 }
@@ -321,7 +342,9 @@ TEST_F(CudaAllocCopyTest, CopyToDeviceInvalidPointerThrows) {
     int host_value = 42;
     cuda::CUdeviceptr_t invalid_ptr = static_cast<cuda::CUdeviceptr_t>(-1);
     
-    EXPECT_THROW(cuda::copy_to_device(&host_value, invalid_ptr, size), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidParameter,
+        [&] { cuda::copy_to_device(&host_value, invalid_ptr, size); });
 }
 
 /**
@@ -330,7 +353,9 @@ TEST_F(CudaAllocCopyTest, CopyToDeviceInvalidPointerThrows) {
 TEST_F(CudaAllocCopyTest, CopyToDeviceZeroPtrThrows) {
     constexpr size_t size = sizeof(int);
     int host_value = 42;
-    EXPECT_THROW(cuda::copy_to_device(&host_value, 0, size), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidParameter,
+        [&] { cuda::copy_to_device(&host_value, 0, size); });
 }
 
 /**
@@ -341,7 +366,9 @@ TEST_F(CudaAllocCopyTest, CopyToDeviceNullptrHostPtrThrows) {
     cuda::CUdeviceptr_t dev_ptr = cuda::alloc(size);
     EXPECT_NE(dev_ptr, 0);
     
-    EXPECT_THROW(cuda::copy_to_device(nullptr, dev_ptr, size), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [&] { cuda::copy_to_device(nullptr, dev_ptr, size); });
     
     cuda::free(dev_ptr, size);
 }

@@ -6,6 +6,7 @@
 #include "orteaf/internal/backend/cuda/cuda_check.h"
 #include "orteaf/internal/diagnostics/error/error.h"
 #include "tests/internal/testing/error_assert.h"
+#include "tests/internal/testing/error_assert.h"
 
 #include <gtest/gtest.h>
 
@@ -49,10 +50,9 @@ TEST(CudaCheckError, CudaCheckSuccessDoesNotThrow) {
  * @brief Test that cuda_check throws on error.
  */
 TEST(CudaCheckError, CudaCheckErrorThrows) {
-    EXPECT_THROW(
-        cuda::cudaCheck(cudaErrorMemoryAllocation, "test_expr", "test_file", 42),
-        std::system_error
-    );
+    ::orteaf::tests::ExpectError(
+        diag::OrteafErrc::OutOfMemory,
+        [] { cuda::cudaCheck(cudaErrorMemoryAllocation, "test_expr", "test_file", 42); });
 }
 
 /**
@@ -94,10 +94,9 @@ TEST(CudaCheckError, CuDriverCheckSuccessDoesNotThrow) {
  * @brief Test that cu_driver_check throws on error.
  */
 TEST(CudaCheckError, CuDriverCheckErrorThrows) {
-    EXPECT_THROW(
-        cuda::cuDriverCheck(CUDA_ERROR_OUT_OF_MEMORY, "test_expr", "test_file", 42),
-        std::system_error
-    );
+    ::orteaf::tests::ExpectError(
+        diag::OrteafErrc::OutOfMemory,
+        [] { cuda::cuDriverCheck(CUDA_ERROR_OUT_OF_MEMORY, "test_expr", "test_file", 42); });
 }
 
 /**
@@ -139,28 +138,24 @@ TEST(CudaCheckError, TryDriverCallReturnsFalseForDeinitialized) {
  * @brief Test that try_driver_call re-throws non-DEINITIALIZED errors.
  */
 TEST(CudaCheckError, TryDriverCallRethrowsOtherErrors) {
-    EXPECT_THROW(
-        cuda::tryDriverCall([]() {
-            throw std::system_error(
-                static_cast<int>(CUDA_ERROR_OUT_OF_MEMORY),
-                std::generic_category(),
-                "CUDA_ERROR_OUT_OF_MEMORY"
-            );
-        }),
-        std::system_error
-    );
+    ::orteaf::tests::ExpectError(
+        diag::OrteafErrc::OutOfMemory,
+        [] {
+            cuda::tryDriverCall([]() {
+                cuda::cuDriverCheck(CUDA_ERROR_OUT_OF_MEMORY, "expr", "file", 1);
+            });
+        });
 }
 
 /**
  * @brief Test that try_driver_call handles non-system_error exceptions.
  */
 TEST(CudaCheckError, TryDriverCallRethrowsNonSystemError) {
-    EXPECT_THROW(
+    ::orteaf::tests::ExpectException<std::runtime_error>([] {
         cuda::tryDriverCall([]() {
             throw std::runtime_error("other error");
-        }),
-        std::runtime_error
-    );
+        });
+    });
 }
 
 /**
@@ -168,7 +163,9 @@ TEST(CudaCheckError, TryDriverCallRethrowsNonSystemError) {
  */
 TEST(CudaCheckError, CudaCheckMacroWorks) {
     EXPECT_NO_THROW(CUDA_CHECK(cudaSuccess));
-    EXPECT_THROW(CUDA_CHECK(cudaErrorMemoryAllocation), std::system_error);
+    ::orteaf::tests::ExpectError(
+        diag::OrteafErrc::OutOfMemory,
+        [] { CUDA_CHECK(cudaErrorMemoryAllocation); });
 }
 
 /**
@@ -176,7 +173,9 @@ TEST(CudaCheckError, CudaCheckMacroWorks) {
  */
 TEST(CudaCheckError, CuCheckMacroWorks) {
     EXPECT_NO_THROW(CU_CHECK(CUDA_SUCCESS));
-    EXPECT_THROW(CU_CHECK(CUDA_ERROR_OUT_OF_MEMORY), std::system_error);
+    ::orteaf::tests::ExpectError(
+        diag::OrteafErrc::OutOfMemory,
+        [] { CU_CHECK(CUDA_ERROR_OUT_OF_MEMORY); });
 }
 
 /**

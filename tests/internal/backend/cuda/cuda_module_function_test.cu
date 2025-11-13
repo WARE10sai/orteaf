@@ -7,6 +7,7 @@
 #include "orteaf/internal/backend/cuda/cuda_init.h"
 #include "orteaf/internal/backend/cuda/cuda_device.h"
 #include "orteaf/internal/backend/cuda/cuda_context.h"
+#include "tests/internal/testing/error_assert.h"
 
 #include <gtest/gtest.h>
 #include <vector>
@@ -47,21 +48,27 @@ protected:
  */
 TEST_F(CudaModuleFunctionTest, LoadModuleFromFileNonExistentThrows) {
     const char* non_existent = "/nonexistent/path/to/module.ptx";
-    EXPECT_THROW(cuda::load_module_from_file(non_existent), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::OperationFailed,
+        [&] { cuda::load_module_from_file(non_existent); });
 }
 
 /**
  * @brief Test that loading a module from nullptr filepath throws.
  */
 TEST_F(CudaModuleFunctionTest, LoadModuleFromFileNullptrThrows) {
-    EXPECT_THROW(cuda::load_module_from_file(nullptr), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [] { cuda::load_module_from_file(nullptr); });
 }
 
 /**
  * @brief Test that loading a module from empty filepath throws.
  */
 TEST_F(CudaModuleFunctionTest, LoadModuleFromFileEmptyThrows) {
-    EXPECT_THROW(cuda::load_module_from_file(""), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidParameter,
+        [] { cuda::load_module_from_file(""); });
 }
 
 /**
@@ -69,21 +76,27 @@ TEST_F(CudaModuleFunctionTest, LoadModuleFromFileEmptyThrows) {
  */
 TEST_F(CudaModuleFunctionTest, LoadModuleFromImageInvalidThrows) {
     const char* invalid_image = "not a valid CUDA module";
-    EXPECT_THROW(cuda::load_module_from_image(invalid_image), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::OperationFailed,
+        [&] { cuda::load_module_from_image(invalid_image); });
 }
 
 /**
  * @brief Test that loading a module from nullptr image throws.
  */
 TEST_F(CudaModuleFunctionTest, LoadModuleFromImageNullptrThrows) {
-    EXPECT_THROW(cuda::load_module_from_image(nullptr), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [] { cuda::load_module_from_image(nullptr); });
 }
 
 /**
  * @brief Test that get_function with nullptr module throws.
  */
 TEST_F(CudaModuleFunctionTest, GetFunctionNullptrModuleThrows) {
-    EXPECT_THROW(cuda::get_function(nullptr, "kernel_name"), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [] { cuda::get_function(nullptr, "kernel_name"); });
 }
 
 /**
@@ -91,7 +104,9 @@ TEST_F(CudaModuleFunctionTest, GetFunctionNullptrModuleThrows) {
  */
 TEST_F(CudaModuleFunctionTest, GetFunctionNullptrKernelNameThrows) {
     // Implementation checks nullptr before module validity, so we can use nullptr module
-    EXPECT_THROW(cuda::get_function(nullptr, nullptr), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [] { cuda::get_function(nullptr, nullptr); });
 }
 
 /**
@@ -102,7 +117,9 @@ TEST_F(CudaModuleFunctionTest, GetFunctionEmptyKernelNameThrows) {
     // Since we don't have a valid module file in the test environment,
     // we test with nullptr module which will throw before checking kernel name.
     // Testing with empty string on a valid module would require a real module file.
-    EXPECT_THROW(cuda::get_function(nullptr, ""), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [] { cuda::get_function(nullptr, ""); });
 }
 
 /**
@@ -113,7 +130,9 @@ TEST_F(CudaModuleFunctionTest, GetFunctionNonExistentKernelThrows) {
     // Since we don't have a valid module file in the test environment,
     // we test with nullptr module which will throw before checking kernel name.
     // Testing with a non-existent kernel on a valid module would require a real module file.
-    EXPECT_THROW(cuda::get_function(nullptr, "nonexistent_kernel"), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [] { cuda::get_function(nullptr, "nonexistent_kernel"); });
 }
 
 /**
@@ -146,10 +165,12 @@ TEST_F(CudaModuleFunctionTest, ModuleLifecycleWithInvalidFile) {
     const char* invalid_file = "/invalid/path/module.ptx";
     
     // Attempt to load should fail
-    EXPECT_THROW({
-        cuda::CUmodule_t module = cuda::load_module_from_file(invalid_file);
-        (void)module;
-    }, std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::OperationFailed,
+        [&] {
+            cuda::CUmodule_t module = cuda::load_module_from_file(invalid_file);
+            (void)module;
+        });
 }
 
 /**
@@ -159,8 +180,12 @@ TEST_F(CudaModuleFunctionTest, MultipleModuleLoadAttempts) {
     const char* non_existent = "/nonexistent/module1.ptx";
     const char* non_existent2 = "/nonexistent/module2.ptx";
     
-    EXPECT_THROW(cuda::load_module_from_file(non_existent), std::system_error);
-    EXPECT_THROW(cuda::load_module_from_file(non_existent2), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::OperationFailed,
+        [&] { cuda::load_module_from_file(non_existent); });
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::OperationFailed,
+        [&] { cuda::load_module_from_file(non_existent2); });
 }
 
 /**
@@ -169,15 +194,21 @@ TEST_F(CudaModuleFunctionTest, MultipleModuleLoadAttempts) {
 TEST_F(CudaModuleFunctionTest, LoadModuleFromImageInvalidSizes) {
     // Test with empty image
     std::vector<char> empty_image;
-    EXPECT_THROW(cuda::load_module_from_image(empty_image.data()), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::OperationFailed,
+        [&] { cuda::load_module_from_image(empty_image.data()); });
     
     // Test with too small image
     std::vector<char> small_image(10, 0);
-    EXPECT_THROW(cuda::load_module_from_image(small_image.data()), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::OperationFailed,
+        [&] { cuda::load_module_from_image(small_image.data()); });
     
     // Test with garbage data
     std::vector<char> garbage_image(1024, 0xFF);
-    EXPECT_THROW(cuda::load_module_from_image(garbage_image.data()), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::OperationFailed,
+        [&] { cuda::load_module_from_image(garbage_image.data()); });
 }
 
 /**

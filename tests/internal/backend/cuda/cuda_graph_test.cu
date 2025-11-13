@@ -8,6 +8,7 @@
 #include "orteaf/internal/backend/cuda/cuda_device.h"
 #include "orteaf/internal/backend/cuda/cuda_context.h"
 #include "orteaf/internal/backend/cuda/cuda_stream.h"
+#include "tests/internal/testing/error_assert.h"
 
 #include <gtest/gtest.h>
 
@@ -96,7 +97,9 @@ TEST_F(CudaGraphTest, CreateGraphExecSucceeds) {
  * @brief Test that create_graph_exec with nullptr throws.
  */
 TEST_F(CudaGraphTest, CreateGraphExecNullptrThrows) {
-    EXPECT_THROW(cuda::create_graph_exec(nullptr), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [] { cuda::create_graph_exec(nullptr); });
 }
 
 /**
@@ -137,11 +140,14 @@ TEST_F(CudaGraphTest, BeginGraphCaptureSucceeds) {
  * @brief Test that begin_graph_capture with nullptr stream throws.
  */
 TEST_F(CudaGraphTest, BeginGraphCaptureNullptrThrows) {
-    EXPECT_THROW(cuda::begin_graph_capture(nullptr), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [] { cuda::begin_graph_capture(nullptr); });
 }
 
 /**
- * @brief Test that end_graph_capture succeeds with empty capture.
+ * @brief 
+ * 
  */
 TEST_F(CudaGraphTest, EndGraphCaptureSucceeds) {
     cuda::CUstream_t stream = cuda::get_stream();
@@ -161,9 +167,11 @@ TEST_F(CudaGraphTest, EndGraphCaptureSucceeds) {
 TEST_F(CudaGraphTest, EndGraphCaptureWithoutBeginThrows) {
     cuda::CUstream_t stream = cuda::get_stream();
     cuda::CUgraph_t graph = nullptr;
-    
-    EXPECT_THROW(cuda::end_graph_capture(stream, &graph), std::system_error);
-    
+
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+        [&] { cuda::end_graph_capture(stream, &graph); });
+
     cuda::release_stream(stream);
 }
 
@@ -172,7 +180,9 @@ TEST_F(CudaGraphTest, EndGraphCaptureWithoutBeginThrows) {
  */
 TEST_F(CudaGraphTest, EndGraphCaptureNullptrStreamThrows) {
     cuda::CUgraph_t graph = nullptr;
-    EXPECT_THROW(cuda::end_graph_capture(nullptr, &graph), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [&] { cuda::end_graph_capture(nullptr, &graph); });
 }
 
 /**
@@ -180,7 +190,9 @@ TEST_F(CudaGraphTest, EndGraphCaptureNullptrStreamThrows) {
  */
 TEST_F(CudaGraphTest, EndGraphCaptureNullptrGraphThrows) {
     cuda::CUstream_t stream = cuda::get_stream();
-    EXPECT_THROW(cuda::end_graph_capture(stream, nullptr), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [&] { cuda::end_graph_capture(stream, nullptr); });
     cuda::release_stream(stream);
 }
 
@@ -203,7 +215,9 @@ TEST_F(CudaGraphTest, InstantiateGraphSucceeds) {
  */
 TEST_F(CudaGraphTest, InstantiateGraphNullptrThrows) {
     cuda::CUgraphExec_t graph_exec = nullptr;
-    EXPECT_THROW(cuda::instantiate_graph(nullptr, &graph_exec), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [&] { cuda::instantiate_graph(nullptr, &graph_exec); });
 }
 
 /**
@@ -211,7 +225,9 @@ TEST_F(CudaGraphTest, InstantiateGraphNullptrThrows) {
  */
 TEST_F(CudaGraphTest, InstantiateGraphNullptrOutParamThrows) {
     cuda::CUgraph_t graph = cuda::create_graph();
-    EXPECT_THROW(cuda::instantiate_graph(graph, nullptr), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [&] { cuda::instantiate_graph(graph, nullptr); });
     cuda::destroy_graph(graph);
 }
 
@@ -236,7 +252,9 @@ TEST_F(CudaGraphTest, GraphLaunchSucceeds) {
  */
 TEST_F(CudaGraphTest, GraphLaunchNullptrGraphExecThrows) {
     cuda::CUstream_t stream = cuda::get_stream();
-    EXPECT_THROW(cuda::graph_launch(nullptr, stream), std::system_error);
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [&] { cuda::graph_launch(nullptr, stream); });
     cuda::release_stream(stream);
 }
 
@@ -246,9 +264,9 @@ TEST_F(CudaGraphTest, GraphLaunchNullptrGraphExecThrows) {
 TEST_F(CudaGraphTest, GraphLaunchNullptrStreamThrows) {
     cuda::CUgraph_t graph = cuda::create_graph();
     cuda::CUgraphExec_t graph_exec = cuda::create_graph_exec(graph);
-    
-    EXPECT_THROW(cuda::graph_launch(graph_exec, nullptr), std::system_error);
-    
+    ::orteaf::tests::ExpectError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+        [&] { cuda::graph_launch(graph_exec, nullptr); });
     cuda::destroy_graph_exec(graph_exec);
     cuda::destroy_graph(graph);
 }

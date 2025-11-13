@@ -55,4 +55,9 @@ void ExpectErrorMessage(::orteaf::internal::diagnostics::error::OrteafErrc errc,
         std::system_error);
 }
 
+template <typename Exception, typename Fn>
+void ExpectException(Fn&& fn) {
+    EXPECT_THROW(fn(), Exception);
+}
+
 }  // namespace orteaf::tests

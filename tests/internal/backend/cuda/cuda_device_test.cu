@@ -99,7 +99,9 @@ TEST_F(CudaDeviceTest, GetComputeCapabilityInvalidDeviceThrows) {
     if (count > 0) {
         // Use an invalid device handle (e.g., -1 or a value beyond valid range)
         cuda::CUdevice_t invalid_device = static_cast<cuda::CUdevice_t>(-1);
-        EXPECT_THROW(cuda::get_compute_capability(invalid_device), std::system_error);
+        ::orteaf::tests::ExpectError(
+            ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
+            [&] { cuda::get_compute_capability(invalid_device); });
     } else {
         GTEST_SKIP() << "No CUDA devices available";
     }
