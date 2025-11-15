@@ -204,3 +204,76 @@ TEST_F(MpsCommandQueueManagerTest, ReleaseMakesHandleStaleAndRecyclesState) {
     const auto recycled = manager_.acquire();
     EXPECT_NE(recycled, id);
 }
+
+// -----------------------------------------------------------------------------
+// getCommandQueue basics
+// -----------------------------------------------------------------------------
+TEST_F(MpsCommandQueueManagerTest, GetCommandQueueFailsBeforeInitialization) {
+    ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
+        (void)manager_.getCommandQueue(base::CommandQueueId{0});
+    });
+}
+
+// -----------------------------------------------------------------------------
+// Hazard counters (submit/completed serial)
+// -----------------------------------------------------------------------------
+TEST_F(MpsCommandQueueManagerTest, HazardCountersDefaultToZero) {
+    EXPECT_CALL(mock_, createCommandQueue(_)).WillOnce(Return(makeQueue(0x900)));
+    EXPECT_CALL(mock_, createEvent(_)).WillOnce(Return(makeEvent(0x9010)));
+    manager_.initialize(1);
+
+    const auto id = manager_.acquire();
+    EXPECT_EQ(manager_.submitSerial(id), 0u);
+    EXPECT_EQ(manager_.completedSerial(id), 0u);
+}
+
+TEST_F(MpsCommandQueueManagerTest, HazardCountersCanBeUpdatedAndResetOnRelease) {
+    EXPECT_CALL(mock_, createCommandQueue(_)).WillOnce(Return(makeQueue(0x910)));
+    EXPECT_CALL(mock_, createEvent(_)).WillOnce(Return(makeEvent(0x9110)));
+    manager_.initialize(1);
+
+    const auto id = manager_.acquire();
+    manager_.setSubmitSerial(id, 7);
+    manager_.setCompletedSerial(id, 7);
+    EXPECT_EQ(manager_.submitSerial(id), 7u);
+    EXPECT_EQ(manager_.completedSerial(id), 7u);
+
+    manager_.release(id);
+
+    const auto recycled = manager_.acquire();
+    EXPECT_EQ(manager_.submitSerial(recycled), 0u);
+    EXPECT_EQ(manager_.completedSerial(recycled), 0u);
+}
+
+TEST_F(MpsCommandQueueManagerTest, GetCommandQueueReturnsHandleForAcquiredId) {
+    EXPECT_CALL(mock_, createCommandQueue(_)).WillOnce(Return(makeQueue(0x800)));
+    EXPECT_CALL(mock_, createEvent(_)).WillOnce(Return(makeEvent(0x8000)));
+    manager_.initialize(1);
+
+    const auto id = manager_.acquire();
+    EXPECT_EQ(manager_.getCommandQueue(id), makeQueue(0x800));
+}
+
+TEST_F(MpsCommandQueueManagerTest, GetCommandQueueRejectsOutOfRangeId) {
+    EXPECT_CALL(mock_, createCommandQueue(_)).WillOnce(Return(makeQueue(0x810)));
+    EXPECT_CALL(mock_, createEvent(_)).WillOnce(Return(makeEvent(0x8110)));
+    manager_.initialize(1);
+
+    ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] {
+        (void)manager_.getCommandQueue(base::CommandQueueId{10});
+    });
+}
+
+TEST_F(MpsCommandQueueManagerTest, GetCommandQueueRejectsStaleId) {
+    manager_.setGrowthChunkSize(1);
+    EXPECT_CALL(mock_, createCommandQueue(_)).WillOnce(Return(makeQueue(0x820)));
+    EXPECT_CALL(mock_, createEvent(_)).WillOnce(Return(makeEvent(0x8210)));
+    manager_.initialize(1);
+
+    const auto id = manager_.acquire();
+    manager_.release(id);
+
+    ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
+        (void)manager_.getCommandQueue(id);
+    });
+}
