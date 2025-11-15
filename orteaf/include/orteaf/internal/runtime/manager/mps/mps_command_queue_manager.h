@@ -87,7 +87,7 @@ public:
     base::CommandQueueId acquire() {
         ensureInitialized();
         if (free_list_.empty()) {
-            growStatePool(states_.empty() ? growth_chunk_size_ : states_.size());
+            growStatePool(growth_chunk_size_);
             if (free_list_.empty()) {
                 ::orteaf::internal::diagnostics::error::throwError(
                     ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
@@ -231,7 +231,7 @@ private:
         if (additional_count == 0) {
             return;
         }
-        if (states_.size() + additional_count > kMaxStateCount) {
+        if (additional_count > (kMaxStateCount - states_.size())) {
             ::orteaf::internal::diagnostics::error::throwError(
                 ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
                 "Requested MPS command queue capacity exceeds supported limit");
