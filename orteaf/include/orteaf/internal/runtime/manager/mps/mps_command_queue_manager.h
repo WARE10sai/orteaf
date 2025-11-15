@@ -49,8 +49,8 @@ public:
             state.resetHazards();
             state.generation = 0;
             state.in_use = false;
-            states_.push_back(std::move(state));
-            free_list_.push_back(index);
+            states_.pushBack(std::move(state));
+            free_list_.pushBack(index);
         }
 
         initialized_ = true;
@@ -62,8 +62,8 @@ public:
             return;
         }
 
-        for (auto& state : states_) {
-            state.destroy();
+        for (std::size_t i = 0; i < states_.size(); ++i) {
+            states_[i].destroy();
         }
         states_.clear();
         free_list_.clear();
@@ -84,7 +84,7 @@ public:
         }
 
         const std::size_t index = free_list_.back();
-        free_list_.pop_back();
+        free_list_.resize(free_list_.size() - 1);
         State& state = states_[index];
         state.in_use = true;
         state.resetHazards();
@@ -93,10 +93,15 @@ public:
 
     void release(base::CommandQueueId id) {
         State& state = ensureActiveState(id);
+        if (state.submit_serial != state.completed_serial) {
+            ::orteaf::internal::diagnostics::error::throwError(
+                ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+                "MPS command queue has in-flight work");
+        }
         state.in_use = false;
         state.resetHazards();
         ++state.generation;
-        free_list_.push_back(indexFromId(id));
+        free_list_.pushBack(indexFromId(id));
     }
 
     ::orteaf::internal::backend::mps::MPSCommandQueue_t getCommandQueue(base::CommandQueueId id) const {
@@ -230,14 +235,14 @@ private:
             state.resetHazards();
             state.generation = 0;
             state.in_use = false;
-            states_.push_back(std::move(state));
-            free_list_.push_back(start_index + i);
+            states_.pushBack(std::move(state));
+            free_list_.pushBack(start_index + i);
         }
     }
 
     ::orteaf::internal::base::HeapVector<State> states_;
     ::orteaf::internal::base::HeapVector<std::size_t> free_list_;
-    const std::size_t default_growth_{4};
+    const std::size_t default_growth_{1};
     bool initialized_{false};
 };
 
