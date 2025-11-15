@@ -23,6 +23,18 @@ namespace orteaf::internal::runtime::mps {
 template <class BackendOps = ::orteaf::internal::runtime::backend_ops::mps::MpsBackendOps>
 class MpsCommandQueueManager {
 public:
+    void setGrowthChunkSize(std::size_t chunk) {
+        if (chunk == 0) {
+            ::orteaf::internal::diagnostics::error::throwError(
+                ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+                "Growth chunk size must be > 0");
+        }
+        growth_chunk_size_ = chunk;
+    }
+
+    std::size_t growthChunkSize() const noexcept {
+        return growth_chunk_size_;
+    }
     void initialize(std::size_t capacity) {
         shutdown();
 
@@ -75,7 +87,7 @@ public:
     base::CommandQueueId acquire() {
         ensureInitialized();
         if (free_list_.empty()) {
-            growStatePool(states_.empty() ? default_growth_ : states_.size());
+            growStatePool(states_.empty() ? growth_chunk_size_ : states_.size());
             if (free_list_.empty()) {
                 ::orteaf::internal::diagnostics::error::throwError(
                     ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
@@ -242,7 +254,7 @@ private:
 
     ::orteaf::internal::base::HeapVector<State> states_;
     ::orteaf::internal::base::HeapVector<std::size_t> free_list_;
-    const std::size_t default_growth_{1};
+    std::size_t growth_chunk_size_{1};
     bool initialized_{false};
 };
 
