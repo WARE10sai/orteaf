@@ -38,8 +38,9 @@ public:
     std::size_t growthChunkSize() const noexcept {
         return growth_chunk_size_;
     }
-    void initialize(std::size_t capacity) {
+    void initialize(::orteaf::internal::backend::mps::MPSDevice_t device, std::size_t capacity) {
         shutdown();
+        device_ = device;
 
         if (capacity == 0) {
             initialized_ = true;
@@ -59,8 +60,8 @@ public:
 
         for (std::size_t index = 0; index < capacity; ++index) {
             State state{};
-            state.command_queue = BackendOps::createCommandQueue(nullptr);
-            state.event = BackendOps::createEvent(nullptr);
+            state.command_queue = BackendOps::createCommandQueue(device_);
+            state.event = BackendOps::createEvent(device_);
             state.resetHazards();
             state.generation = 0;
             state.in_use = false;
@@ -82,6 +83,7 @@ public:
         }
         states_.clear();
         free_list_.clear();
+        device_ = nullptr;
         initialized_ = false;
     }
 
@@ -206,7 +208,7 @@ private:
     static constexpr std::size_t kMaxStateCount = static_cast<std::size_t>(kIndexMask);
 
     void ensureInitialized() const {
-        if (!initialized_) {
+        if (!initialized_ || device_ == nullptr) {
             ::orteaf::internal::diagnostics::error::throwError(
                 ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
                 "MPS command queues not initialized");
@@ -275,8 +277,8 @@ private:
 
         for (std::size_t i = 0; i < additional_count; ++i) {
             State state{};
-            state.command_queue = BackendOps::createCommandQueue(nullptr);
-            state.event = BackendOps::createEvent(nullptr);
+            state.command_queue = BackendOps::createCommandQueue(device_);
+            state.event = BackendOps::createEvent(device_);
             state.resetHazards();
             state.generation = 0;
             state.in_use = false;
@@ -289,6 +291,7 @@ private:
     ::orteaf::internal::base::HeapVector<std::size_t> free_list_;
     std::size_t growth_chunk_size_{1};
     bool initialized_{false};
+    ::orteaf::internal::backend::mps::MPSDevice_t device_{nullptr};
 };
 
 inline MpsCommandQueueManager<> MpsCommandQueueManagerInstance{};
