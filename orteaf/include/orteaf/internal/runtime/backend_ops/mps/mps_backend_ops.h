@@ -2,7 +2,9 @@
 
 #include "orteaf/internal/architecture/architecture.h"
 #include "orteaf/internal/architecture/mps_detect.h"
+#include "orteaf/internal/backend/mps/mps_command_queue.h"
 #include "orteaf/internal/backend/mps/mps_device.h"
+#include "orteaf/internal/backend/mps/mps_event.h"
 #include "orteaf/internal/base/strong_id.h"
 
 namespace orteaf::internal::runtime::backend_ops::mps {
@@ -23,7 +25,22 @@ struct MpsBackendOps {
     static ::orteaf::internal::architecture::Architecture detectArchitecture(::orteaf::internal::base::DeviceId device_id) {
         return ::orteaf::internal::architecture::detectMpsArchitectureForDeviceId(device_id);
     }
+
+    static ::orteaf::internal::backend::mps::MPSCommandQueue_t createCommandQueue(::orteaf::internal::backend::mps::MPSDevice_t device) {
+        return ::orteaf::internal::backend::mps::createCommandQueue(device);
+    }
+
+    static void destroyCommandQueue(::orteaf::internal::backend::mps::MPSCommandQueue_t queue) {
+        ::orteaf::internal::backend::mps::destroyCommandQueue(queue);
+    }
+
+    static ::orteaf::internal::backend::mps::MPSEvent_t createEvent(::orteaf::internal::backend::mps::MPSDevice_t device) {
+        return ::orteaf::internal::backend::mps::createEvent(device);
+    }
+
+    static void destroyEvent(::orteaf::internal::backend::mps::MPSEvent_t event) {
+        ::orteaf::internal::backend::mps::destroyEvent(event);
+    }
 };
 
 }  // namespace orteaf::internal::runtime::backend_ops::mps
-

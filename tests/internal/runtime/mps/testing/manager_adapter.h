@@ -1,7 +1,10 @@
 #pragma once
 
+#include <initializer_list>
 #include <type_traits>
 #include <utility>
+
+#include <gmock/gmock.h>
 
 #include "tests/internal/runtime/mps/testing/backend_mock_expectations.h"
 
@@ -26,63 +29,67 @@ public:
         return *manager_;
     }
 
-    template <class... Args>
-    void expectCreateCommandQueues(Args&&... args) {
+    void expectCreateCommandQueues(
+        std::initializer_list<::orteaf::internal::backend::mps::MPSCommandQueue_t> handles,
+        ::testing::Matcher<::orteaf::internal::backend::mps::MPSDevice_t> matcher = ::testing::_) {
         if constexpr (Provider::is_mock) {
             auto& mock = Provider::mock(*context_);
-            BackendMockExpectations::expectCreateCommandQueues(mock, std::forward<Args>(args)...);
+            BackendMockExpectations::expectCreateCommandQueues(mock, handles, matcher);
         } else {
-            (void)sizeof...(args);
+            (void)handles;
+            (void)matcher;
         }
     }
 
-    template <class... Args>
-    void expectCreateEvents(Args&&... args) {
+    void expectCreateEvents(
+        std::initializer_list<::orteaf::internal::backend::mps::MPSEvent_t> handles,
+        ::testing::Matcher<::orteaf::internal::backend::mps::MPSDevice_t> matcher = ::testing::_) {
         if constexpr (Provider::is_mock) {
             auto& mock = Provider::mock(*context_);
-            BackendMockExpectations::expectCreateEvents(mock, std::forward<Args>(args)...);
+            BackendMockExpectations::expectCreateEvents(mock, handles, matcher);
         } else {
-            (void)sizeof...(args);
+            (void)handles;
+            (void)matcher;
         }
     }
 
-    template <class... Args>
-    void expectDestroyCommandQueues(Args&&... args) {
+    void expectDestroyCommandQueues(
+        std::initializer_list<::orteaf::internal::backend::mps::MPSCommandQueue_t> handles) {
         if constexpr (Provider::is_mock) {
             auto& mock = Provider::mock(*context_);
-            BackendMockExpectations::expectDestroyCommandQueues(mock, std::forward<Args>(args)...);
+            BackendMockExpectations::expectDestroyCommandQueues(mock, handles);
         } else {
-            (void)sizeof...(args);
+            (void)handles;
         }
     }
 
-    template <class... Args>
-    void expectDestroyEvents(Args&&... args) {
+    void expectDestroyEvents(
+        std::initializer_list<::orteaf::internal::backend::mps::MPSEvent_t> handles) {
         if constexpr (Provider::is_mock) {
             auto& mock = Provider::mock(*context_);
-            BackendMockExpectations::expectDestroyEvents(mock, std::forward<Args>(args)...);
+            BackendMockExpectations::expectDestroyEvents(mock, handles);
         } else {
-            (void)sizeof...(args);
+            (void)handles;
         }
     }
 
-    template <class... Args>
-    void expectDestroyCommandQueuesInOrder(Args&&... args) {
+    void expectDestroyCommandQueuesInOrder(
+        std::initializer_list<::orteaf::internal::backend::mps::MPSCommandQueue_t> handles) {
         if constexpr (Provider::is_mock) {
             auto& mock = Provider::mock(*context_);
-            BackendMockExpectations::expectDestroyCommandQueuesInOrder(mock, std::forward<Args>(args)...);
+            BackendMockExpectations::expectDestroyCommandQueuesInOrder(mock, handles);
         } else {
-            (void)sizeof...(args);
+            (void)handles;
         }
     }
 
-    template <class... Args>
-    void expectDestroyEventsInOrder(Args&&... args) {
+    void expectDestroyEventsInOrder(
+        std::initializer_list<::orteaf::internal::backend::mps::MPSEvent_t> handles) {
         if constexpr (Provider::is_mock) {
             auto& mock = Provider::mock(*context_);
-            BackendMockExpectations::expectDestroyEventsInOrder(mock, std::forward<Args>(args)...);
+            BackendMockExpectations::expectDestroyEventsInOrder(mock, handles);
         } else {
-            (void)sizeof...(args);
+            (void)handles;
         }
     }
 
