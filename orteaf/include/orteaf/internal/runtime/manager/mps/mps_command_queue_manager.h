@@ -89,6 +89,14 @@ public:
 
     std::size_t capacity() const noexcept { return states_.size(); }
 
+    void growCapacity(std::size_t additional) {
+        ensureInitialized();
+        if (additional == 0) {
+            return;
+        }
+        growStatePool(additional);
+    }
+
     base::CommandQueueId acquire() {
         ensureInitialized();
         if (free_list_.empty()) {
