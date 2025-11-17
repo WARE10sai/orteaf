@@ -1,10 +1,14 @@
 #pragma once
 
+#include <string_view>
+
 #include "orteaf/internal/architecture/architecture.h"
 #include "orteaf/internal/architecture/mps_detect.h"
 #include "orteaf/internal/backend/mps/mps_command_queue.h"
 #include "orteaf/internal/backend/mps/mps_device.h"
 #include "orteaf/internal/backend/mps/mps_event.h"
+#include "orteaf/internal/backend/mps/mps_library.h"
+#include "orteaf/internal/backend/mps/mps_string.h"
 #include "orteaf/internal/base/strong_id.h"
 
 namespace orteaf::internal::runtime::backend_ops::mps {
@@ -40,6 +44,17 @@ struct MpsBackendOps {
 
     static void destroyEvent(::orteaf::internal::backend::mps::MPSEvent_t event) {
         ::orteaf::internal::backend::mps::destroyEvent(event);
+    }
+
+    static ::orteaf::internal::backend::mps::MPSLibrary_t createLibraryWithName(
+        ::orteaf::internal::backend::mps::MPSDevice_t device,
+        std::string_view name) {
+        const auto ns_name = ::orteaf::internal::backend::mps::toNsString(name);
+        return ::orteaf::internal::backend::mps::createLibrary(device, ns_name);
+    }
+
+    static void destroyLibrary(::orteaf::internal::backend::mps::MPSLibrary_t library) {
+        ::orteaf::internal::backend::mps::destroyLibrary(library);
     }
 };
 

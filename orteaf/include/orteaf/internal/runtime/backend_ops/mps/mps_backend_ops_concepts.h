@@ -1,11 +1,13 @@
 #pragma once
 
 #include <concepts>
+#include <string_view>
 
 #include "orteaf/internal/architecture/architecture.h"
 #include "orteaf/internal/backend/mps/mps_command_queue.h"
 #include "orteaf/internal/backend/mps/mps_device.h"
 #include "orteaf/internal/backend/mps/mps_event.h"
+#include "orteaf/internal/backend/mps/mps_library.h"
 #include "orteaf/internal/base/strong_id.h"
 
 namespace orteaf::internal::runtime::backend_ops::mps {
@@ -22,6 +24,8 @@ concept MpsRuntimeBackendOps = requires(
     ::orteaf::internal::backend::mps::MPSInt_t device_index,
     ::orteaf::internal::backend::mps::MPSCommandQueue_t queue,
     ::orteaf::internal::backend::mps::MPSEvent_t event,
+    ::orteaf::internal::backend::mps::MPSLibrary_t library,
+    std::string_view library_name,
     ::orteaf::internal::base::DeviceId device_id) {
     { BackendOps::getDeviceCount() } -> std::same_as<int>;
     { BackendOps::getDevice(device_index) }
@@ -36,6 +40,9 @@ concept MpsRuntimeBackendOps = requires(
     { BackendOps::createEvent(device) }
         -> std::same_as<::orteaf::internal::backend::mps::MPSEvent_t>;
     { BackendOps::destroyEvent(event) } -> std::same_as<void>;
+    { BackendOps::createLibraryWithName(device, library_name) }
+        -> std::same_as<::orteaf::internal::backend::mps::MPSLibrary_t>;
+    { BackendOps::destroyLibrary(library) } -> std::same_as<void>;
 };
 
 }  // namespace orteaf::internal::runtime::backend_ops::mps
