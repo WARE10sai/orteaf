@@ -333,10 +333,4 @@ private:
     ::orteaf::internal::backend::mps::MPSDevice_t device_{nullptr};
 };
 
-inline MpsCommandQueueManager<> MpsCommandQueueManagerInstance{};
-
-inline MpsCommandQueueManager<>& GetMpsCommandQueueManager() {
-    return MpsCommandQueueManagerInstance;
-}
-
 }  // namespace orteaf::internal::runtime::mps
