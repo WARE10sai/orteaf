@@ -375,29 +375,27 @@ TYPED_TEST(MpsDeviceManagerTypedTest, CommandQueueManagersInitializedWithConfigu
     constexpr std::size_t kCapacity = 2;
     manager.setCommandQueueInitialCapacity(kCapacity);
 
-    if constexpr (TypeParam::is_mock) {
-        const auto device0 = makeDevice(0x500);
-        const auto device1 = makeDevice(0x600);
-        this->adapter().expectGetDeviceCount(2);
-        this->adapter().expectGetDevices({{0, device0}, {1, device1}});
-        this->adapter().expectDetectArchitectures({
-            {base::DeviceId{0}, architecture::Architecture::mps_m3},
-            {base::DeviceId{1}, architecture::Architecture::mps_m4},
-        });
-        this->adapter().expectCreateCommandQueues(
-            {makeQueue(0x900), makeQueue(0x901)}, ::testing::Eq(device0));
-        this->adapter().expectCreateEvents(
-            {makeEvent(0xA00), makeEvent(0xA01)}, ::testing::Eq(device0));
-        this->adapter().expectCreateCommandQueues(
-            {makeQueue(0x902), makeQueue(0x903)}, ::testing::Eq(device1));
-        this->adapter().expectCreateEvents(
-            {makeEvent(0xA02), makeEvent(0xA03)}, ::testing::Eq(device1));
-        this->adapter().expectReleaseDevices({device0, device1});
-        this->adapter().expectDestroyEvents(
-            {makeEvent(0xA00), makeEvent(0xA01), makeEvent(0xA02), makeEvent(0xA03)});
-        this->adapter().expectDestroyCommandQueues(
-            {makeQueue(0x900), makeQueue(0x901), makeQueue(0x902), makeQueue(0x903)});
-    }
+    const auto device0 = makeDevice(0x500);
+    const auto device1 = makeDevice(0x600);
+    this->adapter().expectGetDeviceCount(2);
+    this->adapter().expectGetDevices({{0, device0}, {1, device1}});
+    this->adapter().expectDetectArchitectures({
+        {base::DeviceId{0}, architecture::Architecture::mps_m3},
+        {base::DeviceId{1}, architecture::Architecture::mps_m4},
+    });
+    this->adapter().expectCreateCommandQueues(
+        {makeQueue(0x900), makeQueue(0x901)}, ::testing::Eq(device0));
+    this->adapter().expectCreateEvents(
+        {makeEvent(0xA00), makeEvent(0xA01)}, ::testing::Eq(device0));
+    this->adapter().expectCreateCommandQueues(
+        {makeQueue(0x902), makeQueue(0x903)}, ::testing::Eq(device1));
+    this->adapter().expectCreateEvents(
+        {makeEvent(0xA02), makeEvent(0xA03)}, ::testing::Eq(device1));
+    this->adapter().expectReleaseDevices({device0, device1});
+    this->adapter().expectDestroyEvents(
+        {makeEvent(0xA00), makeEvent(0xA01), makeEvent(0xA02), makeEvent(0xA03)});
+    this->adapter().expectDestroyCommandQueues(
+        {makeQueue(0x900), makeQueue(0x901), makeQueue(0x902), makeQueue(0x903)});
 
     manager.initialize();
     const auto count = manager.getDeviceCount();
@@ -410,10 +408,30 @@ TYPED_TEST(MpsDeviceManagerTypedTest, CommandQueueManagersInitializedWithConfigu
         auto& queue_manager = manager.commandQueueManager(id);
         EXPECT_EQ(queue_manager.capacity(), kCapacity);
         if constexpr (TypeParam::is_mock) {
-            const auto expected_queue = (index == 0) ? makeQueue(0x900) : makeQueue(0x902);
-            const auto acquired = queue_manager.acquire();
-            EXPECT_EQ(queue_manager.getCommandQueue(acquired), expected_queue);
-            queue_manager.release(acquired);
+            std::vector<backend::mps::MPSCommandQueue_t> expected_handles =
+                (index == 0)
+                    ? std::vector<backend::mps::MPSCommandQueue_t>{
+                          makeQueue(0x900), makeQueue(0x901)}
+                    : std::vector<backend::mps::MPSCommandQueue_t>{
+                          makeQueue(0x902), makeQueue(0x903)};
+            std::vector<base::CommandQueueId> acquired_ids;
+            const std::size_t expected_count = expected_handles.size();
+            acquired_ids.reserve(expected_count);
+
+            for (std::size_t i = 0; i < expected_count; ++i) {
+                const auto acquired = queue_manager.acquire();
+                const auto queue_handle = queue_manager.getCommandQueue(acquired);
+                auto it = std::find(expected_handles.begin(), expected_handles.end(), queue_handle);
+                EXPECT_NE(it, expected_handles.end()) << "Unexpected handle " << queue_handle;
+                if (it != expected_handles.end()) {
+                    expected_handles.erase(it);
+                }
+                acquired_ids.push_back(acquired);
+            }
+            EXPECT_TRUE(expected_handles.empty());
+            for (const auto acquired : acquired_ids) {
+                queue_manager.release(acquired);
+            }
         }
     }
 
