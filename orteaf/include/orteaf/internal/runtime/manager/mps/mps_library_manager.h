@@ -50,6 +50,18 @@ requires ::orteaf::internal::runtime::backend_ops::mps::MpsRuntimeBackendOps<Bac
 class MpsLibraryManager {
 public:
     using PipelineManager = MpsComputePipelineStateManager<BackendOps>;
+
+    void setGrowthChunkSize(std::size_t chunk) {
+        if (chunk == 0) {
+            ::orteaf::internal::diagnostics::error::throwError(
+                ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+                "Growth chunk size must be > 0");
+        }
+        growth_chunk_size_ = chunk;
+    }
+
+    std::size_t growthChunkSize() const noexcept { return growth_chunk_size_; }
+
     void initialize(::orteaf::internal::backend::mps::MPSDevice_t device, std::size_t capacity) {
         shutdown();
         if (device == nullptr) {
@@ -145,10 +157,12 @@ public:
         std::uint32_t generation{0};
         LibraryKeyKind kind{LibraryKeyKind::kNamed};
         std::string identifier{};
+        std::size_t growth_chunk_size{0};
     };
 
     DebugState debugState(base::LibraryId id) const {
         DebugState snapshot{};
+        snapshot.growth_chunk_size = growth_chunk_size_;
         const std::size_t index = indexFromId(id);
         if (index < states_.size()) {
             const State& state = states_[index];
@@ -202,33 +216,6 @@ private:
         }
     }
 
-    std::size_t allocateSlot() {
-        if (free_list_.empty()) {
-            growStatePool(1);
-        }
-        const std::size_t index = free_list_.back();
-        free_list_.resize(free_list_.size() - 1);
-        return index;
-    }
-
-    void growStatePool(std::size_t additional) {
-        if (additional == 0) {
-            return;
-        }
-        if (additional > (kMaxStateCount - states_.size())) {
-            ::orteaf::internal::diagnostics::error::throwError(
-                ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-                "Requested MPS library capacity exceeds supported limit");
-        }
-        const std::size_t start = states_.size();
-        states_.reserve(states_.size() + additional);
-        free_list_.reserve(free_list_.size() + additional);
-        for (std::size_t offset = 0; offset < additional; ++offset) {
-            states_.pushBack(State{});
-            free_list_.pushBack(start + offset);
-        }
-    }
-
     State& ensureAliveState(base::LibraryId id) {
         ensureInitialized();
         const std::size_t index = indexFromId(id);
@@ -254,6 +241,38 @@ private:
 
     const State& ensureAliveState(base::LibraryId id) const {
         return const_cast<MpsLibraryManager*>(this)->ensureAliveState(id);
+    }
+
+    std::size_t allocateSlot() {
+        if (free_list_.empty()) {
+            growStatePool(growth_chunk_size_);
+            if (free_list_.empty()) {
+                ::orteaf::internal::diagnostics::error::throwError(
+                    ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+                    "No available MPS library slots");
+            }
+        }
+        const std::size_t index = free_list_.back();
+        free_list_.resize(free_list_.size() - 1);
+        return index;
+    }
+
+    void growStatePool(std::size_t additional) {
+        if (additional == 0) {
+            return;
+        }
+        if (additional > (kMaxStateCount - states_.size())) {
+            ::orteaf::internal::diagnostics::error::throwError(
+                ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+                "Requested MPS library capacity exceeds supported limit");
+        }
+        const std::size_t start = states_.size();
+        states_.reserve(states_.size() + additional);
+        free_list_.reserve(free_list_.size() + additional);
+        for (std::size_t offset = 0; offset < additional; ++offset) {
+            states_.pushBack(State{});
+            free_list_.pushBack(start + offset);
+        }
     }
 
     base::LibraryId encodeId(std::size_t index, std::uint32_t generation) const {
@@ -285,6 +304,7 @@ private:
     ::orteaf::internal::base::HeapVector<State> states_{};
     ::orteaf::internal::base::HeapVector<std::size_t> free_list_{};
     std::unordered_map<LibraryKey, std::size_t, LibraryKeyHasher> key_to_index_{};
+    std::size_t growth_chunk_size_{1};
     bool initialized_{false};
     ::orteaf::internal::backend::mps::MPSDevice_t device_{nullptr};
 };

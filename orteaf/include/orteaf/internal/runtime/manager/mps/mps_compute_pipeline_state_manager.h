@@ -51,6 +51,17 @@ template <class BackendOps = ::orteaf::internal::runtime::backend_ops::mps::MpsB
 requires ::orteaf::internal::runtime::backend_ops::mps::MpsRuntimeBackendOps<BackendOps>
 class MpsComputePipelineStateManager {
 public:
+    void setGrowthChunkSize(std::size_t chunk) {
+        if (chunk == 0) {
+            ::orteaf::internal::diagnostics::error::throwError(
+                ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+                "Growth chunk size must be > 0");
+        }
+        growth_chunk_size_ = chunk;
+    }
+
+    std::size_t growthChunkSize() const noexcept { return growth_chunk_size_; }
+
     void initialize(::orteaf::internal::backend::mps::MPSDevice_t device,
                     ::orteaf::internal::backend::mps::MPSLibrary_t library,
                     std::size_t capacity) {
@@ -150,10 +161,12 @@ public:
         std::uint32_t generation{0};
         FunctionKeyKind kind{FunctionKeyKind::kNamed};
         std::string identifier{};
+        std::size_t growth_chunk_size{0};
     };
 
     DebugState debugState(base::FunctionId id) const {
         DebugState snapshot{};
+        snapshot.growth_chunk_size = growth_chunk_size_;
         const std::size_t index = indexFromId(id);
         if (index < states_.size()) {
             const State& state = states_[index];
@@ -202,33 +215,6 @@ private:
         }
     }
 
-    std::size_t allocateSlot() {
-        if (free_list_.empty()) {
-            growStatePool(1);
-        }
-        const std::size_t index = free_list_.back();
-        free_list_.resize(free_list_.size() - 1);
-        return index;
-    }
-
-    void growStatePool(std::size_t additional) {
-        if (additional == 0) {
-            return;
-        }
-        if (additional > (kMaxStateCount - states_.size())) {
-            ::orteaf::internal::diagnostics::error::throwError(
-                ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-                "Requested MPS compute pipeline capacity exceeds supported limit");
-        }
-        const std::size_t start = states_.size();
-        states_.reserve(states_.size() + additional);
-        free_list_.reserve(free_list_.size() + additional);
-        for (std::size_t offset = 0; offset < additional; ++offset) {
-            states_.emplaceBack();
-            free_list_.pushBack(start + offset);
-        }
-    }
-
     void destroyState(State& state) {
         if (state.pipeline_state != nullptr) {
             BackendOps::destroyComputePipelineState(state.pipeline_state);
@@ -268,6 +254,38 @@ private:
         return const_cast<MpsComputePipelineStateManager*>(this)->ensureAliveState(id);
     }
 
+    std::size_t allocateSlot() {
+        if (free_list_.empty()) {
+            growStatePool(growth_chunk_size_);
+            if (free_list_.empty()) {
+                ::orteaf::internal::diagnostics::error::throwError(
+                    ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+                    "No available MPS compute pipeline slots");
+            }
+        }
+        const std::size_t index = free_list_.back();
+        free_list_.resize(free_list_.size() - 1);
+        return index;
+    }
+
+    void growStatePool(std::size_t additional) {
+        if (additional == 0) {
+            return;
+        }
+        if (additional > (kMaxStateCount - states_.size())) {
+            ::orteaf::internal::diagnostics::error::throwError(
+                ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+                "Requested MPS compute pipeline capacity exceeds supported limit");
+        }
+        const std::size_t start = states_.size();
+        states_.reserve(states_.size() + additional);
+        free_list_.reserve(free_list_.size() + additional);
+        for (std::size_t offset = 0; offset < additional; ++offset) {
+            states_.emplaceBack();
+            free_list_.pushBack(start + offset);
+        }
+    }
+
     base::FunctionId encodeId(std::size_t index, std::uint32_t generation) const {
         const std::uint32_t encoded_generation = generation & kGenerationMask;
         const std::uint32_t encoded =
@@ -287,6 +305,7 @@ private:
     ::orteaf::internal::base::HeapVector<State> states_{};
     ::orteaf::internal::base::HeapVector<std::size_t> free_list_{};
     std::unordered_map<FunctionKey, std::size_t, FunctionKeyHasher> key_to_index_{};
+    std::size_t growth_chunk_size_{1};
     bool initialized_{false};
     ::orteaf::internal::backend::mps::MPSDevice_t device_{nullptr};
     ::orteaf::internal::backend::mps::MPSLibrary_t library_{nullptr};

@@ -131,6 +131,46 @@ using ProviderTypes = ::testing::Types<
 
 TYPED_TEST_SUITE(MpsComputePipelineStateManagerTypedTest, ProviderTypes);
 
+TYPED_TEST(MpsComputePipelineStateManagerTypedTest, GrowthChunkSizeCanBeAdjusted) {
+    auto& manager = this->manager();
+    EXPECT_EQ(manager.growthChunkSize(), 1u);
+    manager.setGrowthChunkSize(5);
+    EXPECT_EQ(manager.growthChunkSize(), 5u);
+}
+
+TYPED_TEST(MpsComputePipelineStateManagerTypedTest, GrowthChunkSizeRejectsZero) {
+    auto& manager = this->manager();
+    ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] { manager.setGrowthChunkSize(0); });
+}
+
+TYPED_TEST(MpsComputePipelineStateManagerTypedTest, GrowthChunkSizeControlsPoolExpansion) {
+    auto& manager = this->manager();
+    if constexpr (!TypeParam::is_mock) {
+        GTEST_SKIP() << "Mock-only test";
+        return;
+    }
+    manager.setGrowthChunkSize(2);
+    if (!this->initializeManager(0)) {
+        return;
+    }
+
+    const auto key = mps_rt::FunctionKey::Named("ChunkedFunction");
+    const auto function_handle = makeFunction(0x8801);
+    const auto pipeline_handle = makePipeline(0x9901);
+    this->adapter().expectCreateFunctions({{"ChunkedFunction", function_handle}});
+    this->adapter().expectCreateComputePipelineStates({{function_handle, pipeline_handle}});
+
+    const auto id = manager.getOrCreate(key);
+    EXPECT_EQ(manager.capacity(), 2u);
+    const auto snapshot = manager.debugState(id);
+    EXPECT_EQ(snapshot.growth_chunk_size, 2u);
+
+    this->adapter().expectDestroyComputePipelineStates({pipeline_handle});
+    this->adapter().expectDestroyFunctions({function_handle});
+    manager.release(id);
+    manager.shutdown();
+}
+
 TYPED_TEST(MpsComputePipelineStateManagerTypedTest, AccessBeforeInitializationThrows) {
     auto& manager = this->manager();
     const auto key = mps_rt::FunctionKey::Named("Unused");

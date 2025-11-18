@@ -39,6 +39,7 @@ public:
     std::size_t growthChunkSize() const noexcept {
         return growth_chunk_size_;
     }
+    
     void initialize(::orteaf::internal::backend::mps::MPSDevice_t device, std::size_t capacity) {
         shutdown();
         device_ = device;
@@ -98,36 +99,8 @@ public:
         growStatePool(additional);
     }
 
-    void releaseUnusedQueues() {
-        ensureInitialized();
-        if (states_.empty() || free_list_.empty()) {
-            return;
-        }
-        if (free_list_.size() != states_.size()) {
-            ::orteaf::internal::diagnostics::error::throwError(
-                ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-                "Cannot release unused queues while queues are in use");
-        }
-        for (std::size_t i = 0; i < states_.size(); ++i) {
-            states_[i].destroy();
-        }
-        states_.clear();
-        free_list_.clear();
-    }
-
     base::CommandQueueId acquire() {
-        ensureInitialized();
-        if (free_list_.empty()) {
-            growStatePool(growth_chunk_size_);
-            if (free_list_.empty()) {
-                ::orteaf::internal::diagnostics::error::throwError(
-                    ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-                    "No available MPS command queues");
-            }
-        }
-
-        const std::size_t index = free_list_.back();
-        free_list_.resize(free_list_.size() - 1);
+        const std::size_t index = allocateSlot();
         State& state = states_[index];
         state.in_use = true;
         state.resetHazards();
@@ -145,6 +118,23 @@ public:
         state.resetHazards();
         ++state.generation;
         free_list_.pushBack(indexFromId(id));
+    }
+
+    void releaseUnusedQueues() {
+        ensureInitialized();
+        if (states_.empty() || free_list_.empty()) {
+            return;
+        }
+        if (free_list_.size() != states_.size()) {
+            ::orteaf::internal::diagnostics::error::throwError(
+                ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+                "Cannot release unused queues while queues are in use");
+        }
+        for (std::size_t i = 0; i < states_.size(); ++i) {
+            states_[i].destroy();
+        }
+        states_.clear();
+        free_list_.clear();
     }
 
     ::orteaf::internal::backend::mps::MPSCommandQueue_t getCommandQueue(base::CommandQueueId id) const {
@@ -179,10 +169,12 @@ public:
         std::uint32_t generation{0};
         bool in_use{false};
         bool queue_allocated{false};
+        std::size_t growth_chunk_size{0};
     };
 
     DebugState debugState(base::CommandQueueId id) const {
         DebugState snapshot{};
+        snapshot.growth_chunk_size = growth_chunk_size_;
         const std::size_t index = indexFromIdRaw(id);
         if (index < states_.size()) {
             const State& state = states_[index];
@@ -241,24 +233,44 @@ private:
         }
     }
 
-    base::CommandQueueId encodeId(std::size_t index, std::uint32_t generation) const {
-        const std::uint32_t encoded_generation = generation & kGenerationMask;
-        const std::uint32_t encoded =
-            (encoded_generation << kGenerationShift) |
-            static_cast<std::uint32_t>(index);
-        return base::CommandQueueId{encoded};
+    std::size_t allocateSlot() {
+        ensureInitialized();
+        if (free_list_.empty()) {
+            growStatePool(growth_chunk_size_);
+            if (free_list_.empty()) {
+                ::orteaf::internal::diagnostics::error::throwError(
+                    ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+                    "No available MPS command queues");
+            }
+        }
+        const std::size_t index = free_list_.back();
+        free_list_.resize(free_list_.size() - 1);
+        return index;
     }
 
-    std::size_t indexFromId(base::CommandQueueId id) const {
-        return indexFromIdRaw(id);
-    }
+    void growStatePool(std::size_t additional_count) {
+        if (additional_count == 0) {
+            return;
+        }
+        if (additional_count > (kMaxStateCount - states_.size())) {
+            ::orteaf::internal::diagnostics::error::throwError(
+                ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+                "Requested MPS command queue capacity exceeds supported limit");
+        }
+        const std::size_t start_index = states_.size();
+        states_.reserve(states_.size() + additional_count);
+        free_list_.reserve(states_.size() + additional_count);
 
-    std::size_t indexFromIdRaw(base::CommandQueueId id) const {
-        return static_cast<std::size_t>(static_cast<std::uint32_t>(id) & kIndexMask);
-    }
-
-    std::uint32_t generationFromId(base::CommandQueueId id) const {
-        return (static_cast<std::uint32_t>(id) >> kGenerationShift) & kGenerationMask;
+        for (std::size_t i = 0; i < additional_count; ++i) {
+            State state{};
+            state.command_queue = BackendOps::createCommandQueue(device_);
+            state.event = BackendOps::createEvent(device_);
+            state.resetHazards();
+            state.generation = 0;
+            state.in_use = false;
+            states_.pushBack(std::move(state));
+            free_list_.pushBack(start_index + i);
+        }
     }
 
     State& ensureActiveState(base::CommandQueueId id) {
@@ -288,29 +300,24 @@ private:
         return const_cast<MpsCommandQueueManager*>(this)->ensureActiveState(id);
     }
 
-    void growStatePool(std::size_t additional_count) {
-        if (additional_count == 0) {
-            return;
-        }
-        if (additional_count > (kMaxStateCount - states_.size())) {
-            ::orteaf::internal::diagnostics::error::throwError(
-                ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-                "Requested MPS command queue capacity exceeds supported limit");
-        }
-        const std::size_t start_index = states_.size();
-        states_.reserve(states_.size() + additional_count);
-        free_list_.reserve(states_.size() + additional_count);
+    base::CommandQueueId encodeId(std::size_t index, std::uint32_t generation) const {
+        const std::uint32_t encoded_generation = generation & kGenerationMask;
+        const std::uint32_t encoded =
+            (encoded_generation << kGenerationShift) |
+            static_cast<std::uint32_t>(index);
+        return base::CommandQueueId{encoded};
+    }
 
-        for (std::size_t i = 0; i < additional_count; ++i) {
-            State state{};
-            state.command_queue = BackendOps::createCommandQueue(device_);
-            state.event = BackendOps::createEvent(device_);
-            state.resetHazards();
-            state.generation = 0;
-            state.in_use = false;
-            states_.pushBack(std::move(state));
-            free_list_.pushBack(start_index + i);
-        }
+    std::size_t indexFromId(base::CommandQueueId id) const {
+        return indexFromIdRaw(id);
+    }
+
+    std::size_t indexFromIdRaw(base::CommandQueueId id) const {
+        return static_cast<std::size_t>(static_cast<std::uint32_t>(id) & kIndexMask);
+    }
+
+    std::uint32_t generationFromId(base::CommandQueueId id) const {
+        return (static_cast<std::uint32_t>(id) >> kGenerationShift) & kGenerationMask;
     }
 
     ::orteaf::internal::base::HeapVector<State> states_;
