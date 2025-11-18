@@ -95,6 +95,38 @@ using ProviderTypes = ::testing::Types<
 
 TYPED_TEST_SUITE(MpsLibraryManagerTypedTest, ProviderTypes);
 
+TYPED_TEST(MpsLibraryManagerTypedTest, GrowthChunkSizeCanBeAdjusted) {
+    auto& manager = this->manager();
+    EXPECT_EQ(manager.growthChunkSize(), 1u);
+    manager.setGrowthChunkSize(4);
+    EXPECT_EQ(manager.growthChunkSize(), 4u);
+}
+
+TYPED_TEST(MpsLibraryManagerTypedTest, GrowthChunkSizeRejectsZero) {
+    auto& manager = this->manager();
+    ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] { manager.setGrowthChunkSize(0); });
+}
+
+TYPED_TEST(MpsLibraryManagerTypedTest, GrowthChunkSizeControlsPoolExpansion) {
+    auto& manager = this->manager();
+    if constexpr (!TypeParam::is_mock) {
+        GTEST_SKIP() << "Mock-only test";
+        return;
+    }
+    manager.setGrowthChunkSize(3);
+    const auto device = this->adapter().device();
+    manager.initialize(device, 0);
+
+    const auto key = mps_rt::LibraryKey::Named("ChunkedLibrary");
+    const auto handle = makeLibrary(0x3501);
+    this->adapter().expectCreateLibraries({{"ChunkedLibrary", handle}});
+    const auto id = manager.getOrCreate(key);
+    EXPECT_EQ(manager.capacity(), 3u);
+    this->adapter().expectDestroyLibraries({handle});
+    manager.release(id);
+    manager.shutdown();
+}
+
 TYPED_TEST(MpsLibraryManagerTypedTest, AccessBeforeInitializationThrows) {
     auto& manager = this->manager();
     const auto key = mps_rt::LibraryKey::Named("Unused");
