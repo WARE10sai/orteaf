@@ -169,10 +169,12 @@ public:
         std::uint32_t generation{0};
         bool in_use{false};
         bool queue_allocated{false};
+        std::size_t growth_chunk_size{0};
     };
 
     DebugState debugState(base::CommandQueueId id) const {
         DebugState snapshot{};
+        snapshot.growth_chunk_size = growth_chunk_size_;
         const std::size_t index = indexFromIdRaw(id);
         if (index < states_.size()) {
             const State& state = states_[index];
