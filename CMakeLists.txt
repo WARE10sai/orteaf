@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.25)
 
 # Runtime enable flags (must be set before project() for conditional language enable)
 option(ENABLE_CPU "Enable CPU runtime" ON)
