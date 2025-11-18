@@ -100,31 +100,18 @@ public:
 
     void releaseUnusedQueues() {
         ensureInitialized();
-        if (free_list_.empty()) {
+        if (states_.empty() || free_list_.empty()) {
             return;
         }
-        std::vector<bool> is_free(states_.size(), false);
-        for (std::size_t i = 0; i < free_list_.size(); ++i) {
-            const std::size_t index = free_list_[i];
-            if (index < is_free.size()) {
-                is_free[index] = true;
-            }
+        if (free_list_.size() != states_.size()) {
+            ::orteaf::internal::diagnostics::error::throwError(
+                ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+                "Cannot release unused queues while queues are in use");
         }
-
-        std::size_t compact_index = 0;
         for (std::size_t i = 0; i < states_.size(); ++i) {
-            if (!is_free[i]) {
-                if (compact_index != i) {
-                    states_[compact_index] = std::move(states_[i]);
-                }
-                ++compact_index;
-            } else {
-                states_[i].destroy();
-            }
+            states_[i].destroy();
         }
-        if (compact_index < states_.size()) {
-            states_.resize(compact_index);
-        }
+        states_.clear();
         free_list_.clear();
     }
 

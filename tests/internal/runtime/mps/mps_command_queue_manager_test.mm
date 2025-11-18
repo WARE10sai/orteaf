@@ -163,6 +163,23 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest, ReleaseUnusedQueuesFreesResourcesAnd
     EXPECT_EQ(manager.capacity(), 0u);
 }
 
+TYPED_TEST(MpsCommandQueueManagerTypedTest, ReleaseUnusedQueuesFailsIfQueuesAreInUse) {
+    auto& manager = this->manager();
+    const auto device = this->adapter().device();
+
+    this->adapter().expectCreateCommandQueues({makeQueue(0x430), makeQueue(0x431)});
+    this->adapter().expectCreateEvents({makeEvent(0x440), makeEvent(0x441)});
+    manager.initialize(device, 2);
+
+    const auto id = manager.acquire();
+    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { manager.releaseUnusedQueues(); });
+
+    manager.release(id);
+    this->adapter().expectDestroyEvents({makeEvent(0x440), makeEvent(0x441)});
+    this->adapter().expectDestroyCommandQueues({makeQueue(0x430), makeQueue(0x431)});
+    manager.shutdown();
+}
+
 TYPED_TEST(MpsCommandQueueManagerTypedTest, AcquireFailsBeforeInitialization) {
     auto& manager = this->manager();
     ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.acquire(); });
