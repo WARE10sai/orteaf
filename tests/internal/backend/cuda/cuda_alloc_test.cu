@@ -11,6 +11,8 @@
 #include "tests/internal/testing/error_assert.h"
 
 #include <gtest/gtest.h>
+#include <array>
+#include <cstddef>
 #include <cstring>
 #include <vector>
 
@@ -298,8 +300,10 @@ TEST_F(CudaAllocCopyTest, CopyDifferentSizes) {
  */
 TEST_F(CudaAllocCopyTest, CopyToHostInvalidPointerThrows) {
     constexpr size_t size = sizeof(int);
-    void* host_ptr = nullptr;
     cuda::CUdeviceptr_t invalid_ptr = static_cast<cuda::CUdeviceptr_t>(-1);
+    std::array<std::byte, sizeof(int)> host_buffer{};
+    void* host_ptr = host_buffer.data();
+    ASSERT_NE(host_ptr, nullptr);
     
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidParameter,

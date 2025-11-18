@@ -190,10 +190,10 @@ TEST_F(CudaModuleFunctionTest, MultipleModuleLoadAttempts) {
  * @brief Test that load_module_from_image with various invalid data sizes throws.
  */
 TEST_F(CudaModuleFunctionTest, LoadModuleFromImageInvalidSizes) {
-    // Test with empty image
+    // Test with empty image buffer (std::vector::data() may yield nullptr)
     std::vector<char> empty_image;
     ::orteaf::tests::ExpectError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::OperationFailed,
+        ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
         [&] { cuda::loadModuleFromImage(empty_image.data()); });
     
     // Test with too small image
