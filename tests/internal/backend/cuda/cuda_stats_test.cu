@@ -29,14 +29,14 @@ protected:
         if (count == 0) {
             GTEST_SKIP() << "No CUDA devices available";
         }
-        device_ = cuda::get_device(0);
-        context_ = cuda::get_primary_context(device_);
-        cuda::set_context(context_);
+        device_ = cuda::getDevice(0);
+        context_ = cuda::getPrimaryContext(device_);
+        cuda::setContext(context_);
     }
     
     void TearDown() override {
         if (context_ != nullptr) {
-            cuda::release_primary_context(device_);
+            cuda::releasePrimaryContext(device_);
         }
     }
     
@@ -269,16 +269,16 @@ TEST_F(CudaStatsTest, StreamCreationUpdatesStats) {
     auto& stats = cuda::statsInstance();
     uint64_t initial_streams = stats.activeStreams();
     
-    cuda::CUstream_t stream1 = cuda::get_stream();
+    cuda::CUstream_t stream1 = cuda::getStream();
     EXPECT_EQ(stats.activeStreams(), initial_streams + 1);
     
-    cuda::CUstream_t stream2 = cuda::get_stream();
+    cuda::CUstream_t stream2 = cuda::getStream();
     EXPECT_EQ(stats.activeStreams(), initial_streams + 2);
     
-    cuda::release_stream(stream1);
+    cuda::releaseStream(stream1);
     EXPECT_EQ(stats.activeStreams(), initial_streams + 1);
     
-    cuda::release_stream(stream2);
+    cuda::releaseStream(stream2);
     EXPECT_EQ(stats.activeStreams(), initial_streams);
 }
 
@@ -289,16 +289,16 @@ TEST_F(CudaStatsTest, EventCreationUpdatesStats) {
     auto& stats = cuda::statsInstance();
     uint64_t initial_events = stats.activeEvents();
     
-    cuda::CUevent_t event1 = cuda::create_event();
+    cuda::CUevent_t event1 = cuda::createEvent();
     EXPECT_EQ(stats.activeEvents(), initial_events + 1);
     
-    cuda::CUevent_t event2 = cuda::create_event();
+    cuda::CUevent_t event2 = cuda::createEvent();
     EXPECT_EQ(stats.activeEvents(), initial_events + 2);
     
-    cuda::destroy_event(event1);
+    cuda::destroyEvent(event1);
     EXPECT_EQ(stats.activeEvents(), initial_events + 1);
     
-    cuda::destroy_event(event2);
+    cuda::destroyEvent(event2);
     EXPECT_EQ(stats.activeEvents(), initial_events);
 }
 

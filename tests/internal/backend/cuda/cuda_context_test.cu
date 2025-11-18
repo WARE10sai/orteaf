@@ -20,15 +20,15 @@ protected:
         if (count == 0) {
             GTEST_SKIP() << "No CUDA devices available";
         }
-        device_ = cuda::get_device(0);
-        context_ = cuda::get_primary_context(device_);
+        device_ = cuda::getDevice(0);
+        context_ = cuda::getPrimaryContext(device_);
         EXPECT_NE(context_, nullptr);
-        cuda::set_context(context_);
+        cuda::setContext(context_);
     }
 
     void TearDown() override {
         if (context_ != nullptr) {
-            cuda::release_primary_context(device_);
+            cuda::releasePrimaryContext(device_);
         }
     }
 
@@ -37,69 +37,69 @@ protected:
 };
 
 TEST_F(CudaContextTest, GetPrimaryContextSucceeds) {
-    cuda::CUcontext_t ctx = cuda::get_primary_context(device_);
+    cuda::CUcontext_t ctx = cuda::getPrimaryContext(device_);
     EXPECT_NE(ctx, nullptr);
 
-    cuda::CUcontext_t ctx2 = cuda::get_primary_context(device_);
+    cuda::CUcontext_t ctx2 = cuda::getPrimaryContext(device_);
     EXPECT_NE(ctx2, nullptr);
 
-    cuda::release_primary_context(device_);
-    cuda::release_primary_context(device_);
+    cuda::releasePrimaryContext(device_);
+    cuda::releasePrimaryContext(device_);
 }
 
 TEST_F(CudaContextTest, GetPrimaryContextInvalidDeviceThrows) {
     cuda::CUdevice_t invalid_device = static_cast<cuda::CUdevice_t>(-1);
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
-        [&]() { cuda::get_primary_context(invalid_device); });
+        [&]() { cuda::getPrimaryContext(invalid_device); });
 }
 
 TEST_F(CudaContextTest, CreateContextSucceeds) {
-    cuda::CUcontext_t new_ctx = cuda::create_context(device_);
+    cuda::CUcontext_t new_ctx = cuda::createContext(device_);
     EXPECT_NE(new_ctx, nullptr);
-    cuda::release_context(new_ctx);
+    cuda::releaseContext(new_ctx);
 }
 
 TEST_F(CudaContextTest, CreateContextInvalidDeviceThrows) {
     cuda::CUdevice_t invalid_device = static_cast<cuda::CUdevice_t>(-1);
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
-        [&]() { cuda::create_context(invalid_device); });
+        [&]() { cuda::createContext(invalid_device); });
 }
 
 TEST_F(CudaContextTest, SetContextSucceeds) {
-    EXPECT_NO_THROW(cuda::set_context(context_));
-    cuda::CUcontext_t new_ctx = cuda::create_context(device_);
-    EXPECT_NO_THROW(cuda::set_context(new_ctx));
-    EXPECT_NO_THROW(cuda::set_context(context_));
-    cuda::release_context(new_ctx);
+    EXPECT_NO_THROW(cuda::setContext(context_));
+    cuda::CUcontext_t new_ctx = cuda::createContext(device_);
+    EXPECT_NO_THROW(cuda::setContext(new_ctx));
+    EXPECT_NO_THROW(cuda::setContext(context_));
+    cuda::releaseContext(new_ctx);
 }
 
 TEST_F(CudaContextTest, SetContextNullptrThrows) {
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
-        []() { cuda::set_context(nullptr); });
+        []() { cuda::setContext(nullptr); });
 }
 
 TEST_F(CudaContextTest, ReleaseContextSucceeds) {
-    cuda::CUcontext_t new_ctx = cuda::create_context(device_);
-    EXPECT_NO_THROW(cuda::release_context(new_ctx));
+    cuda::CUcontext_t new_ctx = cuda::createContext(device_);
+    EXPECT_NO_THROW(cuda::releaseContext(new_ctx));
 }
 
 TEST_F(CudaContextTest, ReleaseContextNullptrNoOp) {
-    EXPECT_NO_THROW(cuda::release_context(nullptr));
+    EXPECT_NO_THROW(cuda::releaseContext(nullptr));
 }
 
 TEST_F(CudaContextTest, ReleasePrimaryContextSucceeds) {
-    cuda::CUcontext_t ctx = cuda::get_primary_context(device_);
+    cuda::CUcontext_t ctx = cuda::getPrimaryContext(device_);
     EXPECT_NE(ctx, nullptr);
-    EXPECT_NO_THROW(cuda::release_primary_context(device_));
+    EXPECT_NO_THROW(cuda::releasePrimaryContext(device_));
 }
 
 TEST_F(CudaContextTest, ContextLifecycle) {
-    cuda::CUcontext_t new_ctx = cuda::create_context(device_);
+    cuda::CUcontext_t new_ctx = cuda::createContext(device_);
     EXPECT_NE(new_ctx, nullptr);
-    cuda::set_context(new_ctx);
-    cuda::set_context(context_);
-    cuda::release_context(new_ctx);
+    cuda::setContext(new_ctx);
+    cuda::setContext(context_);
+    cuda::releaseContext(new_ctx);
 }

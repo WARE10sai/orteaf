@@ -26,14 +26,14 @@ protected:
         if (count == 0) {
             GTEST_SKIP() << "No CUDA devices available";
         }
-        device_ = cuda::get_device(0);
-        context_ = cuda::get_primary_context(device_);
-        cuda::set_context(context_);
+        device_ = cuda::getDevice(0);
+        context_ = cuda::getPrimaryContext(device_);
+        cuda::setContext(context_);
     }
     
     void TearDown() override {
         if (context_ != nullptr) {
-            cuda::release_primary_context(device_);
+            cuda::releasePrimaryContext(device_);
         }
     }
     
@@ -48,7 +48,7 @@ TEST_F(CudaModuleFunctionTest, LoadModuleFromFileNonExistentThrows) {
     const char* non_existent = "/nonexistent/path/to/module.ptx";
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::OperationFailed,
-        [&] { cuda::load_module_from_file(non_existent); });
+        [&] { cuda::loadModuleFromFile(non_existent); });
 }
 
 /**
@@ -57,7 +57,7 @@ TEST_F(CudaModuleFunctionTest, LoadModuleFromFileNonExistentThrows) {
 TEST_F(CudaModuleFunctionTest, LoadModuleFromFileNullptrThrows) {
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
-        [] { cuda::load_module_from_file(nullptr); });
+        [] { cuda::loadModuleFromFile(nullptr); });
 }
 
 /**
@@ -66,7 +66,7 @@ TEST_F(CudaModuleFunctionTest, LoadModuleFromFileNullptrThrows) {
 TEST_F(CudaModuleFunctionTest, LoadModuleFromFileEmptyThrows) {
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidParameter,
-        [] { cuda::load_module_from_file(""); });
+        [] { cuda::loadModuleFromFile(""); });
 }
 
 /**
@@ -76,7 +76,7 @@ TEST_F(CudaModuleFunctionTest, LoadModuleFromImageInvalidThrows) {
     const char* invalid_image = "not a valid CUDA module";
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::OperationFailed,
-        [&] { cuda::load_module_from_image(invalid_image); });
+        [&] { cuda::loadModuleFromImage(invalid_image); });
 }
 
 /**
@@ -85,7 +85,7 @@ TEST_F(CudaModuleFunctionTest, LoadModuleFromImageInvalidThrows) {
 TEST_F(CudaModuleFunctionTest, LoadModuleFromImageNullptrThrows) {
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
-        [] { cuda::load_module_from_image(nullptr); });
+        [] { cuda::loadModuleFromImage(nullptr); });
 }
 
 /**
@@ -94,7 +94,7 @@ TEST_F(CudaModuleFunctionTest, LoadModuleFromImageNullptrThrows) {
 TEST_F(CudaModuleFunctionTest, GetFunctionNullptrModuleThrows) {
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
-        [] { cuda::get_function(nullptr, "kernel_name"); });
+        [] { cuda::getFunction(nullptr, "kernel_name"); });
 }
 
 /**
@@ -104,7 +104,7 @@ TEST_F(CudaModuleFunctionTest, GetFunctionNullptrKernelNameThrows) {
     // Implementation checks nullptr before module validity, so we can use nullptr module
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
-        [] { cuda::get_function(nullptr, nullptr); });
+        [] { cuda::getFunction(nullptr, nullptr); });
 }
 
 /**
@@ -117,7 +117,7 @@ TEST_F(CudaModuleFunctionTest, GetFunctionEmptyKernelNameThrows) {
     // Testing with empty string on a valid module would require a real module file.
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
-        [] { cuda::get_function(nullptr, ""); });
+        [] { cuda::getFunction(nullptr, ""); });
 }
 
 /**
@@ -130,14 +130,14 @@ TEST_F(CudaModuleFunctionTest, GetFunctionNonExistentKernelThrows) {
     // Testing with a non-existent kernel on a valid module would require a real module file.
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
-        [] { cuda::get_function(nullptr, "nonexistent_kernel"); });
+        [] { cuda::getFunction(nullptr, "nonexistent_kernel"); });
 }
 
 /**
  * @brief Test that unload_module with nullptr is handled (implementation may throw or ignore).
  */
 TEST_F(CudaModuleFunctionTest, UnloadModuleNullptr) {
-    EXPECT_NO_THROW(cuda::unload_module(nullptr));
+    EXPECT_NO_THROW(cuda::unloadModule(nullptr));
 }
 
 /**
@@ -150,7 +150,7 @@ TEST_F(CudaModuleFunctionTest, UnloadModuleInvalidHandleThrows) {
     // handles would require a valid module that has been unloaded, which we can't
     // create without a real module file.
     // This test is effectively covered by UnloadModuleNullptr.
-    EXPECT_NO_THROW(cuda::unload_module(nullptr));
+    EXPECT_NO_THROW(cuda::unloadModule(nullptr));
 }
 
 /**
@@ -166,7 +166,7 @@ TEST_F(CudaModuleFunctionTest, ModuleLifecycleWithInvalidFile) {
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::OperationFailed,
         [&] {
-            cuda::CUmodule_t module = cuda::load_module_from_file(invalid_file);
+            cuda::CUmodule_t module = cuda::loadModuleFromFile(invalid_file);
             (void)module;
         });
 }
@@ -180,10 +180,10 @@ TEST_F(CudaModuleFunctionTest, MultipleModuleLoadAttempts) {
     
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::OperationFailed,
-        [&] { cuda::load_module_from_file(non_existent); });
+        [&] { cuda::loadModuleFromFile(non_existent); });
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::OperationFailed,
-        [&] { cuda::load_module_from_file(non_existent2); });
+        [&] { cuda::loadModuleFromFile(non_existent2); });
 }
 
 /**
@@ -194,19 +194,19 @@ TEST_F(CudaModuleFunctionTest, LoadModuleFromImageInvalidSizes) {
     std::vector<char> empty_image;
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::OperationFailed,
-        [&] { cuda::load_module_from_image(empty_image.data()); });
+        [&] { cuda::loadModuleFromImage(empty_image.data()); });
     
     // Test with too small image
     std::vector<char> small_image(10, 0);
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::OperationFailed,
-        [&] { cuda::load_module_from_image(small_image.data()); });
+        [&] { cuda::loadModuleFromImage(small_image.data()); });
     
     // Test with garbage data
     std::vector<char> garbage_image(1024, 0xFF);
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::OperationFailed,
-        [&] { cuda::load_module_from_image(garbage_image.data()); });
+        [&] { cuda::loadModuleFromImage(garbage_image.data()); });
 }
 
 /**
@@ -216,6 +216,6 @@ TEST_F(CudaModuleFunctionTest, UnloadModuleTwice) {
     // Testing double unload requires a valid module that has been loaded and then unloaded.
     // Since we don't have a valid module file in the test environment, we test that
     // unloading nullptr (which is already unloaded) is safe.
-    EXPECT_NO_THROW(cuda::unload_module(nullptr));
-    EXPECT_NO_THROW(cuda::unload_module(nullptr));  // Second call should also be safe
+    EXPECT_NO_THROW(cuda::unloadModule(nullptr));
+    EXPECT_NO_THROW(cuda::unloadModule(nullptr));  // Second call should also be safe
 }

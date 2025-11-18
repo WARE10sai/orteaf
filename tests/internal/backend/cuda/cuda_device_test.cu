@@ -35,10 +35,10 @@ TEST_F(CudaDeviceTest, GetDeviceCountSucceeds) {
 TEST_F(CudaDeviceTest, GetDeviceForValidIndex) {
     int count = cuda::getDeviceCount();
     if (count > 0) {
-        cuda::CUdevice_t device = cuda::get_device(0);
+        cuda::CUdevice_t device = cuda::getDevice(0);
         // CUdevice is an integer type, and device 0 can legitimately be 0
         // Verify the device is valid by querying its compute capability
-        EXPECT_NO_THROW(cuda::get_compute_capability(device));
+        EXPECT_NO_THROW(cuda::getComputeCapability(device));
     } else {
         GTEST_SKIP() << "No CUDA devices available";
     }
@@ -50,7 +50,7 @@ TEST_F(CudaDeviceTest, GetDeviceForValidIndex) {
 TEST_F(CudaDeviceTest, GetDeviceZero) {
     int count = cuda::getDeviceCount();
     if (count > 0) {
-        EXPECT_NO_THROW(cuda::get_device(0));
+        EXPECT_NO_THROW(cuda::getDevice(0));
     } else {
         GTEST_SKIP() << "No CUDA devices available";
     }
@@ -64,7 +64,7 @@ TEST_F(CudaDeviceTest, GetDeviceInvalidIndexThrows) {
     if (count > 0) {
         ::orteaf::tests::ExpectError(
             ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidParameter,
-            [&]() { cuda::get_device(static_cast<uint32_t>(count)); });
+            [&]() { cuda::getDevice(static_cast<uint32_t>(count)); });
     } else {
         GTEST_SKIP() << "No CUDA devices available";
     }
@@ -77,8 +77,8 @@ TEST_F(CudaDeviceTest, GetDeviceInvalidIndexThrows) {
 TEST_F(CudaDeviceTest, GetComputeCapabilitySucceeds) {
     int count = cuda::getDeviceCount();
     if (count > 0) {
-        cuda::CUdevice_t device = cuda::get_device(0);
-        cuda::ComputeCapability cap = cuda::get_compute_capability(device);
+        cuda::CUdevice_t device = cuda::getDevice(0);
+        cuda::ComputeCapability cap = cuda::getComputeCapability(device);
         EXPECT_GE(cap.major, 0);
         EXPECT_GE(cap.minor, 0);
         // Typical compute capabilities: 3.0, 3.5, 5.0, 5.2, 6.0, 6.1, 7.0, 7.5, 8.0, 8.6, 8.9, 9.0
@@ -99,7 +99,7 @@ TEST_F(CudaDeviceTest, GetComputeCapabilityInvalidDeviceThrows) {
         cuda::CUdevice_t invalid_device = static_cast<cuda::CUdevice_t>(-1);
         ::orteaf::tests::ExpectError(
             ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
-            [&] { cuda::get_compute_capability(invalid_device); });
+            [&] { cuda::getComputeCapability(invalid_device); });
     } else {
         GTEST_SKIP() << "No CUDA devices available";
     }
@@ -110,13 +110,13 @@ TEST_F(CudaDeviceTest, GetComputeCapabilityInvalidDeviceThrows) {
  */
 TEST_F(CudaDeviceTest, GetSmCountCalculation) {
     // Test with known compute capabilities
-    EXPECT_EQ(cuda::get_sm_count({3, 0}), 30);
-    EXPECT_EQ(cuda::get_sm_count({3, 5}), 35);
-    EXPECT_EQ(cuda::get_sm_count({5, 0}), 50);
-    EXPECT_EQ(cuda::get_sm_count({7, 5}), 75);
-    EXPECT_EQ(cuda::get_sm_count({8, 0}), 80);
-    EXPECT_EQ(cuda::get_sm_count({8, 6}), 86);
-    EXPECT_EQ(cuda::get_sm_count({9, 0}), 90);
+    EXPECT_EQ(cuda::getSmCount({3, 0}), 30);
+    EXPECT_EQ(cuda::getSmCount({3, 5}), 35);
+    EXPECT_EQ(cuda::getSmCount({5, 0}), 50);
+    EXPECT_EQ(cuda::getSmCount({7, 5}), 75);
+    EXPECT_EQ(cuda::getSmCount({8, 0}), 80);
+    EXPECT_EQ(cuda::getSmCount({8, 6}), 86);
+    EXPECT_EQ(cuda::getSmCount({9, 0}), 90);
 }
 
 /**
@@ -125,9 +125,9 @@ TEST_F(CudaDeviceTest, GetSmCountCalculation) {
 TEST_F(CudaDeviceTest, GetSmCountFromRealDevice) {
     int count = cuda::getDeviceCount();
     if (count > 0) {
-        cuda::CUdevice_t device = cuda::get_device(0);
-        cuda::ComputeCapability cap = cuda::get_compute_capability(device);
-        int sm_count = cuda::get_sm_count(cap);
+        cuda::CUdevice_t device = cuda::getDevice(0);
+        cuda::ComputeCapability cap = cuda::getComputeCapability(device);
+        int sm_count = cuda::getSmCount(cap);
         EXPECT_GT(sm_count, 0);
         EXPECT_EQ(sm_count, cap.major * 10 + cap.minor);
     } else {
@@ -144,7 +144,7 @@ TEST_F(CudaDeviceTest, EnumerateMultipleDevices) {
         // Get all devices
         std::vector<cuda::CUdevice_t> devices;
         for (int i = 0; i < count; ++i) {
-            cuda::CUdevice_t device = cuda::get_device(static_cast<uint32_t>(i));
+            cuda::CUdevice_t device = cuda::getDevice(static_cast<uint32_t>(i));
             // CUdevice is an integer type, and device 0 can legitimately be 0
             // We verify device validity by querying compute capability below
             devices.push_back(device);
@@ -152,7 +152,7 @@ TEST_F(CudaDeviceTest, EnumerateMultipleDevices) {
         
         // Verify all devices are unique (or at least valid)
         for (size_t i = 0; i < devices.size(); ++i) {
-            cuda::ComputeCapability cap = cuda::get_compute_capability(devices[i]);
+            cuda::ComputeCapability cap = cuda::getComputeCapability(devices[i]);
             EXPECT_GE(cap.major, 0);
         }
     } else {

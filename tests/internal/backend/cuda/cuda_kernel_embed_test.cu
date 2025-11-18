@@ -9,15 +9,15 @@ namespace {
 
 Blob find_any_available(std::string_view name) {
 #if ORTEAF_EMBED_HAS_FATBIN
-    Blob blob = find_kernel_data(name, CudaKernelFmt::Fatbin);
+    Blob blob = findKernelData(name, CudaKernelFmt::Fatbin);
     if (blob.data) return blob;
 #endif
 #if ORTEAF_EMBED_HAS_CUBIN
-    Blob blob = find_kernel_data(name, CudaKernelFmt::Cubin);
+    Blob blob = findKernelData(name, CudaKernelFmt::Cubin);
     if (blob.data) return blob;
 #endif
 #if ORTEAF_EMBED_HAS_PTX
-    Blob blob = find_kernel_data(name, CudaKernelFmt::Ptx);
+    Blob blob = findKernelData(name, CudaKernelFmt::Ptx);
     if (blob.data) return blob;
 #endif
     return {nullptr, 0};
@@ -29,7 +29,7 @@ TEST(CudaKernelEmbedTest, CanRetrieveEmbeddedBlob) {
     constexpr std::string_view kKernelName = "embed_test_kernels";
 
     // Request a format that might not exist to validate fallback logic.
-    Blob blob = find_kernel_data(kKernelName, CudaKernelFmt::Ptx);
+    Blob blob = findKernelData(kKernelName, CudaKernelFmt::Ptx);
     EXPECT_NE(blob.data, nullptr);
     EXPECT_GT(blob.size, 0);
 
@@ -51,7 +51,7 @@ TEST(CudaKernelEmbedTest, CanRetrieveEmbeddedBlob) {
 #endif
 
     // Looking up a missing kernel should return an empty blob.
-    Blob missing = find_kernel_data("nonexistent_kernel_for_embed_test", CudaKernelFmt::Fatbin);
+    Blob missing = findKernelData("nonexistent_kernel_for_embed_test", CudaKernelFmt::Fatbin);
     EXPECT_EQ(missing.data, nullptr);
     EXPECT_EQ(missing.size, 0);
 }
@@ -71,5 +71,5 @@ TEST(CudaKernelEmbedTest, FindAnyAvailableReturnsBlobWhenFormatsPresent) {
 TEST(CudaKernelEmbedTest, EmptyKernelNameThrows) {
     ::orteaf::tests::ExpectError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidParameter,
-        [] { find_kernel_data(std::string_view{}, CudaKernelFmt::Fatbin); });
+        [] { findKernelData(std::string_view{}, CudaKernelFmt::Fatbin); });
 }
