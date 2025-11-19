@@ -79,6 +79,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, AccessBeforeInitializationThrows) {
     EXPECT_FALSE(manager.isAlive(base::DeviceId{0}));
     ExpectError(diag_error::OrteafErrc::InvalidState, [&] { static_cast<void>(manager.commandQueueManager(base::DeviceId{0})); });
     ExpectError(diag_error::OrteafErrc::InvalidState, [&] { static_cast<void>(manager.heapManager(base::DeviceId{0})); });
+    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { static_cast<void>(manager.libraryManager(base::DeviceId{0})); });
     const auto snapshot = manager.debugState(base::DeviceId{0});
     EXPECT_FALSE(snapshot.in_range);
     EXPECT_FALSE(snapshot.is_alive);
@@ -469,5 +470,31 @@ TYPED_TEST(MpsDeviceManagerTypedTest, HeapManagersInitializedWithConfiguredCapac
         EXPECT_EQ(heap_manager.capacity(), kCapacity);
     }
 
+    manager.shutdown();
+}
+
+TYPED_TEST(MpsDeviceManagerTypedTest, LibraryManagersInitializedWithConfiguredCapacity) {
+    auto& manager = this->manager();
+    constexpr std::size_t kCapacity = 2;
+    manager.setLibraryInitialCapacity(kCapacity);
+
+    const auto device0 = makeDevice(0x750);
+    this->adapter().expectGetDeviceCount(1);
+    this->adapter().expectGetDevices({{0, device0}});
+    this->adapter().expectDetectArchitectures({
+        {base::DeviceId{0}, architecture::Architecture::mps_m3},
+    });
+    this->adapter().expectReleaseDevices({device0});
+
+    manager.initialize();
+    const auto count = manager.getDeviceCount();
+    if (count == 0u) {
+        GTEST_SKIP() << "No MPS devices available";
+    }
+    for (std::uint32_t index = 0; index < static_cast<std::uint32_t>(count); ++index) {
+        const auto id = base::DeviceId{index};
+        auto& library_manager = manager.libraryManager(id);
+        EXPECT_EQ(library_manager.capacity(), kCapacity);
+    }
     manager.shutdown();
 }
