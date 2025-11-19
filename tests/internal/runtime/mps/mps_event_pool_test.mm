@@ -75,11 +75,11 @@ TYPED_TEST(MpsEventPoolTypedTest, InitializePreallocatesEvents) {
     EXPECT_EQ(pool.availableCount(), 2u);
     auto first = pool.acquireEvent();
     auto second = pool.acquireEvent();
-    EXPECT_NE(first.event(), nullptr);
-    EXPECT_NE(second.event(), nullptr);
+    EXPECT_NE(first, nullptr);
+    EXPECT_NE(second, nullptr);
     EXPECT_EQ(pool.availableCount(), 0u);
-    first.reset();
-    second.reset();
+    pool.releaseEvent(first);
+    pool.releaseEvent(second);
     if constexpr (TypeParam::is_mock) {
         this->adapter().expectDestroyEvents({makeEvent(0x100), makeEvent(0x101)});
     }
@@ -98,7 +98,7 @@ TYPED_TEST(MpsEventPoolTypedTest, GrowChunkAllocatesInBlocks) {
         this->adapter().expectCreateEvents({makeEvent(0x200), makeEvent(0x201)});
     }
     auto first = pool.acquireEvent();
-    EXPECT_NE(first.event(), nullptr);
+    EXPECT_NE(first, nullptr);
     EXPECT_EQ(pool.availableCount(), 1u);
     auto second = pool.acquireEvent();
     EXPECT_EQ(pool.availableCount(), 0u);
@@ -106,51 +106,13 @@ TYPED_TEST(MpsEventPoolTypedTest, GrowChunkAllocatesInBlocks) {
         this->adapter().expectCreateEvents({makeEvent(0x202), makeEvent(0x203)});
     }
     auto third = pool.acquireEvent();
-    EXPECT_NE(third.event(), nullptr);
+    EXPECT_NE(third, nullptr);
     EXPECT_EQ(pool.availableCount(), 1u);
-    first.reset();
-    second.reset();
-    third.reset();
+    pool.releaseEvent(first);
+    pool.releaseEvent(second);
+    pool.releaseEvent(third);
     if constexpr (TypeParam::is_mock) {
         this->adapter().expectDestroyEvents({makeEvent(0x200), makeEvent(0x201), makeEvent(0x202), makeEvent(0x203)});
-    }
-    pool.shutdown();
-}
-
-TYPED_TEST(MpsEventPoolTypedTest, HandleResetIsIdempotent) {
-    auto& pool = this->pool();
-    const auto device = this->adapter().device();
-    if constexpr (TypeParam::is_mock) {
-        this->adapter().expectCreateEvents({makeEvent(0x300)});
-    }
-    pool.initialize(device, 1);
-    auto handle = pool.acquireEvent();
-    EXPECT_EQ(pool.availableCount(), 0u);
-    handle.reset();
-    EXPECT_EQ(pool.availableCount(), 1u);
-    handle.reset();
-    EXPECT_EQ(pool.availableCount(), 1u);
-    if constexpr (TypeParam::is_mock) {
-        this->adapter().expectDestroyEvents({makeEvent(0x300)});
-    }
-    pool.shutdown();
-}
-
-TYPED_TEST(MpsEventPoolTypedTest, HandleReturnsOnScopeExit) {
-    auto& pool = this->pool();
-    const auto device = this->adapter().device();
-    if constexpr (TypeParam::is_mock) {
-        this->adapter().expectCreateEvents({makeEvent(0x310)});
-    }
-    pool.initialize(device, 1);
-    {
-        auto handle = pool.acquireEvent();
-        EXPECT_EQ(pool.inUseCount(), 1u);
-    }
-    EXPECT_EQ(pool.inUseCount(), 0u);
-    EXPECT_EQ(pool.availableCount(), 1u);
-    if constexpr (TypeParam::is_mock) {
-        this->adapter().expectDestroyEvents({makeEvent(0x310)});
     }
     pool.shutdown();
 }
@@ -164,7 +126,7 @@ TYPED_TEST(MpsEventPoolTypedTest, ShutdownRejectsInUseEvents) {
     pool.initialize(device, 1);
     auto handle = pool.acquireEvent();
     ExpectError(diag_error::OrteafErrc::InvalidState, [&] { pool.shutdown(); });
-    handle.reset();
+    pool.releaseEvent(handle);
     if constexpr (TypeParam::is_mock) {
         this->adapter().expectDestroyEvents({makeEvent(0x350)});
     }
@@ -185,7 +147,7 @@ TYPED_TEST(MpsEventPoolTypedTest, DebugStateReflectsCounts) {
     EXPECT_EQ(snapshot.available_count, 1u);
     EXPECT_EQ(snapshot.in_use_count, 1u);
     EXPECT_EQ(snapshot.total_created, 2u);
-    handle.reset();
+    pool.releaseEvent(handle);
     if constexpr (TypeParam::is_mock) {
         this->adapter().expectDestroyEvents({makeEvent(0x360), makeEvent(0x361)});
     }
