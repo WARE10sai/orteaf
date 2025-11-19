@@ -38,9 +38,9 @@ public:
         }
         device_ = device;
         initialized_ = true;
-        #if ORTEAF_ENABLE_TEST
+#if ORTEAF_ENABLE_TEST
         total_created_ = 0;
-        #endif
+#endif
         free_list_.clear();
         free_list_.reserve(initial_capacity);
         if (initial_capacity > 0) {
@@ -53,7 +53,9 @@ public:
             free_list_.clear();
             active_handles_.clear();
             device_ = nullptr;
+#if ORTEAF_ENABLE_TEST
             total_created_ = 0;
+#endif
             return;
         }
         if (!active_handles_.empty()) {
@@ -67,9 +69,9 @@ public:
         free_list_.clear();
         active_handles_.clear();
         device_ = nullptr;
-        #if ORTEAF_ENABLE_TEST
+#if ORTEAF_ENABLE_TEST
         total_created_ = 0;
-        #endif
+#endif
         initialized_ = false;
     }
 
@@ -140,9 +142,9 @@ private:
                     "Backend failed to create MPS fence");
             }
             free_list_.pushBack(handle);
-            #if ORTEAF_ENABLE_TEST
+#if ORTEAF_ENABLE_TEST
             ++total_created_;
-            #endif
+#endif
         }
     }
 
@@ -151,9 +153,9 @@ private:
     ::orteaf::internal::backend::mps::MPSDevice_t device_{nullptr};
     base::HeapVector<::orteaf::internal::backend::mps::MPSFence_t> free_list_{};
     std::unordered_set<::orteaf::internal::backend::mps::MPSFence_t> active_handles_{};
-    #if ORTEAF_ENABLE_TEST
+#if ORTEAF_ENABLE_TEST
     std::size_t total_created_{0};
-    #endif
+#endif
 };
 
 }  // namespace orteaf::internal::runtime::mps
