@@ -12,6 +12,7 @@
 #include "orteaf/internal/runtime/backend_ops/mps/mps_backend_ops.h"
 #include "orteaf/internal/runtime/backend_ops/mps/mps_backend_ops_concepts.h"
 #include "orteaf/internal/runtime/manager/mps/mps_command_queue_manager.h"
+#include "orteaf/internal/runtime/manager/mps/mps_heap_manager.h"
 
 namespace orteaf::internal::runtime::mps {
 
@@ -25,6 +26,14 @@ public:
 
     std::size_t commandQueueInitialCapacity() const noexcept {
         return command_queue_initial_capacity_;
+    }
+
+    void setHeapInitialCapacity(std::size_t capacity) {
+        heap_initial_capacity_ = capacity;
+    }
+
+    std::size_t heapInitialCapacity() const noexcept {
+        return heap_initial_capacity_;
     }
 
     void initialize() {
@@ -52,8 +61,10 @@ public:
                 : ::orteaf::internal::architecture::Architecture::mps_generic;
             if (state.is_alive) {
                 state.command_queue_manager.initialize(device, command_queue_initial_capacity_);
+                state.heap_manager.initialize(device, heap_initial_capacity_);
             } else {
                 state.command_queue_manager.shutdown();
+                state.heap_manager.shutdown();
             }
         }
 
@@ -96,6 +107,18 @@ public:
         ::orteaf::internal::base::DeviceId id) const {
         const State& state = ensureValid(id);
         return state.command_queue_manager;
+    }
+
+    ::orteaf::internal::runtime::mps::MpsHeapManager<BackendOps>& heapManager(
+        ::orteaf::internal::base::DeviceId id) {
+        State& state = ensureValidState(id);
+        return state.heap_manager;
+    }
+
+    const ::orteaf::internal::runtime::mps::MpsHeapManager<BackendOps>& heapManager(
+        ::orteaf::internal::base::DeviceId id) const {
+        const State& state = ensureValid(id);
+        return state.heap_manager;
     }
 
     bool isAlive(::orteaf::internal::base::DeviceId id) const {
@@ -149,6 +172,7 @@ private:
             ::orteaf::internal::architecture::Architecture::mps_generic};
         bool is_alive{false};
         ::orteaf::internal::runtime::mps::MpsCommandQueueManager<BackendOps> command_queue_manager{};
+        ::orteaf::internal::runtime::mps::MpsHeapManager<BackendOps> heap_manager{};
 
         State() = default;
         State(const State&) = delete;
@@ -172,6 +196,7 @@ private:
 
         void reset() noexcept {
             command_queue_manager.shutdown();
+            heap_manager.shutdown();
             if (device != nullptr) {
                 BackendOps::releaseDevice(device);
             }
@@ -183,6 +208,7 @@ private:
     private:
         void moveFrom(State&& other) noexcept {
             command_queue_manager = std::move(other.command_queue_manager);
+            heap_manager = std::move(other.heap_manager);
             device = other.device;
             arch = other.arch;
             is_alive = other.is_alive;
@@ -219,6 +245,7 @@ private:
     ::orteaf::internal::base::HeapVector<State> states_;
     bool initialized_{false};
     std::size_t command_queue_initial_capacity_{0};
+    std::size_t heap_initial_capacity_{0};
 };
 
 inline MpsDeviceManager<> MpsDeviceManagerInstance{};
