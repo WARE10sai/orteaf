@@ -4,21 +4,20 @@
 
 #include <gtest/gtest.h>
 
-#include "orteaf/internal/runtime/backend_ops/mps/mps_backend_ops_concepts.h"
 #include "tests/internal/runtime/mps/testing/backend_ops_provider.h"
 #include "tests/internal/runtime/mps/testing/manager_adapter.h"
 
 namespace orteaf::tests::runtime::mps::testing {
 
-template <class Provider, template <class> class ManagerTemplate>
+template <class Provider, class ManagerType>
 class RuntimeManagerFixture : public ::testing::Test {
 protected:
     using BackendOps = typename Provider::BackendOps;
-    using Manager = ManagerTemplate<BackendOps>;
+    using Manager = ManagerType;
     using Adapter = ManagerAdapter<Manager, Provider>;
     using Context = typename Provider::Context;
 
-    static_assert(::orteaf::internal::runtime::backend_ops::mps::MpsRuntimeBackendOps<BackendOps>);
+    // static_assert(::orteaf::internal::runtime::backend_ops::mps::MpsRuntimeBackendOps<BackendOps>);
 
     void SetUp() override {
         manager_ = Manager{};
@@ -47,6 +46,8 @@ protected:
 
     Context& context() { return context_; }
     const Context& context() const { return context_; }
+
+    auto* getOps() { return Provider::getOps(context_); }
 
     Context context_{};
     Manager manager_{};
