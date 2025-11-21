@@ -7,7 +7,7 @@
 #include <limits>
 #include <unordered_map>
 
-#include "orteaf/internal/backend/mps/mps_heap.h"
+#include "orteaf/internal/backend/mps/wrapper/mps_heap.h"
 #include "orteaf/internal/base/heap_vector.h"
 #include "orteaf/internal/base/strong_id.h"
 #include "orteaf/internal/diagnostics/error/error.h"

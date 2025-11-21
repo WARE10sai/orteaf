@@ -3,10 +3,10 @@
  * @brief Tests for CUDA module loading/unloading and function lookup.
  */
 
-#include "orteaf/internal/backend/cuda/cuda_module.h"
-#include "orteaf/internal/backend/cuda/cuda_init.h"
-#include "orteaf/internal/backend/cuda/cuda_device.h"
-#include "orteaf/internal/backend/cuda/cuda_context.h"
+#include "orteaf/internal/backend/cuda/wrapper/cuda_module.h"
+#include "orteaf/internal/backend/cuda/wrapper/cuda_init.h"
+#include "orteaf/internal/backend/cuda/wrapper/cuda_device.h"
+#include "orteaf/internal/backend/cuda/wrapper/cuda_context.h"
 #include "tests/internal/testing/error_assert.h"
 
 #include <gtest/gtest.h>

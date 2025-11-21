@@ -4,7 +4,7 @@
 
 #include <cstddef>
 
-#include "orteaf/internal/backend/mps/mps_event.h"
+#include "orteaf/internal/backend/mps/wrapper/mps_event.h"
 #include "orteaf/internal/base/heap_vector.h"
 #include "orteaf/internal/diagnostics/error/error.h"
 #include "orteaf/internal/backend/mps/mps_slow_ops.h"
