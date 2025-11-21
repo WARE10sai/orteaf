@@ -58,6 +58,14 @@ struct HeapDescriptorKeyHasher {
 class MpsHeapManager {
 public:
   using BackendOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
+
+  MpsHeapManager() = default;
+  MpsHeapManager(const MpsHeapManager&) = delete;
+  MpsHeapManager& operator=(const MpsHeapManager&) = delete;
+  MpsHeapManager(MpsHeapManager&&) = default;
+  MpsHeapManager& operator=(MpsHeapManager&&) = default;
+  ~MpsHeapManager() = default;
+
   void setGrowthChunkSize(std::size_t chunk) {
     if (chunk == 0) {
       ::orteaf::internal::diagnostics::error::throwError(

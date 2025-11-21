@@ -21,6 +21,14 @@ namespace orteaf::internal::runtime::mps {
 class MpsDeviceManager {
 public:
     using BackendOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
+
+    MpsDeviceManager() = default;
+    MpsDeviceManager(const MpsDeviceManager&) = delete;
+    MpsDeviceManager& operator=(const MpsDeviceManager&) = delete;
+    MpsDeviceManager(MpsDeviceManager&&) = default;
+    MpsDeviceManager& operator=(MpsDeviceManager&&) = default;
+    ~MpsDeviceManager() = default;
+
     void setCommandQueueInitialCapacity(std::size_t capacity) {
         command_queue_initial_capacity_ = capacity;
     }

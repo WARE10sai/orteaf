@@ -52,6 +52,13 @@ public:
   using BackendOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
   using PipelineManager = MpsComputePipelineStateManager;
 
+  MpsLibraryManager() = default;
+  MpsLibraryManager(const MpsLibraryManager&) = delete;
+  MpsLibraryManager& operator=(const MpsLibraryManager&) = delete;
+  MpsLibraryManager(MpsLibraryManager&&) = default;
+  MpsLibraryManager& operator=(MpsLibraryManager&&) = default;
+  ~MpsLibraryManager() = default;
+
   void setGrowthChunkSize(std::size_t chunk) {
     if (chunk == 0) {
       ::orteaf::internal::diagnostics::error::throwError(
