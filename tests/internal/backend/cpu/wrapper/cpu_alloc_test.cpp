@@ -3,7 +3,7 @@
  * @brief Tests for CPU memory allocation functions.
  */
 
-#include "orteaf/internal/backend/cpu/cpu_alloc.h"
+#include "orteaf/internal/backend/cpu/wrapper/cpu_alloc.h"
 
 #include "tests/internal/testing/error_assert.h"
 

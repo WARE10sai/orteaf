@@ -3,8 +3,8 @@
  * @brief Tests for CPU statistics tracking.
  */
 
-#include "orteaf/internal/backend/cpu/cpu_stats.h"
-#include "orteaf/internal/backend/cpu/cpu_alloc.h"
+#include "orteaf/internal/backend/cpu/wrapper/cpu_stats.h"
+#include "orteaf/internal/backend/cpu/wrapper/cpu_alloc.h"
 
 #include <gtest/gtest.h>
 #include <thread>

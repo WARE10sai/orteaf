@@ -9,7 +9,7 @@
  * automatically update CPU statistics when available.
  */
 
-#include "orteaf/internal/backend/cpu/cpu_stats.h"
+#include "orteaf/internal/backend/cpu/wrapper/cpu_stats.h"
 #include "orteaf/internal/base/math_utils.h"
 #include "orteaf/internal/diagnostics/error/error.h"
 
