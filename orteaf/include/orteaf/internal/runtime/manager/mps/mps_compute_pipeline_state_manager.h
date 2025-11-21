@@ -51,6 +51,14 @@ struct FunctionKeyHasher {
 class MpsComputePipelineStateManager {
 public:
     using BackendOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
+
+    MpsComputePipelineStateManager() = default;
+    MpsComputePipelineStateManager(const MpsComputePipelineStateManager&) = delete;
+    MpsComputePipelineStateManager& operator=(const MpsComputePipelineStateManager&) = delete;
+    MpsComputePipelineStateManager(MpsComputePipelineStateManager&&) = default;
+    MpsComputePipelineStateManager& operator=(MpsComputePipelineStateManager&&) = default;
+    ~MpsComputePipelineStateManager() = default;
+
     void setGrowthChunkSize(std::size_t chunk) {
         if (chunk == 0) {
             ::orteaf::internal::diagnostics::error::throwError(

@@ -28,6 +28,13 @@ class MpsCommandQueueManager {
 public:
   using BackendOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
 
+  MpsCommandQueueManager() = default;
+  MpsCommandQueueManager(const MpsCommandQueueManager&) = delete;
+  MpsCommandQueueManager& operator=(const MpsCommandQueueManager&) = delete;
+  MpsCommandQueueManager(MpsCommandQueueManager&&) = default;
+  MpsCommandQueueManager& operator=(MpsCommandQueueManager&&) = default;
+  ~MpsCommandQueueManager() = default;
+
   void setGrowthChunkSize(std::size_t chunk) {
     if (chunk == 0) {
       ::orteaf::internal::diagnostics::error::throwError(

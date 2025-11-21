@@ -16,6 +16,13 @@ public:
     using BackendOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
     using EventHandle = ::orteaf::internal::backend::mps::MPSEvent_t;
 
+    MpsEventPool() = default;
+    MpsEventPool(const MpsEventPool&) = delete;
+    MpsEventPool& operator=(const MpsEventPool&) = delete;
+    MpsEventPool(MpsEventPool&&) = default;
+    MpsEventPool& operator=(MpsEventPool&&) = default;
+    ~MpsEventPool() = default;
+
     class Handle {
     public:
         Handle() = delete;
@@ -115,12 +122,6 @@ public:
 #endif
 
 private:
-    // Pool instances must remain immobile while handles exist.
-    MpsEventPool(const MpsEventPool&) = delete;
-    MpsEventPool& operator=(const MpsEventPool&) = delete;
-    MpsEventPool(MpsEventPool&&) = delete;
-    MpsEventPool& operator=(MpsEventPool&&) = delete;
-
     void ensureInitialized() const;
 
     void growFreeList(std::size_t count);

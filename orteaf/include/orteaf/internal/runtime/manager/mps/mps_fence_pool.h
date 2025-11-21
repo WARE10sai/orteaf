@@ -16,6 +16,13 @@ public:
     using BackendOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
     using FenceHandle = ::orteaf::internal::backend::mps::MPSFence_t;
 
+    MpsFencePool() = default;
+    MpsFencePool(const MpsFencePool&) = delete;
+    MpsFencePool& operator=(const MpsFencePool&) = delete;
+    MpsFencePool(MpsFencePool&&) = default;
+    MpsFencePool& operator=(MpsFencePool&&) = default;
+    ~MpsFencePool() = default;
+
     class Handle {
     public:
         Handle() = delete;
@@ -115,12 +122,6 @@ public:
 #endif
 
 private:
-    // Pool instances must remain immobile while handles exist.
-    MpsFencePool(const MpsFencePool&) = delete;
-    MpsFencePool& operator=(const MpsFencePool&) = delete;
-    MpsFencePool(MpsFencePool&&) = delete;
-    MpsFencePool& operator=(MpsFencePool&&) = delete;
-
     void ensureInitialized() const;
 
     void growFreeList(std::size_t count);
