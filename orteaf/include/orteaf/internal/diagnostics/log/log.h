@@ -6,6 +6,15 @@
 
 #include "orteaf/internal/diagnostics/error/error.h"
 
+// Preprocessor definitions for log levels to be used in conditional compilation
+#define ORTEAF_LOG_LEVEL_TRACE_VAL 0
+#define ORTEAF_LOG_LEVEL_DEBUG_VAL 1
+#define ORTEAF_LOG_LEVEL_INFO_VAL 2
+#define ORTEAF_LOG_LEVEL_WARN_VAL 3
+#define ORTEAF_LOG_LEVEL_ERROR_VAL 4
+#define ORTEAF_LOG_LEVEL_CRITICAL_VAL 5
+#define ORTEAF_LOG_LEVEL_OFF_VAL 6
+
 namespace orteaf::internal::diagnostics::log {
 
 /**
@@ -15,13 +24,13 @@ namespace orteaf::internal::diagnostics::log {
  * Higher numeric values indicate more severe or important messages.
  */
 enum class LogLevel : int {
-    Trace = 0,      ///< Most verbose level for detailed tracing information.
-    Debug = 1,      ///< Debug information useful for development.
-    Info = 2,       ///< Informational messages about normal operations.
-    Warn = 3,       ///< Warning messages for potentially problematic situations.
-    Error = 4,      ///< Error messages for error conditions.
-    Critical = 5,   ///< Critical error messages requiring immediate attention.
-    Off = 6         ///< Disables all logging output.
+    Trace = ORTEAF_LOG_LEVEL_TRACE_VAL,      ///< Most verbose level for detailed tracing information.
+    Debug = ORTEAF_LOG_LEVEL_DEBUG_VAL,      ///< Debug information useful for development.
+    Info = ORTEAF_LOG_LEVEL_INFO_VAL,        ///< Informational messages about normal operations.
+    Warn = ORTEAF_LOG_LEVEL_WARN_VAL,        ///< Warning messages for potentially problematic situations.
+    Error = ORTEAF_LOG_LEVEL_ERROR_VAL,      ///< Error messages for error conditions.
+    Critical = ORTEAF_LOG_LEVEL_CRITICAL_VAL,///< Critical error messages requiring immediate attention.
+    Off = ORTEAF_LOG_LEVEL_OFF_VAL           ///< Disables all logging output.
 };
 
 /**
@@ -279,53 +288,143 @@ inline constexpr bool ioInfoEnabled()  { return ioLevelEnabled<LogLevel::Info>()
 // Preprocessor-friendly switches for category/level (useful for #if guards).
 // Prefer constexpr helpers for normal code; use these only for conditional compilation.
 #if !defined(ORTEAF_CORE_TRACE_ENABLED)
-#  define ORTEAF_CORE_TRACE_ENABLED (coreTraceEnabled() ? 1 : 0)
+#  if defined(ORTEAF_LOG_LEVEL_CORE_VALUE)
+#    define ORTEAF_CORE_TRACE_ENABLED (ORTEAF_LOG_LEVEL_CORE_VALUE <= ORTEAF_LOG_LEVEL_TRACE_VAL)
+#  elif defined(ORTEAF_LOG_LEVEL_GLOBAL_VALUE)
+#    define ORTEAF_CORE_TRACE_ENABLED (ORTEAF_LOG_LEVEL_GLOBAL_VALUE <= ORTEAF_LOG_LEVEL_TRACE_VAL)
+#  else
+#    define ORTEAF_CORE_TRACE_ENABLED 0
+#  endif
 #endif
 #if !defined(ORTEAF_CORE_DEBUG_ENABLED)
-#  define ORTEAF_CORE_DEBUG_ENABLED (coreDebugEnabled() ? 1 : 0)
+#  if defined(ORTEAF_LOG_LEVEL_CORE_VALUE)
+#    define ORTEAF_CORE_DEBUG_ENABLED (ORTEAF_LOG_LEVEL_CORE_VALUE <= ORTEAF_LOG_LEVEL_DEBUG_VAL)
+#  elif defined(ORTEAF_LOG_LEVEL_GLOBAL_VALUE)
+#    define ORTEAF_CORE_DEBUG_ENABLED (ORTEAF_LOG_LEVEL_GLOBAL_VALUE <= ORTEAF_LOG_LEVEL_DEBUG_VAL)
+#  else
+#    define ORTEAF_CORE_DEBUG_ENABLED 0
+#  endif
 #endif
 #if !defined(ORTEAF_CORE_INFO_ENABLED)
-#  define ORTEAF_CORE_INFO_ENABLED  (coreInfoEnabled() ? 1 : 0)
+#  if defined(ORTEAF_LOG_LEVEL_CORE_VALUE)
+#    define ORTEAF_CORE_INFO_ENABLED  (ORTEAF_LOG_LEVEL_CORE_VALUE <= ORTEAF_LOG_LEVEL_INFO_VAL)
+#  elif defined(ORTEAF_LOG_LEVEL_GLOBAL_VALUE)
+#    define ORTEAF_CORE_INFO_ENABLED  (ORTEAF_LOG_LEVEL_GLOBAL_VALUE <= ORTEAF_LOG_LEVEL_INFO_VAL)
+#  else
+#    define ORTEAF_CORE_INFO_ENABLED 0
+#  endif
 #endif
 
 #if !defined(ORTEAF_TENSOR_TRACE_ENABLED)
-#  define ORTEAF_TENSOR_TRACE_ENABLED (tensorTraceEnabled() ? 1 : 0)
+#  if defined(ORTEAF_LOG_LEVEL_TENSOR_VALUE)
+#    define ORTEAF_TENSOR_TRACE_ENABLED (ORTEAF_LOG_LEVEL_TENSOR_VALUE <= ORTEAF_LOG_LEVEL_TRACE_VAL)
+#  elif defined(ORTEAF_LOG_LEVEL_GLOBAL_VALUE)
+#    define ORTEAF_TENSOR_TRACE_ENABLED (ORTEAF_LOG_LEVEL_GLOBAL_VALUE <= ORTEAF_LOG_LEVEL_TRACE_VAL)
+#  else
+#    define ORTEAF_TENSOR_TRACE_ENABLED 0
+#  endif
 #endif
 #if !defined(ORTEAF_TENSOR_DEBUG_ENABLED)
-#  define ORTEAF_TENSOR_DEBUG_ENABLED (tensorDebugEnabled() ? 1 : 0)
+#  if defined(ORTEAF_LOG_LEVEL_TENSOR_VALUE)
+#    define ORTEAF_TENSOR_DEBUG_ENABLED (ORTEAF_LOG_LEVEL_TENSOR_VALUE <= ORTEAF_LOG_LEVEL_DEBUG_VAL)
+#  elif defined(ORTEAF_LOG_LEVEL_GLOBAL_VALUE)
+#    define ORTEAF_TENSOR_DEBUG_ENABLED (ORTEAF_LOG_LEVEL_GLOBAL_VALUE <= ORTEAF_LOG_LEVEL_DEBUG_VAL)
+#  else
+#    define ORTEAF_TENSOR_DEBUG_ENABLED 0
+#  endif
 #endif
 #if !defined(ORTEAF_TENSOR_INFO_ENABLED)
-#  define ORTEAF_TENSOR_INFO_ENABLED  (tensorInfoEnabled() ? 1 : 0)
+#  if defined(ORTEAF_LOG_LEVEL_TENSOR_VALUE)
+#    define ORTEAF_TENSOR_INFO_ENABLED  (ORTEAF_LOG_LEVEL_TENSOR_VALUE <= ORTEAF_LOG_LEVEL_INFO_VAL)
+#  elif defined(ORTEAF_LOG_LEVEL_GLOBAL_VALUE)
+#    define ORTEAF_TENSOR_INFO_ENABLED  (ORTEAF_LOG_LEVEL_GLOBAL_VALUE <= ORTEAF_LOG_LEVEL_INFO_VAL)
+#  else
+#    define ORTEAF_TENSOR_INFO_ENABLED 0
+#  endif
 #endif
 
 #if !defined(ORTEAF_CUDA_TRACE_ENABLED)
-#  define ORTEAF_CUDA_TRACE_ENABLED (cudaTraceEnabled() ? 1 : 0)
+#  if defined(ORTEAF_LOG_LEVEL_CUDA_VALUE)
+#    define ORTEAF_CUDA_TRACE_ENABLED (ORTEAF_LOG_LEVEL_CUDA_VALUE <= ORTEAF_LOG_LEVEL_TRACE_VAL)
+#  elif defined(ORTEAF_LOG_LEVEL_GLOBAL_VALUE)
+#    define ORTEAF_CUDA_TRACE_ENABLED (ORTEAF_LOG_LEVEL_GLOBAL_VALUE <= ORTEAF_LOG_LEVEL_TRACE_VAL)
+#  else
+#    define ORTEAF_CUDA_TRACE_ENABLED 0
+#  endif
 #endif
 #if !defined(ORTEAF_CUDA_DEBUG_ENABLED)
-#  define ORTEAF_CUDA_DEBUG_ENABLED (cudaDebugEnabled() ? 1 : 0)
+#  if defined(ORTEAF_LOG_LEVEL_CUDA_VALUE)
+#    define ORTEAF_CUDA_DEBUG_ENABLED (ORTEAF_LOG_LEVEL_CUDA_VALUE <= ORTEAF_LOG_LEVEL_DEBUG_VAL)
+#  elif defined(ORTEAF_LOG_LEVEL_GLOBAL_VALUE)
+#    define ORTEAF_CUDA_DEBUG_ENABLED (ORTEAF_LOG_LEVEL_GLOBAL_VALUE <= ORTEAF_LOG_LEVEL_DEBUG_VAL)
+#  else
+#    define ORTEAF_CUDA_DEBUG_ENABLED 0
+#  endif
 #endif
 #if !defined(ORTEAF_CUDA_INFO_ENABLED)
-#  define ORTEAF_CUDA_INFO_ENABLED  (cudaInfoEnabled() ? 1 : 0)
+#  if defined(ORTEAF_LOG_LEVEL_CUDA_VALUE)
+#    define ORTEAF_CUDA_INFO_ENABLED  (ORTEAF_LOG_LEVEL_CUDA_VALUE <= ORTEAF_LOG_LEVEL_INFO_VAL)
+#  elif defined(ORTEAF_LOG_LEVEL_GLOBAL_VALUE)
+#    define ORTEAF_CUDA_INFO_ENABLED  (ORTEAF_LOG_LEVEL_GLOBAL_VALUE <= ORTEAF_LOG_LEVEL_INFO_VAL)
+#  else
+#    define ORTEAF_CUDA_INFO_ENABLED 0
+#  endif
 #endif
 
 #if !defined(ORTEAF_MPS_TRACE_ENABLED)
-#  define ORTEAF_MPS_TRACE_ENABLED (mpsTraceEnabled() ? 1 : 0)
+#  if defined(ORTEAF_LOG_LEVEL_MPS_VALUE)
+#    define ORTEAF_MPS_TRACE_ENABLED (ORTEAF_LOG_LEVEL_MPS_VALUE <= ORTEAF_LOG_LEVEL_TRACE_VAL)
+#  elif defined(ORTEAF_LOG_LEVEL_GLOBAL_VALUE)
+#    define ORTEAF_MPS_TRACE_ENABLED (ORTEAF_LOG_LEVEL_GLOBAL_VALUE <= ORTEAF_LOG_LEVEL_TRACE_VAL)
+#  else
+#    define ORTEAF_MPS_TRACE_ENABLED 0
+#  endif
 #endif
 #if !defined(ORTEAF_MPS_DEBUG_ENABLED)
-#  define ORTEAF_MPS_DEBUG_ENABLED (mpsDebugEnabled() ? 1 : 0)
+#  if defined(ORTEAF_LOG_LEVEL_MPS_VALUE)
+#    define ORTEAF_MPS_DEBUG_ENABLED (ORTEAF_LOG_LEVEL_MPS_VALUE <= ORTEAF_LOG_LEVEL_DEBUG_VAL)
+#  elif defined(ORTEAF_LOG_LEVEL_GLOBAL_VALUE)
+#    define ORTEAF_MPS_DEBUG_ENABLED (ORTEAF_LOG_LEVEL_GLOBAL_VALUE <= ORTEAF_LOG_LEVEL_DEBUG_VAL)
+#  else
+#    define ORTEAF_MPS_DEBUG_ENABLED 0
+#  endif
 #endif
 #if !defined(ORTEAF_MPS_INFO_ENABLED)
-#  define ORTEAF_MPS_INFO_ENABLED  (mpsInfoEnabled() ? 1 : 0)
+#  if defined(ORTEAF_LOG_LEVEL_MPS_VALUE)
+#    define ORTEAF_MPS_INFO_ENABLED  (ORTEAF_LOG_LEVEL_MPS_VALUE <= ORTEAF_LOG_LEVEL_INFO_VAL)
+#  elif defined(ORTEAF_LOG_LEVEL_GLOBAL_VALUE)
+#    define ORTEAF_MPS_INFO_ENABLED  (ORTEAF_LOG_LEVEL_GLOBAL_VALUE <= ORTEAF_LOG_LEVEL_INFO_VAL)
+#  else
+#    define ORTEAF_MPS_INFO_ENABLED 0
+#  endif
 #endif
 
 #if !defined(ORTEAF_IO_TRACE_ENABLED)
-#  define ORTEAF_IO_TRACE_ENABLED (ioTraceEnabled() ? 1 : 0)
+#  if defined(ORTEAF_LOG_LEVEL_IO_VALUE)
+#    define ORTEAF_IO_TRACE_ENABLED (ORTEAF_LOG_LEVEL_IO_VALUE <= ORTEAF_LOG_LEVEL_TRACE_VAL)
+#  elif defined(ORTEAF_LOG_LEVEL_GLOBAL_VALUE)
+#    define ORTEAF_IO_TRACE_ENABLED (ORTEAF_LOG_LEVEL_GLOBAL_VALUE <= ORTEAF_LOG_LEVEL_TRACE_VAL)
+#  else
+#    define ORTEAF_IO_TRACE_ENABLED 0
+#  endif
 #endif
 #if !defined(ORTEAF_IO_DEBUG_ENABLED)
-#  define ORTEAF_IO_DEBUG_ENABLED (ioDebugEnabled() ? 1 : 0)
+#  if defined(ORTEAF_LOG_LEVEL_IO_VALUE)
+#    define ORTEAF_IO_DEBUG_ENABLED (ORTEAF_LOG_LEVEL_IO_VALUE <= ORTEAF_LOG_LEVEL_DEBUG_VAL)
+#  elif defined(ORTEAF_LOG_LEVEL_GLOBAL_VALUE)
+#    define ORTEAF_IO_DEBUG_ENABLED (ORTEAF_LOG_LEVEL_GLOBAL_VALUE <= ORTEAF_LOG_LEVEL_DEBUG_VAL)
+#  else
+#    define ORTEAF_IO_DEBUG_ENABLED 0
+#  endif
 #endif
 #if !defined(ORTEAF_IO_INFO_ENABLED)
-#  define ORTEAF_IO_INFO_ENABLED  (ioInfoEnabled() ? 1 : 0)
+#  if defined(ORTEAF_LOG_LEVEL_IO_VALUE)
+#    define ORTEAF_IO_INFO_ENABLED  (ORTEAF_LOG_LEVEL_IO_VALUE <= ORTEAF_LOG_LEVEL_INFO_VAL)
+#  elif defined(ORTEAF_LOG_LEVEL_GLOBAL_VALUE)
+#    define ORTEAF_IO_INFO_ENABLED  (ORTEAF_LOG_LEVEL_GLOBAL_VALUE <= ORTEAF_LOG_LEVEL_INFO_VAL)
+#  else
+#    define ORTEAF_IO_INFO_ENABLED 0
+#  endif
 #endif
 
 
