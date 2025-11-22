@@ -191,6 +191,92 @@ constexpr int categoryThreshold<LogCategory::Io>() {
 }
 
 /**
+ * @brief Compile-time check whether a category permits a given level.
+ *
+ * Evaluates to true if the given log level would be emitted for the category,
+ * based on the compile-time thresholds configured via ORTEAF_LOG_LEVEL_* macros.
+ */
+template <LogCategory Category, LogLevel Level>
+constexpr bool isLevelEnabled() {
+    return levelToInt(Level) >= categoryThreshold<Category>();
+}
+
+/**
+ * @brief Core-category helper to check a specific level.
+ */
+template <LogLevel Level>
+constexpr bool coreLevelEnabled() {
+    return isLevelEnabled<LogCategory::Core, Level>();
+}
+
+/// @brief Core category: Trace or lower enabled.
+inline constexpr bool coreTraceEnabled() { return coreLevelEnabled<LogLevel::Trace>(); }
+/// @brief Core category: Debug or lower enabled.
+inline constexpr bool coreDebugEnabled() { return coreLevelEnabled<LogLevel::Debug>(); }
+/// @brief Core category: Info or lower enabled.
+inline constexpr bool coreInfoEnabled()  { return coreLevelEnabled<LogLevel::Info>(); }
+
+/**
+ * @brief Tensor-category helper to check a specific level.
+ */
+template <LogLevel Level>
+constexpr bool tensorLevelEnabled() {
+    return isLevelEnabled<LogCategory::Tensor, Level>();
+}
+
+/// @brief Tensor category: Trace or lower enabled.
+inline constexpr bool tensorTraceEnabled() { return tensorLevelEnabled<LogLevel::Trace>(); }
+/// @brief Tensor category: Debug or lower enabled.
+inline constexpr bool tensorDebugEnabled() { return tensorLevelEnabled<LogLevel::Debug>(); }
+/// @brief Tensor category: Info or lower enabled.
+inline constexpr bool tensorInfoEnabled()  { return tensorLevelEnabled<LogLevel::Info>(); }
+
+/**
+ * @brief CUDA-category helper to check a specific level.
+ */
+template <LogLevel Level>
+constexpr bool cudaLevelEnabled() {
+    return isLevelEnabled<LogCategory::Cuda, Level>();
+}
+
+/// @brief CUDA category: Trace or lower enabled.
+inline constexpr bool cudaTraceEnabled() { return cudaLevelEnabled<LogLevel::Trace>(); }
+/// @brief CUDA category: Debug or lower enabled.
+inline constexpr bool cudaDebugEnabled() { return cudaLevelEnabled<LogLevel::Debug>(); }
+/// @brief CUDA category: Info or lower enabled.
+inline constexpr bool cudaInfoEnabled()  { return cudaLevelEnabled<LogLevel::Info>(); }
+
+/**
+ * @brief MPS-category helper to check a specific level.
+ */
+template <LogLevel Level>
+constexpr bool mpsLevelEnabled() {
+    return isLevelEnabled<LogCategory::Mps, Level>();
+}
+
+/// @brief MPS category: Trace or lower enabled.
+inline constexpr bool mpsTraceEnabled() { return mpsLevelEnabled<LogLevel::Trace>(); }
+/// @brief MPS category: Debug or lower enabled.
+inline constexpr bool mpsDebugEnabled() { return mpsLevelEnabled<LogLevel::Debug>(); }
+/// @brief MPS category: Info or lower enabled.
+inline constexpr bool mpsInfoEnabled()  { return mpsLevelEnabled<LogLevel::Info>(); }
+
+/**
+ * @brief IO-category helper to check a specific level.
+ */
+template <LogLevel Level>
+constexpr bool ioLevelEnabled() {
+    return isLevelEnabled<LogCategory::Io, Level>();
+}
+
+/// @brief IO category: Trace or lower enabled.
+inline constexpr bool ioTraceEnabled() { return ioLevelEnabled<LogLevel::Trace>(); }
+/// @brief IO category: Debug or lower enabled.
+inline constexpr bool ioDebugEnabled() { return ioLevelEnabled<LogLevel::Debug>(); }
+/// @brief IO category: Info or lower enabled.
+inline constexpr bool ioInfoEnabled()  { return ioLevelEnabled<LogLevel::Info>(); }
+
+/**
  * @brief Function pointer type for custom log sinks.
  *
  * A log sink function receives log messages and can route them to custom
