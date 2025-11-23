@@ -13,7 +13,7 @@
 
 namespace orteaf::internal::runtime::allocator::policies {
 
-template <::orteaf::internal::backend::Backend B, typename Resource>
+template <typename Resource, ::orteaf::internal::backend::Backend B>
 class DirectResourceLargeAllocPolicy {
 public:
     using BufferId = ::orteaf::internal::base::BufferId;
