@@ -15,6 +15,11 @@ struct CpuResource {
     using Context = ::orteaf::internal::backend::BackendTraits<::orteaf::internal::backend::Backend::Cpu>::Context;
     using Stream = ::orteaf::internal::backend::BackendTraits<::orteaf::internal::backend::Backend::Cpu>::Stream;
 
+    // VA 予約。CPU では VA=PA なので allocate と同一。
+    static BufferView reserve(std::size_t size, std::size_t alignment, Device device, Stream stream) {
+        return allocate(size, alignment, device, stream);
+    }
+
     static BufferView allocate(std::size_t size, std::size_t alignment, Device /*device*/, Stream /*stream*/) {
         if (size == 0) {
             return {};
@@ -30,6 +35,16 @@ struct CpuResource {
         // Reconstruct the original base pointer from view data/offset.
         void* base = static_cast<void*>(static_cast<char*>(view.data()) - view.offset());
         cpu::dealloc(base, size);
+    }
+
+    // map/unmap は CPU では no-op。ただし unmap で実質解放することで PA を返す。
+    static BufferView map(BufferView view, Device /*device*/, Context /*context*/, Stream /*stream*/) {
+        return view;
+    }
+
+    static void unmap(BufferView view, std::size_t size, std::size_t alignment,
+                      Device device, Context /*context*/, Stream stream) {
+        deallocate(view, size, alignment, device, stream);
     }
 };
 
