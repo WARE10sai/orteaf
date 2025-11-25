@@ -28,7 +28,7 @@ struct CpuResource {
     // map/unmap は VA を RW に切り替え、unmap で解放する。
     static BufferView map(HeapRegion region, Stream stream);
 
-    static void unmap(HeapRegion region, std::size_t size, Stream stream);
+    static void unmap(BufferView view, std::size_t size, Stream stream);
 };
 
 }  // namespace orteaf::internal::backend::cpu

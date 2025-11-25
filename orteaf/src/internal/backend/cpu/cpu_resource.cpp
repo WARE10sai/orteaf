@@ -48,10 +48,10 @@ CpuResource::BufferView CpuResource::map(HeapRegion region, Stream /*stream*/) {
     return BufferView{base, 0, region.size()};
 }
 
-void CpuResource::unmap(HeapRegion region, std::size_t /*size*/, Stream /*stream*/) {
-    if (!region) return;
-    void* base = region.data();
-    if (munmap(base, region.size()) != 0) {
+void CpuResource::unmap(BufferView view, std::size_t size, Stream /*stream*/) {
+    if (!view) return;
+    void* base = static_cast<void*>(static_cast<char*>(view.data()) - view.offset());
+    if (munmap(base, size) != 0) {
         diagnostics::error::throwError(diagnostics::error::OrteafErrc::OperationFailed, "cpu unmap munmap failed");
     }
 }
