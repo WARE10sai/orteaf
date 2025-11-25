@@ -16,6 +16,7 @@
 
 #if ORTEAF_ENABLE_MPS
 #include <orteaf/internal/backend/mps/mps_buffer_view.h>
+#include <orteaf/internal/backend/mps/mps_heap_region.h>
 #include <orteaf/internal/backend/mps/wrapper/mps_command_queue.h>
 #include <orteaf/internal/backend/mps/wrapper/mps_device.h>
 #endif
@@ -52,7 +53,7 @@ struct BackendTraits<Backend::Cuda> {
 template <>
 struct BackendTraits<Backend::Mps> {
     using BufferView = mps::MpsBufferView;
-    using HeapRegion = mps::MpsBufferView;  // TODO: replace with dedicated region type
+    using HeapRegion = mps::MpsHeapRegion;
     using Stream = mps::MPSCommandQueue_t;    // command queue as stream token
     using Device = mps::MPSDevice_t;          // opaque Metal device handle
     using Context = int;                      // placeholder until context abstraction exists
