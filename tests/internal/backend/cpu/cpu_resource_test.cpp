@@ -5,6 +5,12 @@
 namespace orteaf::tests {
 using orteaf::internal::backend::cpu::CpuResource;
 
+TEST(CpuResourceTest, InitializeIsIdempotent) {
+    CpuResource::Config cfg{};
+    EXPECT_NO_THROW(CpuResource::initialize(cfg));
+    EXPECT_NO_THROW(CpuResource::initialize(cfg));  // no-op
+}
+
 TEST(CpuResourceTest, ReserveZeroReturnsEmpty) {
     auto view = CpuResource::reserve(0, {}, {});
     EXPECT_FALSE(view);

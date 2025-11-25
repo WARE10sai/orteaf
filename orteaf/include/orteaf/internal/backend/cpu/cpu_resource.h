@@ -18,6 +18,12 @@ struct CpuResource {
     using Context = ::orteaf::internal::backend::BackendTraits<::orteaf::internal::backend::Backend::Cpu>::Context;
     using Stream = ::orteaf::internal::backend::BackendTraits<::orteaf::internal::backend::Backend::Cpu>::Stream;
 
+    struct Config {};
+
+    static void initialize(const Config& /*config*/ = {}) noexcept {
+        // CPU backend is stateless; nothing to do.
+    }
+
     // VA 予約。mmap で PROT_NONE の領域を確保し、PA は map で張る。
     static BufferView reserve(std::size_t size, Device /*device*/, Stream /*stream*/) {
         if (size == 0) {
