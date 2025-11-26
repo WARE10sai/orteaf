@@ -284,7 +284,7 @@ private:
             }
         }
 
-        return BufferView{base_addr, size};
+        return BufferView{base_addr, 0, total_allocated};
     }
 
     Storage& storage_;

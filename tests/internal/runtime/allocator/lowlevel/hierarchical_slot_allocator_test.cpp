@@ -391,8 +391,9 @@ TEST_F(HierarchicalSlotAllocatorTest, DeallocateDenseReleasesAllSlots) {
     cfg.initial_bytes = 512;
     allocator_.initialize(cfg, &heap_ops_);
 
-    auto view = allocator_.allocateDense(300);
-    allocator_.deallocateDense(view);
+    const std::size_t request_size = 300;
+    auto view = allocator_.allocateDense(request_size);
+    allocator_.deallocateDense(view, request_size);
 }
 
 TEST_F(HierarchicalSlotAllocatorTest, AllocateDenseSingleSlotLevel0) {
