@@ -12,25 +12,25 @@ TEST(CpuResourceTest, InitializeIsIdempotent) {
 }
 
 TEST(CpuResourceTest, AllocateZeroReturnsEmpty) {
-    auto view = CpuResource::allocate(0, 64, {});
+    auto view = CpuResource::allocate(0, 64);
     EXPECT_FALSE(view);
 }
 
 TEST(CpuResourceTest, AllocateAndDeallocateSucceeds) {
     constexpr std::size_t kSize = 256;
     constexpr std::size_t kAlign = 64;
-    auto view = CpuResource::allocate(kSize, kAlign, {});
+    auto view = CpuResource::allocate(kSize, kAlign);
     ASSERT_TRUE(view);
     EXPECT_NE(view.data(), nullptr);
     EXPECT_EQ(view.offset(), 0u);
     EXPECT_EQ(view.size(), kSize);
 
     // Should not throw
-    CpuResource::deallocate(view, kSize, kAlign, {});
+    CpuResource::deallocate(view, kSize, kAlign);
 }
 
 TEST(CpuResourceTest, DeallocateOnEmptyIsNoOp) {
-    CpuResource::deallocate({}, 0, 0, {});
+    CpuResource::deallocate({}, 0, 0);
     SUCCEED();
 }
 

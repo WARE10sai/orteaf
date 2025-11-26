@@ -2,7 +2,6 @@
 
 #include <cstddef>
 
-#include "orteaf/internal/backend/backend_traits.h"
 #include "orteaf/internal/backend/cpu/cpu_buffer_view.h"
 
 namespace orteaf::internal::backend::cpu {
@@ -11,15 +10,14 @@ namespace orteaf::internal::backend::cpu {
 // For low-level heap operations (reserve/map/unmap), use CpuHeapOps.
 struct CpuResource {
     using BufferView = ::orteaf::internal::backend::cpu::CpuBufferView;
-    using Stream = ::orteaf::internal::backend::BackendTraits<::orteaf::internal::backend::Backend::Cpu>::Stream;
 
     struct Config {};
 
     static void initialize(const Config& config = {}) noexcept;
 
-    static BufferView allocate(std::size_t size, std::size_t alignment, Stream stream);
+    static BufferView allocate(std::size_t size, std::size_t alignment);
 
-    static void deallocate(BufferView view, std::size_t size, std::size_t alignment, Stream stream);
+    static void deallocate(BufferView view, std::size_t size, std::size_t alignment);
 };
 
 }  // namespace orteaf::internal::backend::cpu

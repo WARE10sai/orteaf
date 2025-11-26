@@ -2,7 +2,6 @@
 
 #include <cstddef>
 
-#include "orteaf/internal/backend/backend_traits.h"
 #include "orteaf/internal/backend/cpu/cpu_buffer_view.h"
 #include "orteaf/internal/backend/cpu/cpu_heap_region.h"
 
@@ -13,16 +12,15 @@ namespace orteaf::internal::backend::cpu {
 struct CpuHeapOps {
     using BufferView = ::orteaf::internal::backend::cpu::CpuBufferView;
     using HeapRegion = ::orteaf::internal::backend::cpu::CpuHeapRegion;
-    using Stream = ::orteaf::internal::backend::BackendTraits<::orteaf::internal::backend::Backend::Cpu>::Stream;
 
     // VA reservation. Allocates PROT_NONE region via mmap.
-    static HeapRegion reserve(std::size_t size, Stream stream);
+    static HeapRegion reserve(std::size_t size);
 
     // Map reserved region to RW.
-    static BufferView map(HeapRegion region, Stream stream);
+    static BufferView map(HeapRegion region);
 
     // Unmap and release the region.
-    static void unmap(BufferView view, std::size_t size, Stream stream);
+    static void unmap(BufferView view, std::size_t size);
 };
 
 }  // namespace orteaf::internal::backend::cpu

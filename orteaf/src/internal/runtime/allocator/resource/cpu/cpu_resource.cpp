@@ -8,7 +8,7 @@ void CpuResource::initialize(const Config& /*config*/) noexcept {
     // CPU backend is stateless; nothing to do.
 }
 
-CpuResource::BufferView CpuResource::allocate(std::size_t size, std::size_t alignment, Stream /*stream*/) {
+CpuResource::BufferView CpuResource::allocate(std::size_t size, std::size_t alignment) {
     if (size == 0) {
         return {};
     }
@@ -16,7 +16,7 @@ CpuResource::BufferView CpuResource::allocate(std::size_t size, std::size_t alig
     return BufferView{base, 0, size};
 }
 
-void CpuResource::deallocate(BufferView view, std::size_t size, std::size_t /*alignment*/, Stream /*stream*/) {
+void CpuResource::deallocate(BufferView view, std::size_t size, std::size_t /*alignment*/) {
     if (!view) {
         return;
     }

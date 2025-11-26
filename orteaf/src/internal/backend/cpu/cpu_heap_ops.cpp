@@ -6,7 +6,7 @@
 
 namespace orteaf::internal::backend::cpu {
 
-CpuHeapOps::HeapRegion CpuHeapOps::reserve(std::size_t size, Stream /*stream*/) {
+CpuHeapOps::HeapRegion CpuHeapOps::reserve(std::size_t size) {
     if (size == 0) {
         return {};
     }
@@ -17,7 +17,7 @@ CpuHeapOps::HeapRegion CpuHeapOps::reserve(std::size_t size, Stream /*stream*/) 
     return HeapRegion{base, size};
 }
 
-CpuHeapOps::BufferView CpuHeapOps::map(HeapRegion region, Stream /*stream*/) {
+CpuHeapOps::BufferView CpuHeapOps::map(HeapRegion region) {
     if (!region) return {};
     void* base = region.data();
     if (mprotect(base, region.size(), PROT_READ | PROT_WRITE) != 0) {
@@ -26,7 +26,7 @@ CpuHeapOps::BufferView CpuHeapOps::map(HeapRegion region, Stream /*stream*/) {
     return BufferView{base, 0, region.size()};
 }
 
-void CpuHeapOps::unmap(BufferView view, std::size_t size, Stream /*stream*/) {
+void CpuHeapOps::unmap(BufferView view, std::size_t size) {
     if (!view) return;
     void* base = static_cast<void*>(static_cast<char*>(view.data()) - view.offset());
     if (munmap(base, size) != 0) {
