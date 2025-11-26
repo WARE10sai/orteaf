@@ -183,12 +183,11 @@ public:
     }
 
     /**
-     * @brief 最小で足りるサイズクラスからチャンクを取得して登録する。
+     * @brief 指定サイズに対応するスロットを割り当て、BufferViewを返す。
      * @param size 要求サイズ
-     * @param alignment アラインメント（階層型では使用しない）
+     * @return 割り当てられたBufferView
      */
-    MemoryBlock addChunk(std::size_t size, std::size_t alignment) {
-        (void)alignment;  // 階層型では使用しない
+    BufferView allocate(std::size_t size) {
         std::lock_guard<std::mutex> lock(mutex_);
 
         const auto target_layer = pickLayer(size);
@@ -202,32 +201,31 @@ public:
         Slot& slot = layer.slots[slot_index];
 
         slot.state = static_cast<uint8_t>(State::InUse);
-        slot.used = 0;
-        slot.pending = 0;
 
         if (!slot.mapped_flag) {
             slot.mapped = heap_ops_->map(slot.region);
             slot.mapped_flag = true;
         }
 
-        return MemoryBlock{encode(target_layer, slot_index), slot.mapped};
+        return slot.mapped;
     }
 
     /**
-     * @brief チャンクを解放する。used/pending が残っていれば解放しない。
+     * @brief BufferViewに対応するスロットを解放し、物理メモリをunmapする。
+     * @param view 解放するBufferView
      */
-    bool releaseChunk(BufferId id) {
+    void deallocate(BufferView view) {
+        if (!view) return;
         std::lock_guard<std::mutex> lock(mutex_);
 
-        auto [layer_index, slot_index] = decode(id);
-        if (layer_index >= layers_.size()) return false;
+        auto [layer_index, slot_index] = findSlotByAddress(view.data());
+        if (layer_index == kInvalidLayer) return;
 
         auto& layer = layers_[layer_index];
-        if (slot_index >= layer.slots.size()) return false;
+        if (slot_index >= layer.slots.size()) return;
 
         Slot& slot = layer.slots[slot_index];
-        if (getState(slot) != State::InUse) return false;
-        if (slot.pending > 0 || slot.used > 0) return false;
+        if (getState(slot) != State::InUse) return;
 
         heap_ops_->unmap(slot.mapped, layer.chunk_size);
         resetSlot(slot);
@@ -237,7 +235,6 @@ public:
         if (slot.parent_slot != kNoParent && layer_index > 0) {
             tryMergeParent(layer_index, layer_index - 1, slot.parent_slot);
         }
-        return true;
     }
 
     std::size_t findChunkSize(BufferId id) const {
@@ -707,6 +704,21 @@ private:
     // ========================================================================
     // Slot lookup
     // ========================================================================
+    
+    /// アドレスからスロットを特定する。{layer_index, slot_index}を返す。
+    std::pair<uint32_t, uint32_t> findSlotByAddress(void* addr) const {
+        for (uint32_t layer_idx = 0; layer_idx < layers_.size(); ++layer_idx) {
+            const auto& layer = layers_[layer_idx];
+            for (uint32_t slot_idx = 0; slot_idx < layer.slots.size(); ++slot_idx) {
+                const Slot& slot = layer.slots[slot_idx];
+                if (getState(slot) == State::InUse && slot.mapped.data() == addr) {
+                    return {layer_idx, slot_idx};
+                }
+            }
+        }
+        return {kInvalidLayer, 0};
+    }
+
     Slot* findSlot(BufferId id) {
         auto [layer_index, slot_index] = decode(id);
         if (layer_index >= layers_.size()) return nullptr;

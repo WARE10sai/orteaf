@@ -43,9 +43,69 @@ protected:
     Allocator allocator_;
 };
 
-// TODO: Add tests for new API
-// - allocate(size) -> BufferView
-// - deallocate(BufferView)
-// - rs calculation algorithm
+TEST_F(HierarchicalSlotAllocatorTest, AllocateReturnsBufferView) {
+    void* base = reinterpret_cast<void*>(0x1000);
+    EXPECT_CALL(impl_, reserve(256)).WillOnce(Return(HeapRegion{base, 256}));
+    EXPECT_CALL(impl_, map(_)).WillOnce(::testing::Invoke(MapReturn));
+
+    Allocator::Config cfg{};
+    cfg.levels = {256};
+    allocator_.initialize(cfg, &heap_ops_);
+
+    auto view = allocator_.allocate(256);
+    EXPECT_TRUE(view);
+    EXPECT_EQ(view.data(), base);
+    EXPECT_EQ(view.size(), 256);
+}
+
+TEST_F(HierarchicalSlotAllocatorTest, DeallocateCallsUnmap) {
+    void* base = reinterpret_cast<void*>(0x2000);
+    EXPECT_CALL(impl_, reserve(256)).WillOnce(Return(HeapRegion{base, 256}));
+    EXPECT_CALL(impl_, map(_)).WillOnce(::testing::Invoke(MapReturn));
+    EXPECT_CALL(impl_, unmap(_, 256)).Times(1);
+
+    Allocator::Config cfg{};
+    cfg.levels = {256};
+    allocator_.initialize(cfg, &heap_ops_);
+
+    auto view = allocator_.allocate(256);
+    allocator_.deallocate(view);
+}
+
+TEST_F(HierarchicalSlotAllocatorTest, AllocateSmallSizeFromLargerSlot) {
+    // levels = {256, 128} で 128 バイトを要求
+    // 256 バイトのスロットから 128 バイトのスロットに分割されるはず
+    void* base = reinterpret_cast<void*>(0x3000);
+    EXPECT_CALL(impl_, reserve(256)).WillOnce(Return(HeapRegion{base, 256}));
+    EXPECT_CALL(impl_, map(_)).WillOnce(::testing::Invoke(MapReturn));
+
+    Allocator::Config cfg{};
+    cfg.levels = {256, 128};
+    cfg.initial_bytes = 256;
+    allocator_.initialize(cfg, &heap_ops_);
+
+    auto view = allocator_.allocate(128);
+    EXPECT_TRUE(view);
+    EXPECT_EQ(view.size(), 128);
+}
+
+TEST_F(HierarchicalSlotAllocatorTest, DeallocateSplitSlotCallsUnmap) {
+    // levels = {256, 128} で 128 バイトを確保して解放
+    void* base = reinterpret_cast<void*>(0x4000);
+    EXPECT_CALL(impl_, reserve(256)).WillOnce(Return(HeapRegion{base, 256}));
+    EXPECT_CALL(impl_, map(_)).WillOnce(::testing::Invoke(MapReturn));
+    EXPECT_CALL(impl_, unmap(_, 128)).Times(1);
+
+    Allocator::Config cfg{};
+    cfg.levels = {256, 128};
+    cfg.initial_bytes = 256;
+    allocator_.initialize(cfg, &heap_ops_);
+
+    auto view = allocator_.allocate(128);
+    EXPECT_TRUE(view);
+    EXPECT_EQ(view.size(), 128);
+
+    allocator_.deallocate(view);
+}
 
 }  // namespace
