@@ -2,6 +2,8 @@
 
 #include "orteaf/internal/runtime/allocator/lowlevel/hierarchical_slot_single_ops.h"
 
+#include <optional>
+
 namespace orteaf::internal::runtime::allocator::policies {
 
 /**
@@ -167,62 +169,66 @@ private:
         int32_t lower = static_cast<int32_t>(lower_bound);
         int32_t upper = static_cast<int32_t>(upper_bound);
 
-        // 方向に沿ってスキャンし、必要スロットを満たす連続領域を探す
-        for (int32_t idx = static_cast<int32_t>(start_idx);
-             inBounds(idx, lower, upper, dir);
-             idx += step(dir)) {
+        int32_t idx = static_cast<int32_t>(start_idx);
+
+        // まず最初のFreeまで進む（need==0でSplitなら子に潜る）
+        while (inBounds(idx, lower, upper, dir) &&
+               layer.slots[static_cast<size_t>(idx)].state != State::Free) {
             const auto state = layer.slots[static_cast<size_t>(idx)].state;
-
-            if (need == 0) {
-                // このレイヤでは確保しない。Splitを見つけたら子に降りる。
-                if (state == State::Split) {
-                    if (descend_to_child(static_cast<uint32_t>(idx))) return true;
-                }
-                continue;
+            if (need == 0 && state == State::Split) {
+                if (descend_to_child(static_cast<uint32_t>(idx))) return true;
             }
-
-            if (state != State::Free) continue;
-
-            // 連続Freeの長さを測る
-            uint32_t free_count = 1;
-            int32_t run_start = idx;
-            int32_t run_end = idx;
-            for (int32_t next = idx + step(dir);
-                 inBounds(next, lower, upper, dir) &&
-                 layer.slots[static_cast<size_t>(next)].state == State::Free;
-                 next += step(dir)) {
-                ++free_count;
-                run_end = next;
-            }
-
-            if (free_count >= need) {
-                const uint32_t start_slot = static_cast<uint32_t>(run_start);
-                int32_t boundary = run_end + step(dir);
-
-                if (has_child_request) {
-                    if (inBounds(boundary, lower, upper, dir) &&
-                        layer.slots[static_cast<size_t>(boundary)].state == State::Split &&
-                        descend_to_child(static_cast<uint32_t>(boundary))) {
-                        return finalize_at(layer_idx, start_slot);
-                    }
-                    return false;  // 子が必要だが Split に降りられない
-                }
-
-                if (free_count == need &&
-                    inBounds(boundary, lower, upper, dir) &&
-                    layer.slots[static_cast<size_t>(boundary)].state == State::Split &&
-                    descend_to_child(static_cast<uint32_t>(boundary))) {
-                    return true;
-                }
-
-                return finalize_at(layer_idx, start_slot);
-            }
-
-            // 連続領域の終端までスキップして次を探索
-            idx = run_end;
+            idx += step(dir);
         }
 
-        return false;
+        if (!inBounds(idx, lower, upper, dir)) return false;
+
+        // 連続Freeの長さを測る（start_idx を含む run のみ見る）
+        uint32_t free_count = 1;
+        int32_t run_start = idx;
+        int32_t run_end = idx;
+        for (int32_t next = idx + step(dir);
+             inBounds(next, lower, upper, dir) &&
+             layer.slots[static_cast<size_t>(next)].state == State::Free;
+             next += step(dir)) {
+            ++free_count;
+            run_end = next;
+        }
+
+        int32_t boundary = run_end + step(dir);
+
+        if (need == 0) {
+            if (has_child_request &&
+                inBounds(boundary, lower, upper, dir) &&
+                layer.slots[static_cast<size_t>(boundary)].state == State::Split &&
+                descend_to_child(static_cast<uint32_t>(boundary))) {
+                return true;
+            }
+            return finalize_at(layer_idx, static_cast<uint32_t>(run_end));
+        }
+
+        if (free_count < need) return false;
+
+        const uint32_t start_slot = (dir == Direction::Forward)
+            ? static_cast<uint32_t>(run_end - static_cast<int32_t>(need) + 1)
+            : static_cast<uint32_t>(run_start - static_cast<int32_t>(need) + 1);
+
+        if (has_child_request) {
+            if (inBounds(boundary, lower, upper, dir) &&
+                layer.slots[static_cast<size_t>(boundary)].state == State::Split &&
+                descend_to_child(static_cast<uint32_t>(boundary))) {
+                return finalize_at(layer_idx, start_slot);
+            }
+            return false;  // 子が必要だが Split に降りられない
+        }
+
+        if (inBounds(boundary, lower, upper, dir) &&
+            layer.slots[static_cast<size_t>(boundary)].state == State::Split &&
+            descend_to_child(static_cast<uint32_t>(boundary))) {
+            return true;
+        }
+
+        return finalize_at(layer_idx, start_slot);
     }
 
     AllocationPlan tryFindTrailPlan(const std::vector<uint32_t>& rs) {
@@ -234,17 +240,17 @@ private:
         auto& layers = storage_.layers();
         if (layers.empty() || layers[0].slots.empty()) return plan;
 
-        // levels[0]の先端からスタート
+        // levels[0]を先頭側から走査し、末尾に詰める
         uint32_t need = rs[0];
 
         bool result = tryFindTrailRecursiveDir(
             rs,
             0,
-            layers[0].slots.empty() ? 0 : static_cast<uint32_t>(layers[0].slots.size() - 1),
+            0,
             need,
             false,
             plan,
-            Direction::Backward,
+            Direction::Forward,
             0,
             static_cast<uint32_t>(layers[0].slots.size()));
         plan.found = result;
