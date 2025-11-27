@@ -138,6 +138,13 @@ private:
             return true;
         };
 
+        const bool has_child_request = [&]() {
+            for (std::size_t i = layer_idx + 1; i < rs.size(); ++i) {
+                if (rs[i] != 0) return true;
+            }
+            return false;
+        }();
+
         auto descend_to_child = [&](uint32_t slot_index) -> bool {
             Slot& split_slot = layer.slots[slot_index];
             if (layer_idx + 1 >= layers.size() || layer_idx + 1 >= rs.size()) return false;
@@ -189,14 +196,26 @@ private:
             }
 
             if (free_count >= need) {
-                if (free_count == need) {
-                    int32_t boundary = run_end + step(dir);
+                const uint32_t start_slot = static_cast<uint32_t>(run_start);
+                int32_t boundary = run_end + step(dir);
+
+                if (has_child_request) {
                     if (inBounds(boundary, lower, upper, dir) &&
-                        layer.slots[static_cast<size_t>(boundary)].state == State::Split) {
-                        if (descend_to_child(static_cast<uint32_t>(boundary))) return true;
+                        layer.slots[static_cast<size_t>(boundary)].state == State::Split &&
+                        descend_to_child(static_cast<uint32_t>(boundary))) {
+                        return finalize_at(layer_idx, start_slot);
                     }
+                    return false;  // 子が必要だが Split に降りられない
                 }
-                return finalize_at(layer_idx, static_cast<uint32_t>(run_start));
+
+                if (free_count == need &&
+                    inBounds(boundary, lower, upper, dir) &&
+                    layer.slots[static_cast<size_t>(boundary)].state == State::Split &&
+                    descend_to_child(static_cast<uint32_t>(boundary))) {
+                    return true;
+                }
+
+                return finalize_at(layer_idx, start_slot);
             }
 
             // 連続領域の終端までスキップして次を探索
