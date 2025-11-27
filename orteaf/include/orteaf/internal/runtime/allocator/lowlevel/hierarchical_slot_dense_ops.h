@@ -187,12 +187,8 @@ private:
              inBounds(run_end, lower, upper, dir) &&
              layer.slots[static_cast<size_t>(run_end)].state == State::Free;
              run_end += step(dir)) {
-            printf("run_end = %d \n", run_end);
             ++free_count;
         }
-
-        printf("layer=%d, start_idx=%d, run_start=%d, run_end=%d, free_count=%d, need=%d\n",
-               layer_idx, start_idx, run_start, run_end, free_count, need);
 
         int32_t boundary = run_end;
 
@@ -200,66 +196,60 @@ private:
             ? static_cast<uint32_t>(run_end - 1)
             : static_cast<uint32_t>(run_start);
 
-        printf("end_slot=%d, boundary=%d\n", end_slot, boundary);
-
         if (free_count < need) return finalize_false(layer_idx, end_slot);
+
+        const bool boundary_is_split = inBounds(boundary, lower, upper, dir) &&
+            layer.slots[static_cast<size_t>(boundary)].state == State::Split;
 
         if (dir == Direction::Forward) {
             if (free_count > need) {
-                if (inBounds(boundary, lower, upper, dir) &&
-                    layer.slots[static_cast<size_t>(boundary)].state == State::Split) {
+                if (boundary_is_split) {
                     descend_to_child(static_cast<uint32_t>(boundary), false);
-                    printf("start0 layer=%d, slot=%d\n", plan.end_layer, plan.end_slot);
                     return true;
-                } else {
-                    printf("start1 layer=%d, slot=%d\n", layer_idx, end_slot);
+                }
+
+                return finalize_true(layer_idx, end_slot);
+            }
+
+            if (free_count == need) {
+                if (!has_child_request) {
+                    if (boundary_is_split) {
+                        descend_to_child(static_cast<uint32_t>(boundary), true);
+                        return true;
+                    }
+
                     return finalize_true(layer_idx, end_slot);
                 }
-            } else if(free_count == need) {
-                if (!has_child_request) {
-                    if (inBounds(boundary, lower, upper, dir) &&
-                        layer.slots[static_cast<size_t>(boundary)].state == State::Split) {
-                        descend_to_child(static_cast<uint32_t>(boundary), true);
-                        printf("start2 layer=%d, slot=%d\n", plan.end_layer, plan.end_slot);
-                        return true;
-                    } else {
-                        printf("start3 layer=%d, slot=%d\n", layer_idx, end_slot);
-                        return finalize_true(layer_idx, end_slot);
-                    }
-                } else if (inBounds(boundary, lower, upper, dir) &&
-                    layer.slots[static_cast<size_t>(boundary)].state == State::Split){
-                    bool a = descend_to_child(static_cast<uint32_t>(boundary), true);
-                    printf("start4 layer=%d, slot=%d\n", plan.end_layer, plan.end_slot);
-                    return a;
-                } else {
-                    printf("start5 layer=%d, slot=%d\n", layer_idx, end_slot);
-                    return finalize_false(layer_idx, end_slot);
+
+                if (boundary_is_split) {
+                    bool child_ok = descend_to_child(static_cast<uint32_t>(boundary), true);
+                    return child_ok;
                 }
-            } else {
-                printf("start6 layer=%d, slot=%d\n", layer_idx, end_slot);
+
                 return finalize_false(layer_idx, end_slot);
             }
-        } else {
-            if (free_count > need) {
-                printf("start7 layer=%d, slot=%d\n", layer_idx, end_slot);
-                return finalize_true(layer_idx, end_slot);
-            } else if (free_count == need) {
-                if (!has_child_request) {
-                    printf("start8 layer=%d, slot=%d\n", layer_idx, end_slot);
-                    return finalize_true(layer_idx, end_slot);
-                } else if (inBounds(boundary, lower, upper, dir) &&
-                    layer.slots[static_cast<size_t>(boundary)].state == State::Split){
-                    printf("start9 layer=%d, slot=%d\n", plan.end_layer, plan.end_slot);
-                    return descend_to_child(static_cast<uint32_t>(boundary), true);
-                } else {
-                    return false;
-                }
-            } else {
-                return false;
-            }
+
+            return finalize_false(layer_idx, end_slot);
         }
 
-        return finalize_true(layer_idx, end_slot);
+        // Backward
+        if (free_count > need) {
+            return finalize_true(layer_idx, end_slot);
+        }
+
+        if (free_count == need) {
+            if (!has_child_request) {
+                return finalize_true(layer_idx, end_slot);
+            }
+
+            if (boundary_is_split) {
+                return descend_to_child(static_cast<uint32_t>(boundary), true);
+            }
+
+            return false;
+        }
+
+        return false;
     }
 
     AllocationPlan tryFindTrailPlan(const std::vector<uint32_t>& rs) {
