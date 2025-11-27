@@ -18,6 +18,8 @@ public:
     using Layer = typename Storage::Layer;
     using State = typename Storage::State;
 
+    enum class Direction { Forward, Backward };
+
     struct AllocationPlan {
         bool found{false};
         uint32_t start_layer{Storage::kInvalidLayer};
@@ -104,6 +106,106 @@ private:
     // Trail search (recursive)
     // ========================================================================
 
+    static int step(Direction dir) noexcept { return dir == Direction::Forward ? 1 : -1; }
+    static bool inBounds(int32_t idx, int32_t lower, int32_t upper, Direction dir) noexcept {
+        return dir == Direction::Forward ? idx < upper : idx >= lower;
+    }
+
+    // 新ロジック（方向指定版）。旧実装との切り替え用に別名で持つ。
+    bool tryFindTrailRecursiveDir(
+        const std::vector<uint32_t>& rs,
+        uint32_t layer_idx,
+        uint32_t start_idx,
+        uint32_t need,
+        bool is_found,
+        AllocationPlan& plan,
+        Direction dir,
+        uint32_t lower_bound,
+        uint32_t upper_bound
+    ) {
+        auto& layers = storage_.layers();
+        Layer& layer = layers[layer_idx];
+
+        (void)is_found;  // モードは旧実装互換のため残すが新ロジックでは未使用
+
+        if (start_idx >= layer.slots.size() || lower_bound >= upper_bound || upper_bound > layer.slots.size()) {
+            return false;
+        }
+
+        auto finalize_at = [&](uint32_t layer_no, uint32_t slot_no) {
+            plan.start_layer = layer_no;
+            plan.start_slot = slot_no;
+            return true;
+        };
+
+        auto descend_to_child = [&](uint32_t slot_index) -> bool {
+            Slot& split_slot = layer.slots[slot_index];
+            if (layer_idx + 1 >= layers.size() || layer_idx + 1 >= rs.size()) return false;
+            uint32_t sibling_count = static_cast<uint32_t>(layer.slot_size / layers[layer_idx + 1].slot_size);
+            if (sibling_count < rs[layer_idx + 1]) return false;
+            uint32_t child_begin = split_slot.child_begin;
+            uint32_t child_upper = child_begin + sibling_count;
+            return tryFindTrailRecursiveDir(
+                rs,
+                layer_idx + 1,
+                dir == Direction::Forward ? child_begin : child_upper - 1,
+                rs[layer_idx + 1],
+                false,
+                plan,
+                dir,
+                child_begin,
+                child_upper);
+        };
+
+        int32_t lower = static_cast<int32_t>(lower_bound);
+        int32_t upper = static_cast<int32_t>(upper_bound);
+
+        // 方向に沿ってスキャンし、必要スロットを満たす連続領域を探す
+        for (int32_t idx = static_cast<int32_t>(start_idx);
+             inBounds(idx, lower, upper, dir);
+             idx += step(dir)) {
+            const auto state = layer.slots[static_cast<size_t>(idx)].state;
+
+            if (need == 0) {
+                // このレイヤでは確保しない。Splitを見つけたら子に降りる。
+                if (state == State::Split) {
+                    if (descend_to_child(static_cast<uint32_t>(idx))) return true;
+                }
+                continue;
+            }
+
+            if (state != State::Free) continue;
+
+            // 連続Freeの長さを測る
+            uint32_t free_count = 1;
+            int32_t run_start = idx;
+            int32_t run_end = idx;
+            for (int32_t next = idx + step(dir);
+                 inBounds(next, lower, upper, dir) &&
+                 layer.slots[static_cast<size_t>(next)].state == State::Free;
+                 next += step(dir)) {
+                ++free_count;
+                run_end = next;
+            }
+
+            if (free_count >= need) {
+                if (free_count == need) {
+                    int32_t boundary = run_end + step(dir);
+                    if (inBounds(boundary, lower, upper, dir) &&
+                        layer.slots[static_cast<size_t>(boundary)].state == State::Split) {
+                        if (descend_to_child(static_cast<uint32_t>(boundary))) return true;
+                    }
+                }
+                return finalize_at(layer_idx, static_cast<uint32_t>(run_start));
+            }
+
+            // 連続領域の終端までスキップして次を探索
+            idx = run_end;
+        }
+
+        return false;
+    }
+
     AllocationPlan tryFindTrailPlan(const std::vector<uint32_t>& rs) {
         AllocationPlan plan;
         plan.found = false;
@@ -116,7 +218,16 @@ private:
         // levels[0]の先端からスタート
         uint32_t need = rs[0];
 
-        bool result = tryFindTrailRecursive(rs, 0, 0, need, false, plan, static_cast<uint32_t>(layers[0].slots.size()));
+        bool result = tryFindTrailRecursiveDir(
+            rs,
+            0,
+            layers[0].slots.empty() ? 0 : static_cast<uint32_t>(layers[0].slots.size() - 1),
+            need,
+            false,
+            plan,
+            Direction::Backward,
+            0,
+            static_cast<uint32_t>(layers[0].slots.size()));
         plan.found = result;
 
         return plan;
