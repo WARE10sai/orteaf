@@ -91,6 +91,43 @@ public:
     [[nodiscard]] const std::vector<Layer>& layers() const noexcept { return layers_; }
     [[nodiscard]] std::mutex& mutex() noexcept { return mutex_; }
 
+#if ORTEAF_ENABLE_TEST
+    struct DebugSlot {
+        State state;
+        uint32_t parent_slot;
+        uint32_t child_begin;
+    };
+    struct DebugLayer {
+        std::size_t slot_size;
+        std::vector<DebugSlot> slots;
+        std::vector<uint32_t> free_list;
+        std::vector<uint32_t> span_free_list;
+    };
+
+    // テスト用: 指定レイヤのスロット情報を参照
+    [[nodiscard]] const Layer& debugLayer(uint32_t layer_idx) const {
+        return layers_.at(layer_idx);
+    }
+
+    // テスト用: すべてのレイヤの状態スナップショットを取得
+    [[nodiscard]] std::vector<DebugLayer> debugSnapshot() const {
+        std::vector<DebugLayer> out;
+        out.reserve(layers_.size());
+        for (const auto& L : layers_) {
+            DebugLayer dl;
+            dl.slot_size = L.slot_size;
+            dl.slots.reserve(L.slots.size());
+            for (const auto& s : L.slots) {
+                dl.slots.push_back(DebugSlot{s.state, s.parent_slot, s.child_begin});
+            }
+            dl.free_list.assign(L.free_list.begin(), L.free_list.end());
+            dl.span_free_list.assign(L.span_free_list.begin(), L.span_free_list.end());
+            out.emplace_back(std::move(dl));
+        }
+        return out;
+    }
+#endif
+
     // ========================================================================
     // Pure functions (static)
     // ========================================================================
