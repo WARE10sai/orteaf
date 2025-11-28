@@ -10,7 +10,7 @@
 
 namespace orteaf::internal::backend::mps {
 
-// Simple MPS resource that keeps device/heap handles and creates buffers at offset 0.
+// Simple MPS resource that keeps device/heap handles per instance and creates buffers at offset 0.
 class MpsResource {
 public:
     using BufferView = ::orteaf::internal::backend::mps::MpsBufferView;
@@ -21,24 +21,24 @@ public:
         MPSBufferUsage_t usage{kMPSDefaultBufferUsage};
     };
 
-    static void initialize(const Config& config) noexcept;
+    MpsResource() = default;
 
-    static BufferView allocate(std::size_t size, std::size_t alignment);
+    explicit MpsResource(const Config& config) noexcept { initialize(config); }
 
-    static void deallocate(BufferView view, std::size_t size, std::size_t alignment) noexcept;
+    void initialize(const Config& config) noexcept;
 
-    static MPSDevice_t device() noexcept { return state_.device; }
-    static MPSHeap_t heap() noexcept { return state_.heap; }
+    BufferView allocate(std::size_t size, std::size_t alignment);
+
+    void deallocate(BufferView view, std::size_t size, std::size_t alignment) noexcept;
+
+    MPSDevice_t device() const noexcept { return device_; }
+    MPSHeap_t heap() const noexcept { return heap_; }
 
 private:
-    struct State {
-        MPSDevice_t device{nullptr};
-        MPSHeap_t heap{nullptr};
-        MPSBufferUsage_t usage{kMPSDefaultBufferUsage};
-        bool initialized{false};
-    };
-
-    static inline State state_{};
+    MPSDevice_t device_{nullptr};
+    MPSHeap_t heap_{nullptr};
+    MPSBufferUsage_t usage_{kMPSDefaultBufferUsage};
+    bool initialized_{false};
 };
 
 }  // namespace orteaf::internal::backend::mps

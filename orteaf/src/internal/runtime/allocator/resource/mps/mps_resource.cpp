@@ -5,18 +5,18 @@
 namespace orteaf::internal::backend::mps {
 
 void MpsResource::initialize(const Config& config) noexcept {
-    state_.device = config.device;
-    state_.heap = config.heap;
-    state_.usage = config.usage;
-    state_.initialized = (state_.device != nullptr && state_.heap != nullptr);
+    device_ = config.device;
+    heap_ = config.heap;
+    usage_ = config.usage;
+    initialized_ = (device_ != nullptr && heap_ != nullptr);
 }
 
 MpsResource::BufferView MpsResource::allocate(std::size_t size, std::size_t /*alignment*/) {
-    if (!state_.initialized || size == 0) {
+    if (!initialized_ || size == 0) {
         return {};
     }
 
-    MPSBuffer_t buffer = createBuffer(state_.heap, size, state_.usage);
+    MPSBuffer_t buffer = createBuffer(heap_, size, usage_);
     if (!buffer) {
         return {};
     }

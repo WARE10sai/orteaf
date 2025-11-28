@@ -4,9 +4,8 @@
 
 namespace orteaf::internal::backend::cpu {
 
-void CpuResource::initialize(const Config& config) noexcept {
-    config_ = config;
-    initialized_ = true;
+void CpuResource::initialize(const Config& /*config*/) noexcept {
+    // Stateless; nothing to do.
 }
 
 CpuResource::BufferView CpuResource::allocate(std::size_t size, std::size_t alignment) {

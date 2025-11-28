@@ -7,8 +7,7 @@
 namespace orteaf::internal::backend::cuda {
 
 void CudaResource::initialize(const Config& config) noexcept {
-    config_ = config;
-    initialized_ = true;
+    (void)config;
 }
 
 CudaResource::BufferView CudaResource::allocate(std::size_t size, std::size_t /*alignment*/) {

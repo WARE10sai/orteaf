@@ -20,10 +20,6 @@ public:
     static BufferView allocate(std::size_t size, std::size_t alignment);
 
     static void deallocate(BufferView view, std::size_t size, std::size_t alignment) noexcept;
-
-private:
-    static inline Config config_{};
-    static inline bool initialized_{false};
 };
 
 }  // namespace orteaf::internal::backend::cuda
