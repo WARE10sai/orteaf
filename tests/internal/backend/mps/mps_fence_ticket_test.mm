@@ -8,7 +8,7 @@
 #include <gtest/gtest.h>
 #include <type_traits>
 
-#include "orteaf/internal/backend/mps/mps_ticket.h"
+#include "orteaf/internal/backend/mps/mps_fence_ticket.h"
 #include "orteaf/internal/backend/mps/wrapper/mps_command_buffer.h"
 #include "orteaf/internal/backend/mps/wrapper/mps_command_queue.h"
 #include "orteaf/internal/backend/mps/wrapper/mps_device.h"
@@ -140,39 +140,5 @@ TEST_F(MpsFenceTicketTest, ResetClearsState) {
 
 static_assert(!std::is_copy_constructible_v<mps_backend::MpsFenceTicket>);
 static_assert(!std::is_copy_assignable_v<mps_backend::MpsFenceTicket>);
-
-TEST_F(MpsFenceTicketTest, ReuseTicketDefaultInvalid) {
-    mps_backend::MpsReuseTicket ticket;
-    EXPECT_FALSE(ticket.valid());
-    EXPECT_EQ(ticket.commandQueueId(), base::CommandQueueId{});
-    EXPECT_EQ(ticket.commandBuffer(), nullptr);
-}
-
-TEST_F(MpsFenceTicketTest, ReuseTicketStoresMembers) {
-    mps_backend::MpsReuseTicket ticket(queue_id_, command_buffer_);
-    EXPECT_TRUE(ticket.valid());
-    EXPECT_EQ(ticket.commandQueueId(), queue_id_);
-    EXPECT_EQ(ticket.commandBuffer(), command_buffer_);
-}
-
-TEST_F(MpsFenceTicketTest, ReuseTicketSettersAndMove) {
-    mps_backend::MpsReuseTicket ticket;
-    ticket.setCommandQueueId(queue_id_).setCommandBuffer(command_buffer_);
-
-    EXPECT_TRUE(ticket.valid());
-    EXPECT_EQ(ticket.commandQueueId(), queue_id_);
-    EXPECT_EQ(ticket.commandBuffer(), command_buffer_);
-
-    mps_backend::MpsReuseTicket moved(std::move(ticket));
-    EXPECT_TRUE(moved.valid());
-    EXPECT_EQ(moved.commandQueueId(), queue_id_);
-    EXPECT_EQ(moved.commandBuffer(), command_buffer_);
-
-    EXPECT_FALSE(ticket.valid());
-    EXPECT_EQ(ticket.commandBuffer(), nullptr);
-}
-
-static_assert(!std::is_copy_constructible_v<mps_backend::MpsReuseTicket>);
-static_assert(!std::is_copy_assignable_v<mps_backend::MpsReuseTicket>);
 
 #endif  // ORTEAF_ENABLE_MPS
