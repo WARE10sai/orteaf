@@ -189,6 +189,11 @@ public:
     T& back() noexcept { return data_[size_ - 1]; }
     const T& back() const noexcept { return data_[size_ - 1]; }
 
+    T* begin() noexcept { return data_; }
+    const T* begin() const noexcept { return data_; }
+    T* end() noexcept { return data_ + size_; }
+    const T* end() const noexcept { return data_ + size_; }
+
 private:
     T* data_;
     std::size_t size_;
