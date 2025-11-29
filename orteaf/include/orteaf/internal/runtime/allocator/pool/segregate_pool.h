@@ -18,6 +18,7 @@ class SegregatePool {
 public:
     using MemoryBlock = typename BackendResource::MemoryBlock;
 
+    SegregatePool() = default;
     SegregatePool(const SegregatePool&) = delete;
     SegregatePool& operator=(const SegregatePool&) = delete;
     SegregatePool(SegregatePool&&) noexcept = default;
@@ -100,7 +101,7 @@ private:
     ChunkLocatorPolicy chunk_locator_policy_;
     ReuseLocatorPolicy reuse_policy_;
     FreeListPolicy free_list_policy_;
-    BackendType backend_type_;
+    ::orteaf::internal::backend::Backend backend_type_{BackendType};
 };
 
 }  // namespace orteaf::internal::runtime::allocator::pool
