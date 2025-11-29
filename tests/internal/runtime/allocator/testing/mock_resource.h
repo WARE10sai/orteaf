@@ -52,6 +52,7 @@ public:
 
     MOCK_METHOD(BufferView, allocate, (std::size_t size, std::size_t alignment));
     MOCK_METHOD(void, deallocate, (BufferView view, std::size_t size, std::size_t alignment));
+    MOCK_METHOD(BufferView, makeView, (BufferView base, std::size_t offset, std::size_t size));
 };
 
 // Static-API wrapper that forwards to a shared MockCpuResourceImpl instance.
@@ -66,6 +67,9 @@ struct MockCpuResource {
     }
     static void deallocate(BufferView view, std::size_t size, std::size_t alignment) {
         if (impl_) impl_->deallocate(view, size, alignment);
+    }
+    static BufferView makeView(BufferView base, std::size_t offset, std::size_t size) {
+        return impl_ ? impl_->makeView(base, offset, size) : BufferView{base.raw(), offset, size};
     }
 
 private:
