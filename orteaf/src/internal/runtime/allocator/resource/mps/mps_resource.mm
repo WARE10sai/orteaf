@@ -53,4 +53,23 @@ bool MpsResource::isCompleted(FenceToken& token) {
     return all_completed;
 }
 
+bool MpsResource::isCompleted(ReuseToken& token) {
+    ORTEAF_THROW_IF(!initialized_, InvalidState, "MpsResource::isCompleted called before initialize");
+    bool all_completed = true;
+    for (auto& ticket : token) {
+        if (!ticket.valid()) {
+            continue;
+        }
+        if (isCompleted(ticket.commandBuffer())) {
+            ticket.reset();
+            continue;
+        } else {
+            all_completed = false;
+            break;
+        }
+    }
+
+    return all_completed;
+}
+
 }  // namespace orteaf::internal::backend::mps

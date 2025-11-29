@@ -28,4 +28,9 @@ bool CpuResource::isCompleted(const FenceToken& token) {
     return true;
 }
 
+bool CpuResource::isCompleted(const ReuseToken& token) {
+    (void)token;
+    return true;
+}
+
 }  // namespace orteaf::internal::backend::cpu

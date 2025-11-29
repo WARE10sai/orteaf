@@ -32,4 +32,9 @@ bool CudaResource::isCompleted(const FenceToken& token) {
     return true;
 }
 
+bool CudaResource::isCompleted(const ReuseToken& token) {
+    (void)token;
+    return true;
+}
+
 }  // namespace orteaf::internal::backend::cuda

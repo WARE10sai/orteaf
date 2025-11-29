@@ -13,6 +13,7 @@ class CudaResource {
 public:
     using BufferView = ::orteaf::internal::backend::cuda::CudaBufferView;
     using FenceToken = void*;
+    using ReuseToken = void*;
 
     struct Config {};
 
@@ -23,6 +24,7 @@ public:
     static void deallocate(BufferView view, std::size_t size, std::size_t alignment);
 
     static bool isCompleted(const FenceToken& token);
+    static bool isCompleted(const ReuseToken& token);
 };
 
 }  // namespace orteaf::internal::backend::cuda
