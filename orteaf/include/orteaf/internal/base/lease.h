@@ -41,11 +41,11 @@ public:
 
     const HandleT& handle() const noexcept { return handle_; }
 
-    ResourceT& get() {
+    ResourceT& get() noexcept {
         ensureValid();
         return resource_;
     }
-    const ResourceT& get() const {
+    const ResourceT& get() const noexcept {
         ensureValid();
         return resource_;
     }
@@ -104,11 +104,11 @@ public:
 
     ~Lease() noexcept { release(); }
 
-    ResourceT& get() {
+    ResourceT& get() noexcept {
         ensureValid();
         return resource_;
     }
-    const ResourceT& get() const {
+    const ResourceT& get() const noexcept {
         ensureValid();
         return resource_;
     }
