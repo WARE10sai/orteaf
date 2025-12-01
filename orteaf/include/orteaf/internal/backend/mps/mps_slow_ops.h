@@ -30,7 +30,7 @@ struct MpsSlowOps {
   releaseDevice(::orteaf::internal::backend::mps::MPSDevice_t device) = 0;
 
   virtual ::orteaf::internal::architecture::Architecture
-  detectArchitecture(::orteaf::internal::base::DeviceId device_id) = 0;
+  detectArchitecture(::orteaf::internal::base::DeviceHandle device_id) = 0;
 
   virtual ::orteaf::internal::backend::mps::MPSCommandQueue_t
   createCommandQueue(::orteaf::internal::backend::mps::MPSDevice_t device) = 0;
@@ -122,7 +122,7 @@ struct MpsSlowOpsImpl final : public MpsSlowOps {
       ::orteaf::internal::backend::mps::MPSDevice_t device) override;
 
   ::orteaf::internal::architecture::Architecture
-  detectArchitecture(::orteaf::internal::base::DeviceId device_id) override;
+  detectArchitecture(::orteaf::internal::base::DeviceHandle device_id) override;
 
   ::orteaf::internal::backend::mps::MPSCommandQueue_t
   createCommandQueue(

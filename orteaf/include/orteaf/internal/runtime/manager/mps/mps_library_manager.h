@@ -77,16 +77,16 @@ public:
 
   std::size_t capacity() const noexcept { return states_.size(); }
 
-  base::LibraryId getOrCreate(const LibraryKey &key);
+  base::LibraryHandle getOrCreate(const LibraryKey &key);
 
-  void release(base::LibraryId id);
+  void release(base::LibraryHandle id);
 
   ::orteaf::internal::backend::mps::MPSLibrary_t
-  getLibrary(base::LibraryId id) const;
+  getLibrary(base::LibraryHandle id) const;
 
-  PipelineManager &pipelineManager(base::LibraryId id);
+  PipelineManager &pipelineManager(base::LibraryHandle id);
 
-  const PipelineManager &pipelineManager(base::LibraryId id) const;
+  const PipelineManager &pipelineManager(base::LibraryHandle id) const;
 
 #if ORTEAF_ENABLE_TEST
   struct DebugState {
@@ -98,7 +98,7 @@ public:
     std::size_t growth_chunk_size{0};
   };
 
-  DebugState debugState(base::LibraryId id) const;
+  DebugState debugState(base::LibraryHandle id) const;
 #endif
 
 private:
@@ -120,9 +120,9 @@ private:
 
   void validateKey(const LibraryKey &key) const;
 
-  State &ensureAliveState(base::LibraryId id);
+  State &ensureAliveState(base::LibraryHandle id);
 
-  const State &ensureAliveState(base::LibraryId id) const {
+  const State &ensureAliveState(base::LibraryHandle id) const {
     return const_cast<MpsLibraryManager *>(this)->ensureAliveState(id);
   }
 
@@ -130,11 +130,11 @@ private:
 
   void growStatePool(std::size_t additional);
 
-  base::LibraryId encodeId(std::size_t index, std::uint32_t generation) const;
+  base::LibraryHandle encodeId(std::size_t index, std::uint32_t generation) const;
 
-  std::size_t indexFromId(base::LibraryId id) const;
+  std::size_t indexFromId(base::LibraryHandle id) const;
 
-  std::uint32_t generationFromId(base::LibraryId id) const;
+  std::uint32_t generationFromId(base::LibraryHandle id) const;
 
   ::orteaf::internal::backend::mps::MPSLibrary_t
   createLibrary(const LibraryKey &key);

@@ -96,20 +96,20 @@ TYPED_TEST_SUITE(MpsDeviceManagerTypedTest, ProviderTypes);
 TYPED_TEST(MpsDeviceManagerTypedTest, AccessBeforeInitializationThrows) {
   auto &manager = this->manager();
   ExpectError(diag_error::OrteafErrc::InvalidState,
-              [&] { (void)manager.getDevice(base::DeviceId{0}); });
+              [&] { (void)manager.getDevice(base::DeviceHandle{0}); });
   ExpectError(diag_error::OrteafErrc::InvalidState,
-              [&] { (void)manager.getArch(base::DeviceId{0}); });
-  EXPECT_FALSE(manager.isAlive(base::DeviceId{0}));
+              [&] { (void)manager.getArch(base::DeviceHandle{0}); });
+  EXPECT_FALSE(manager.isAlive(base::DeviceHandle{0}));
   ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
-    static_cast<void>(manager.commandQueueManager(base::DeviceId{0}));
+    static_cast<void>(manager.commandQueueManager(base::DeviceHandle{0}));
   });
   ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
-    static_cast<void>(manager.heapManager(base::DeviceId{0}));
+    static_cast<void>(manager.heapManager(base::DeviceHandle{0}));
   });
   ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
-    static_cast<void>(manager.libraryManager(base::DeviceId{0}));
+    static_cast<void>(manager.libraryManager(base::DeviceHandle{0}));
   });
-  const auto snapshot = manager.debugState(base::DeviceId{0});
+  const auto snapshot = manager.debugState(base::DeviceHandle{0});
   EXPECT_FALSE(snapshot.in_range);
   EXPECT_FALSE(snapshot.is_alive);
 }
@@ -130,7 +130,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, InitializeMarksManagerInitialized) {
     this->adapter().expectGetDeviceCount(1);
     this->adapter().expectGetDevices({{0, device0}});
     this->adapter().expectDetectArchitectures({
-        {base::DeviceId{0}, architecture::Architecture::MpsM3},
+        {base::DeviceHandle{0}, architecture::Architecture::MpsM3},
     });
     this->adapter().expectReleaseDevices({device0});
     expected_count = 1;
@@ -169,8 +169,8 @@ TYPED_TEST(MpsDeviceManagerTypedTest, GetDeviceReturnsRegisteredHandle) {
       {1, expected_handles[1]},
   });
   this->adapter().expectDetectArchitectures({
-      {base::DeviceId{0}, architecture::Architecture::MpsM3},
-      {base::DeviceId{1}, architecture::Architecture::MpsM4},
+      {base::DeviceHandle{0}, architecture::Architecture::MpsM3},
+      {base::DeviceHandle{1}, architecture::Architecture::MpsM4},
   });
   this->adapter().expectReleaseDevices(
       {expected_handles[0], expected_handles[1]});
@@ -185,8 +185,8 @@ TYPED_TEST(MpsDeviceManagerTypedTest, GetDeviceReturnsRegisteredHandle) {
   }
 
   for (std::uint32_t idx = 0; idx < count; ++idx) {
-    const auto device = manager.getDevice(base::DeviceId{idx});
-    const auto snapshot = manager.debugState(base::DeviceId{idx});
+    const auto device = manager.getDevice(base::DeviceHandle{idx});
+    const auto snapshot = manager.debugState(base::DeviceHandle{idx});
     EXPECT_TRUE(snapshot.in_range);
     EXPECT_EQ(snapshot.has_device, device != nullptr);
     EXPECT_EQ(snapshot.is_alive, device != nullptr);
@@ -217,8 +217,8 @@ TYPED_TEST(MpsDeviceManagerTypedTest, GetArchMatchesReportedArchitecture) {
     this->adapter().expectGetDeviceCount(2);
     this->adapter().expectGetDevices({{0, device0}, {1, device1}});
     this->adapter().expectDetectArchitectures({
-        {base::DeviceId{0}, architecture::Architecture::MpsM4},
-        {base::DeviceId{1}, architecture::Architecture::MpsM3},
+        {base::DeviceHandle{0}, architecture::Architecture::MpsM4},
+        {base::DeviceHandle{1}, architecture::Architecture::MpsM3},
     });
     this->adapter().expectReleaseDevices({device0, device1});
   } else {
@@ -232,8 +232,8 @@ TYPED_TEST(MpsDeviceManagerTypedTest, GetArchMatchesReportedArchitecture) {
   }
 
   for (std::uint32_t idx = 0; idx < count; ++idx) {
-    const auto arch = manager.getArch(base::DeviceId{idx});
-    const auto snapshot = manager.debugState(base::DeviceId{idx});
+    const auto arch = manager.getArch(base::DeviceHandle{idx});
+    const auto snapshot = manager.debugState(base::DeviceHandle{idx});
     EXPECT_TRUE(snapshot.in_range);
     if constexpr (TypeParam::is_mock) {
       const auto expected_arch = (idx == 0)
@@ -262,13 +262,13 @@ TYPED_TEST(MpsDeviceManagerTypedTest, InvalidDeviceIdRejectsAccess) {
   this->adapter().expectGetDeviceCount(1);
   this->adapter().expectGetDevices({{0, device0}});
   this->adapter().expectDetectArchitectures({
-      {base::DeviceId{0}, architecture::Architecture::MpsM3},
+      {base::DeviceHandle{0}, architecture::Architecture::MpsM3},
   });
   this->adapter().expectReleaseDevices({device0});
 
   manager.initialize(this->getOps());
   const auto invalid =
-      base::DeviceId{static_cast<std::uint32_t>(manager.getDeviceCount() + 1)};
+      base::DeviceHandle{static_cast<std::uint32_t>(manager.getDeviceCount() + 1)};
 
   ExpectError(diag_error::OrteafErrc::InvalidArgument,
               [&] { (void)manager.getDevice(invalid); });
@@ -293,8 +293,8 @@ TYPED_TEST(MpsDeviceManagerTypedTest, IsAliveReflectsReportedDeviceCount) {
     this->adapter().expectGetDeviceCount(2);
     this->adapter().expectGetDevices({{0, device0}, {1, device1}});
     this->adapter().expectDetectArchitectures({
-        {base::DeviceId{0}, architecture::Architecture::MpsM3},
-        {base::DeviceId{1}, architecture::Architecture::MpsM4},
+        {base::DeviceHandle{0}, architecture::Architecture::MpsM3},
+        {base::DeviceHandle{1}, architecture::Architecture::MpsM4},
     });
     this->adapter().expectReleaseDevices({device0, device1});
   }
@@ -309,7 +309,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, IsAliveReflectsReportedDeviceCount) {
 
   for (std::uint32_t index = 0; index < static_cast<std::uint32_t>(count);
        ++index) {
-    const auto id = base::DeviceId{index};
+    const auto id = base::DeviceHandle{index};
     const auto snapshot = manager.debugState(id);
     EXPECT_TRUE(manager.isAlive(id))
         << "Device " << index << " should be alive";
@@ -317,7 +317,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, IsAliveReflectsReportedDeviceCount) {
     EXPECT_TRUE(snapshot.is_alive);
   }
 
-  const auto invalid = base::DeviceId{static_cast<std::uint32_t>(count)};
+  const auto invalid = base::DeviceHandle{static_cast<std::uint32_t>(count)};
   EXPECT_FALSE(manager.isAlive(invalid));
   const auto invalid_snapshot = manager.debugState(invalid);
   EXPECT_FALSE(invalid_snapshot.in_range);
@@ -326,7 +326,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, IsAliveReflectsReportedDeviceCount) {
   manager.shutdown();
   for (std::uint32_t index = 0; index < static_cast<std::uint32_t>(count);
        ++index) {
-    const auto id = base::DeviceId{index};
+    const auto id = base::DeviceHandle{index};
     EXPECT_FALSE(manager.isAlive(id))
         << "Device " << index << " should be inactive after shutdown";
     const auto snapshot = manager.debugState(id);
@@ -346,8 +346,8 @@ TYPED_TEST(MpsDeviceManagerTypedTest, ReinitializeReleasesPreviousDevices) {
   this->adapter().expectGetDeviceCount(2);
   this->adapter().expectGetDevices({{0, first0}, {1, first1}});
   this->adapter().expectDetectArchitectures({
-      {base::DeviceId{0}, architecture::Architecture::MpsM3},
-      {base::DeviceId{1}, architecture::Architecture::MpsM4},
+      {base::DeviceHandle{0}, architecture::Architecture::MpsM3},
+      {base::DeviceHandle{1}, architecture::Architecture::MpsM4},
   });
 
   manager.initialize(this->getOps());
@@ -358,22 +358,22 @@ TYPED_TEST(MpsDeviceManagerTypedTest, ReinitializeReleasesPreviousDevices) {
   }
 
   if constexpr (TypeParam::is_mock) {
-    EXPECT_EQ(manager.getDevice(base::DeviceId{0}), first0);
+    EXPECT_EQ(manager.getDevice(base::DeviceHandle{0}), first0);
   }
 
   this->adapter().expectReleaseDevices({first0, first1});
   this->adapter().expectGetDeviceCount(2);
   this->adapter().expectGetDevices({{0, second0}, {1, second1}});
   this->adapter().expectDetectArchitectures({
-      {base::DeviceId{0}, architecture::Architecture::MpsM4},
-      {base::DeviceId{1}, architecture::Architecture::MpsM3},
+      {base::DeviceHandle{0}, architecture::Architecture::MpsM4},
+      {base::DeviceHandle{1}, architecture::Architecture::MpsM3},
   });
 
   manager.initialize(this->getOps());
   const auto reinit_count = manager.getDeviceCount();
   EXPECT_EQ(reinit_count, initial_count);
   if constexpr (TypeParam::is_mock) {
-    EXPECT_EQ(manager.getDevice(base::DeviceId{0}), second0);
+    EXPECT_EQ(manager.getDevice(base::DeviceHandle{0}), second0);
     EXPECT_NE(second0, first0);
   }
 
@@ -390,8 +390,8 @@ TYPED_TEST(MpsDeviceManagerTypedTest, ShutdownClearsDeviceState) {
     this->adapter().expectGetDeviceCount(2);
     this->adapter().expectGetDevices({{0, device0}, {1, device1}});
     this->adapter().expectDetectArchitectures({
-        {base::DeviceId{0}, architecture::Architecture::MpsM3},
-        {base::DeviceId{1}, architecture::Architecture::MpsM4},
+        {base::DeviceHandle{0}, architecture::Architecture::MpsM3},
+        {base::DeviceHandle{1}, architecture::Architecture::MpsM4},
     });
     this->adapter().expectReleaseDevices({device0, device1});
   }
@@ -408,7 +408,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, ShutdownClearsDeviceState) {
   EXPECT_FALSE(state.initialized);
   EXPECT_EQ(state.device_count, 0u);
   for (std::uint32_t i = 0; i < static_cast<std::uint32_t>(count); ++i) {
-    const auto id = base::DeviceId{i};
+    const auto id = base::DeviceHandle{i};
     EXPECT_FALSE(manager.isAlive(id));
     const auto snapshot = manager.debugState(id);
     EXPECT_FALSE(snapshot.in_range);
@@ -429,8 +429,8 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
   this->adapter().expectGetDeviceCount(2);
   this->adapter().expectGetDevices({{0, device0}, {1, device1}});
   this->adapter().expectDetectArchitectures({
-      {base::DeviceId{0}, architecture::Architecture::MpsM3},
-      {base::DeviceId{1}, architecture::Architecture::MpsM4},
+      {base::DeviceHandle{0}, architecture::Architecture::MpsM3},
+      {base::DeviceHandle{1}, architecture::Architecture::MpsM4},
   });
   this->adapter().expectCreateCommandQueues(
       {makeQueue(0x900), makeQueue(0x901)}, ::testing::Eq(device0));
@@ -454,7 +454,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
 
   for (std::uint32_t index = 0; index < static_cast<std::uint32_t>(count);
        ++index) {
-    const auto id = base::DeviceId{index};
+    const auto id = base::DeviceHandle{index};
     auto &queue_manager = manager.commandQueueManager(id);
     EXPECT_EQ(queue_manager.capacity(), kCapacity);
     if constexpr (TypeParam::is_mock) {
@@ -464,7 +464,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
                                                              makeQueue(0x901)}
               : std::vector<backend::mps::MPSCommandQueue_t>{makeQueue(0x902),
                                                              makeQueue(0x903)};
-      std::vector<base::CommandQueueId> acquired_ids;
+      std::vector<base::CommandQueueHandle> acquired_ids;
       const std::size_t expected_count = expected_handles.size();
       acquired_ids.reserve(expected_count);
 
@@ -500,7 +500,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
   this->adapter().expectGetDeviceCount(1);
   this->adapter().expectGetDevices({{0, device0}});
   this->adapter().expectDetectArchitectures({
-      {base::DeviceId{0}, architecture::Architecture::MpsM3},
+      {base::DeviceHandle{0}, architecture::Architecture::MpsM3},
   });
   this->adapter().expectReleaseDevices({device0});
 
@@ -512,7 +512,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
 
   for (std::uint32_t index = 0; index < static_cast<std::uint32_t>(count);
        ++index) {
-    const auto id = base::DeviceId{index};
+    const auto id = base::DeviceHandle{index};
     auto &heap_manager = manager.heapManager(id);
     EXPECT_EQ(heap_manager.capacity(), kCapacity);
   }
@@ -530,7 +530,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
   this->adapter().expectGetDeviceCount(1);
   this->adapter().expectGetDevices({{0, device0}});
   this->adapter().expectDetectArchitectures({
-      {base::DeviceId{0}, architecture::Architecture::MpsM3},
+      {base::DeviceHandle{0}, architecture::Architecture::MpsM3},
   });
   this->adapter().expectReleaseDevices({device0});
 
@@ -541,7 +541,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
   }
   for (std::uint32_t index = 0; index < static_cast<std::uint32_t>(count);
        ++index) {
-    const auto id = base::DeviceId{index};
+    const auto id = base::DeviceHandle{index};
     auto &library_manager = manager.libraryManager(id);
     EXPECT_EQ(library_manager.capacity(), kCapacity);
   }

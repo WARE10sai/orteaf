@@ -62,7 +62,7 @@ struct BackendMockExpectations {
   static void expectDetectArchitectures(
       MpsBackendOpsMock &mock,
       std::initializer_list<
-          std::pair<::orteaf::internal::base::DeviceId,
+          std::pair<::orteaf::internal::base::DeviceHandle,
                     ::orteaf::internal::architecture::Architecture>>
           expectations) {
     for (const auto &[id, arch] : expectations) {

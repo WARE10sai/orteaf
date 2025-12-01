@@ -21,8 +21,8 @@ TEST_F(CpuDeviceManagerTest, InitializeDevicesPopulatesState) {
 
     manager.initializeDevices();
     EXPECT_EQ(manager.getDeviceCount(), 1u);
-    EXPECT_TRUE(manager.isAlive(base::DeviceId{0}));
-    EXPECT_EQ(manager.getArch(base::DeviceId{0}), architecture::detectCpuArchitecture());
+    EXPECT_TRUE(manager.isAlive(base::DeviceHandle{0}));
+    EXPECT_EQ(manager.getArch(base::DeviceHandle{0}), architecture::detectCpuArchitecture());
 }
 
 TEST_F(CpuDeviceManagerTest, ShutdownClearsState) {
@@ -31,8 +31,8 @@ TEST_F(CpuDeviceManagerTest, ShutdownClearsState) {
     manager.shutdown();
 
     EXPECT_EQ(manager.getDeviceCount(), 0u);
-    EXPECT_THROW(manager.getArch(base::DeviceId{0}), std::system_error);
-    EXPECT_THROW(manager.isAlive(base::DeviceId{0}), std::system_error);
+    EXPECT_THROW(manager.getArch(base::DeviceHandle{0}), std::system_error);
+    EXPECT_THROW(manager.isAlive(base::DeviceHandle{0}), std::system_error);
 }
 
 #define ORTEAF_CPU_ENV_VAR "ORTEAF_EXPECT_CPU_MANAGER_ARCH"
@@ -43,21 +43,21 @@ TEST_F(CpuDeviceManagerTest, ManualEnvironmentCheck) {
     if (!expected_env) {
         GTEST_SKIP() << "Set " ORTEAF_CPU_ENV_VAR " to run this test on your environment.";
     }
-    const auto arch = cpu_rt::GetCpuDeviceManager().getArch(base::DeviceId{0});
+    const auto arch = cpu_rt::GetCpuDeviceManager().getArch(base::DeviceHandle{0});
     EXPECT_STREQ(expected_env, architecture::idOf(arch).data());
 }
 
 TEST_F(CpuDeviceManagerTest, GetArchitectureMatchesDetector) {
     auto& manager = cpu_rt::GetCpuDeviceManager();
     manager.initializeDevices();
-    EXPECT_EQ(manager.getArch(base::DeviceId{0}), architecture::detectCpuArchitecture());
+    EXPECT_EQ(manager.getArch(base::DeviceHandle{0}), architecture::detectCpuArchitecture());
 }
 
 TEST_F(CpuDeviceManagerTest, IsAliveReflectsInitialization) {
     auto& manager = cpu_rt::GetCpuDeviceManager();
     manager.initializeDevices();
-    EXPECT_TRUE(manager.isAlive(base::DeviceId{0}));
+    EXPECT_TRUE(manager.isAlive(base::DeviceHandle{0}));
     manager.shutdown();
-    EXPECT_THROW(manager.isAlive(base::DeviceId{0}), std::system_error);
+    EXPECT_THROW(manager.isAlive(base::DeviceHandle{0}), std::system_error);
 }
 #include <system_error>

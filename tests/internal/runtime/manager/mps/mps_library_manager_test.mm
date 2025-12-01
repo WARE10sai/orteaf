@@ -134,8 +134,8 @@ TYPED_TEST(MpsLibraryManagerTypedTest, AccessBeforeInitializationThrows) {
     const auto key = mps_rt::LibraryKey::Named("Unused");
 
     ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.getOrCreate(key); });
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { manager.release(base::LibraryId{0}); });
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.getLibrary(base::LibraryId{0}); });
+    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { manager.release(base::LibraryHandle{0}); });
+    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.getLibrary(base::LibraryHandle{0}); });
 }
 
 TYPED_TEST(MpsLibraryManagerTypedTest, InitializeRejectsNullDevice) {
@@ -222,7 +222,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest, ReleaseDestroysHandleAndAllowsRecreation)
     EXPECT_FALSE(released_snapshot.handle_allocated);
 
     const auto reacquired = manager.getOrCreate(key);
-    EXPECT_NE(reacquired, base::LibraryId{});
+    EXPECT_NE(reacquired, base::LibraryHandle{});
     if constexpr (TypeParam::is_mock) {
         EXPECT_EQ(manager.getLibrary(reacquired), second_handle);
     } else {
@@ -264,14 +264,14 @@ TYPED_TEST(MpsLibraryManagerTypedTest, GetLibraryRejectsInvalidId) {
     auto& manager = this->manager();
     this->initializeManager();
     ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] {
-        (void)manager.getLibrary(base::LibraryId{std::numeric_limits<std::uint32_t>::max()});
+        (void)manager.getLibrary(base::LibraryHandle{std::numeric_limits<std::uint32_t>::max()});
     });
 }
 
 TYPED_TEST(MpsLibraryManagerTypedTest, PipelineManagerAccessBeforeInitializationThrows) {
     auto& manager = this->manager();
     ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
-        (void)manager.pipelineManager(base::LibraryId{0});
+        (void)manager.pipelineManager(base::LibraryHandle{0});
     });
 }
 

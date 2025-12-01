@@ -54,8 +54,8 @@ TEST_F(CpuDeviceManagerMockTest, InitializesWithBackendArch) {
     manager_.initializeDevices();
 
     EXPECT_EQ(manager_.getDeviceCount(), 1u);
-    EXPECT_EQ(manager_.getArch(base::DeviceId{0}), architecture::Architecture::CpuZen4);
-    EXPECT_TRUE(manager_.isAlive(base::DeviceId{0}));
+    EXPECT_EQ(manager_.getArch(base::DeviceHandle{0}), architecture::Architecture::CpuZen4);
+    EXPECT_TRUE(manager_.isAlive(base::DeviceHandle{0}));
 }
 
 TEST_F(CpuDeviceManagerMockTest, DoubleInitializeDoesNotRedetect) {
@@ -74,8 +74,8 @@ TEST_F(CpuDeviceManagerMockTest, ShutdownClearsState) {
     manager_.shutdown();
 
     EXPECT_EQ(manager_.getDeviceCount(), 0u);
-    EXPECT_THROW(manager_.isAlive(base::DeviceId{0}), std::system_error);
-    EXPECT_THROW(manager_.getArch(base::DeviceId{0}), std::system_error);
+    EXPECT_THROW(manager_.isAlive(base::DeviceHandle{0}), std::system_error);
+    EXPECT_THROW(manager_.getArch(base::DeviceHandle{0}), std::system_error);
 }
 
 TEST_F(CpuDeviceManagerMockTest, InvalidDeviceIdThrows) {
@@ -83,6 +83,6 @@ TEST_F(CpuDeviceManagerMockTest, InvalidDeviceIdThrows) {
         .WillOnce(::testing::Return(architecture::Architecture::CpuZen4));
     manager_.initializeDevices();
 
-    EXPECT_THROW(manager_.getArch(base::DeviceId{1}), std::system_error);
-    EXPECT_THROW(manager_.isAlive(base::DeviceId{1}), std::system_error);
+    EXPECT_THROW(manager_.getArch(base::DeviceHandle{1}), std::system_error);
+    EXPECT_THROW(manager_.isAlive(base::DeviceHandle{1}), std::system_error);
 }

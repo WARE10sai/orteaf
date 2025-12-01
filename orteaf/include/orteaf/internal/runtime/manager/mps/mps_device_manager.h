@@ -61,29 +61,29 @@ public:
         return states_.size();
     }
 
-    ::orteaf::internal::backend::mps::MPSDevice_t getDevice(::orteaf::internal::base::DeviceId id) const;
+    ::orteaf::internal::backend::mps::MPSDevice_t getDevice(::orteaf::internal::base::DeviceHandle id) const;
 
-    ::orteaf::internal::architecture::Architecture getArch(::orteaf::internal::base::DeviceId id) const;
+    ::orteaf::internal::architecture::Architecture getArch(::orteaf::internal::base::DeviceHandle id) const;
 
     ::orteaf::internal::runtime::mps::MpsCommandQueueManager& commandQueueManager(
-        ::orteaf::internal::base::DeviceId id);
+        ::orteaf::internal::base::DeviceHandle id);
 
     const ::orteaf::internal::runtime::mps::MpsCommandQueueManager& commandQueueManager(
-        ::orteaf::internal::base::DeviceId id) const;
+        ::orteaf::internal::base::DeviceHandle id) const;
 
     ::orteaf::internal::runtime::mps::MpsHeapManager& heapManager(
-        ::orteaf::internal::base::DeviceId id);
+        ::orteaf::internal::base::DeviceHandle id);
 
     const ::orteaf::internal::runtime::mps::MpsHeapManager& heapManager(
-        ::orteaf::internal::base::DeviceId id) const;
+        ::orteaf::internal::base::DeviceHandle id) const;
 
     ::orteaf::internal::runtime::mps::MpsLibraryManager& libraryManager(
-        ::orteaf::internal::base::DeviceId id);
+        ::orteaf::internal::base::DeviceHandle id);
 
     const ::orteaf::internal::runtime::mps::MpsLibraryManager& libraryManager(
-        ::orteaf::internal::base::DeviceId id) const;
+        ::orteaf::internal::base::DeviceHandle id) const;
 
-    bool isAlive(::orteaf::internal::base::DeviceId id) const;
+    bool isAlive(::orteaf::internal::base::DeviceHandle id) const;
 
 #if ORTEAF_ENABLE_TEST
     struct DebugState {
@@ -103,7 +103,7 @@ public:
         return DebugState{states_.size(), initialized_};
     }
 
-    DeviceDebugState debugState(::orteaf::internal::base::DeviceId id) const;
+    DeviceDebugState debugState(::orteaf::internal::base::DeviceHandle id) const;
 #endif
 
 private:
@@ -142,9 +142,9 @@ private:
         void moveFrom(State&& other) noexcept;
     };
 
-    const State& ensureValid(::orteaf::internal::base::DeviceId id) const;
+    const State& ensureValid(::orteaf::internal::base::DeviceHandle id) const;
 
-    State& ensureValidState(::orteaf::internal::base::DeviceId id) {
+    State& ensureValidState(::orteaf::internal::base::DeviceHandle id) {
         return const_cast<State&>(ensureValid(id));
     }
 

@@ -37,7 +37,7 @@ struct CpuDeviceManager {
      * @brief Return the number of managed CPU devices (0 or 1 for now).
      *
      * The count is derived from the initialization state. This manager only ever reports a single
-     * host CPU device (`DeviceId{0}`) once `initializeDevices()` has run.
+     * host CPU device (`DeviceHandle{0}`) once `initializeDevices()` has run.
      */
     std::size_t getDeviceCount() const {
         return initialized_ ? 1u : 0u;
@@ -49,7 +49,7 @@ struct CpuDeviceManager {
      * The architecture originates from `detectCpuArchitecture()`, so the operating system's
      * signals determine the value.
      */
-    ::orteaf::internal::architecture::Architecture getArch(::orteaf::internal::base::DeviceId id) const {
+    ::orteaf::internal::architecture::Architecture getArch(::orteaf::internal::base::DeviceHandle id) const {
         ensureValid(id);
         return state_.arch;
     }
@@ -58,9 +58,9 @@ struct CpuDeviceManager {
      * @brief Query whether the CPU device is considered alive.
      *
      * Only the primary device exists today, so this will be `true` when the manager is initialized
-     * and the caller supplies `DeviceId{0}`.
+     * and the caller supplies `DeviceHandle{0}`.
      */
-    bool isAlive(::orteaf::internal::base::DeviceId id) const {
+    bool isAlive(::orteaf::internal::base::DeviceHandle id) const {
         ensureValid(id);
         return state_.is_alive;
     }
@@ -72,7 +72,7 @@ private:
      * Throws `diagnostics::error::InvalidState` when validation fails, mirroring what the rest of
      * the runtime manager suite would expect from well-formed getters.
      */
-    void ensureValid(::orteaf::internal::base::DeviceId id) const {
+    void ensureValid(::orteaf::internal::base::DeviceHandle id) const {
         if (!initialized_ || id != kPrimaryDevice) {
             ::orteaf::internal::diagnostics::error::throwError(
                 ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
@@ -88,7 +88,7 @@ private:
         bool is_alive{false};
     };
 
-    static constexpr ::orteaf::internal::base::DeviceId kPrimaryDevice{0};
+    static constexpr ::orteaf::internal::base::DeviceHandle kPrimaryDevice{0};
 
     State state_{};
     bool initialized_{false};

@@ -68,17 +68,6 @@ struct Handle<Tag, Index, void> {
     static constexpr index_type invalid_index() noexcept { return std::numeric_limits<index_type>::max(); }
 };
 
-/**
- * @brief ハンドルとキャッシュ値の組を表す薄いラッパー。
- *
- * cache は値でもポインタでもよく、利用側の型選択に任せる。
- */
-template <class HandleT, typename T>
-struct HandleScope {
-    HandleT handle{};
-    T cache{};
-};
-
 struct DeviceTag {};
 struct StreamTag {};
 struct ContextTag {};
@@ -88,18 +77,16 @@ struct FunctionTag {};
 struct HeapTag {};
 struct BufferTag {};
 
-using DeviceId  = Handle<DeviceTag, uint32_t, uint8_t>;
-using StreamId  = Handle<StreamTag, uint32_t, uint8_t>;
-using ContextId = Handle<ContextTag, uint32_t, uint8_t>;
-using CommandQueueId = Handle<CommandQueueTag, uint32_t, uint8_t>;
-using LibraryId = Handle<LibraryTag, uint32_t, uint8_t>;
-using FunctionId = Handle<FunctionTag, uint32_t, uint8_t>;
-using HeapId = Handle<HeapTag, uint32_t, uint8_t>;
-using BufferHandle = Handle<BufferTag, uint32_t, uint16_t>;
-using BufferId = BufferHandle;
+using DeviceHandle       = Handle<DeviceTag, uint32_t, uint8_t>;
+using StreamHandle       = Handle<StreamTag, uint32_t, uint8_t>;
+using ContextHandle      = Handle<ContextTag, uint32_t, uint8_t>;
+using CommandQueueHandle = Handle<CommandQueueTag, uint32_t, uint8_t>;
+using LibraryHandle      = Handle<LibraryTag, uint32_t, uint8_t>;
+using FunctionHandle     = Handle<FunctionTag, uint32_t, uint8_t>;
+using HeapHandle         = Handle<HeapTag, uint32_t, uint8_t>;
+using BufferHandle       = Handle<BufferTag, uint32_t, uint16_t>;
 
-static_assert(sizeof(DeviceId) == sizeof(uint32_t) + sizeof(uint8_t) + 3); // Padding likely
-static_assert(std::is_trivially_copyable_v<DeviceId>);
+static_assert(std::is_trivially_copyable_v<DeviceHandle>);
 static_assert(std::is_trivially_copyable_v<BufferHandle>);
 
 } // namespace orteaf::internal::base

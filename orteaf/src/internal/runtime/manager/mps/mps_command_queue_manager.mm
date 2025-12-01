@@ -21,7 +21,7 @@ void MpsCommandQueueManager::initialize(
     return;
   }
 
-  if (capacity > base::CommandQueueId::invalid_index()) {
+  if (capacity > base::CommandQueueHandle::invalid_index()) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "Requested MPS command queue capacity exceeds supported limit");
@@ -70,7 +70,7 @@ void MpsCommandQueueManager::growCapacity(std::size_t additional) {
   growStatePool(additional);
 }
 
-base::CommandQueueId MpsCommandQueueManager::acquire() {
+base::CommandQueueHandle MpsCommandQueueManager::acquire() {
   const std::size_t index = allocateSlot();
   State &state = states_[index];
   state.in_use = true;
@@ -78,7 +78,7 @@ base::CommandQueueId MpsCommandQueueManager::acquire() {
   return encodeId(index, state.generation);
 }
 
-void MpsCommandQueueManager::release(base::CommandQueueId id) {
+void MpsCommandQueueManager::release(base::CommandQueueHandle id) {
   State &state = ensureActiveState(id);
   if (state.submit_serial != state.completed_serial) {
     ::orteaf::internal::diagnostics::error::throwError(
@@ -109,30 +109,30 @@ void MpsCommandQueueManager::releaseUnusedQueues() {
 }
 
 ::orteaf::internal::backend::mps::MPSCommandQueue_t
-MpsCommandQueueManager::getCommandQueue(base::CommandQueueId id) const {
+MpsCommandQueueManager::getCommandQueue(base::CommandQueueHandle id) const {
   const State &state = ensureActiveState(id);
   return state.command_queue;
 }
 
 std::uint64_t
-MpsCommandQueueManager::submitSerial(base::CommandQueueId id) const {
+MpsCommandQueueManager::submitSerial(base::CommandQueueHandle id) const {
   const State &state = ensureActiveState(id);
   return state.submit_serial;
 }
 
-void MpsCommandQueueManager::setSubmitSerial(base::CommandQueueId id,
+void MpsCommandQueueManager::setSubmitSerial(base::CommandQueueHandle id,
                                              std::uint64_t value) {
   State &state = ensureActiveState(id);
   state.submit_serial = value;
 }
 
 std::uint64_t
-MpsCommandQueueManager::completedSerial(base::CommandQueueId id) const {
+MpsCommandQueueManager::completedSerial(base::CommandQueueHandle id) const {
   const State &state = ensureActiveState(id);
   return state.completed_serial;
 }
 
-void MpsCommandQueueManager::setCompletedSerial(base::CommandQueueId id,
+void MpsCommandQueueManager::setCompletedSerial(base::CommandQueueHandle id,
                                                 std::uint64_t value) {
   State &state = ensureActiveState(id);
   state.completed_serial = value;
@@ -140,7 +140,7 @@ void MpsCommandQueueManager::setCompletedSerial(base::CommandQueueId id,
 
 #if ORTEAF_ENABLE_TEST
 MpsCommandQueueManager::DebugState
-MpsCommandQueueManager::debugState(base::CommandQueueId id) const {
+MpsCommandQueueManager::debugState(base::CommandQueueHandle id) const {
   DebugState snapshot{};
   snapshot.growth_chunk_size = growth_chunk_size_;
   const std::size_t index = indexFromIdRaw(id);
@@ -203,7 +203,7 @@ void MpsCommandQueueManager::growStatePool(std::size_t additional_count) {
   if (additional_count == 0) {
     return;
   }
-  if (additional_count > (base::CommandQueueId::invalid_index() - states_.size())) {
+  if (additional_count > (base::CommandQueueHandle::invalid_index() - states_.size())) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "Requested MPS command queue capacity exceeds supported limit");
@@ -225,7 +225,7 @@ void MpsCommandQueueManager::growStatePool(std::size_t additional_count) {
 }
 
 MpsCommandQueueManager::State &
-MpsCommandQueueManager::ensureActiveState(base::CommandQueueId id) {
+MpsCommandQueueManager::ensureActiveState(base::CommandQueueHandle id) {
   ensureInitialized();
   const std::size_t index = indexFromId(id);
   if (index >= states_.size()) {
@@ -240,7 +240,7 @@ MpsCommandQueueManager::ensureActiveState(base::CommandQueueId id) {
         "MPS command queue is inactive");
   }
   const std::uint32_t expected_generation = generationFromId(id);
-  if (static_cast<base::CommandQueueId::generation_type>(state.generation) != expected_generation) {
+  if (static_cast<base::CommandQueueHandle::generation_type>(state.generation) != expected_generation) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS command queue handle is stale");
@@ -248,23 +248,23 @@ MpsCommandQueueManager::ensureActiveState(base::CommandQueueId id) {
   return state;
 }
 
-base::CommandQueueId
+base::CommandQueueHandle
 MpsCommandQueueManager::encodeId(std::size_t index,
                                  std::uint32_t generation) const {
-  return base::CommandQueueId{static_cast<std::uint32_t>(index), static_cast<std::uint8_t>(generation)};
+  return base::CommandQueueHandle{static_cast<std::uint32_t>(index), static_cast<std::uint8_t>(generation)};
 }
 
-std::size_t MpsCommandQueueManager::indexFromId(base::CommandQueueId id) const {
+std::size_t MpsCommandQueueManager::indexFromId(base::CommandQueueHandle id) const {
   return indexFromIdRaw(id);
 }
 
 std::size_t
-MpsCommandQueueManager::indexFromIdRaw(base::CommandQueueId id) const {
+MpsCommandQueueManager::indexFromIdRaw(base::CommandQueueHandle id) const {
   return static_cast<std::size_t>(id.index);
 }
 
 std::uint32_t
-MpsCommandQueueManager::generationFromId(base::CommandQueueId id) const {
+MpsCommandQueueManager::generationFromId(base::CommandQueueHandle id) const {
   return static_cast<std::uint32_t>(id.generation);
 }
 

@@ -79,13 +79,13 @@ public:
 
     std::size_t capacity() const noexcept { return states_.size(); }
 
-    base::FunctionId getOrCreate(const FunctionKey& key);
+    base::FunctionHandle getOrCreate(const FunctionKey& key);
 
-    void release(base::FunctionId id);
+    void release(base::FunctionHandle id);
 
-    ::orteaf::internal::backend::mps::MPSComputePipelineState_t getPipelineState(base::FunctionId id) const;
+    ::orteaf::internal::backend::mps::MPSComputePipelineState_t getPipelineState(base::FunctionHandle id) const;
 
-    ::orteaf::internal::backend::mps::MPSFunction_t getFunction(base::FunctionId id) const;
+    ::orteaf::internal::backend::mps::MPSFunction_t getFunction(base::FunctionHandle id) const;
 
 #if ORTEAF_ENABLE_TEST
     struct DebugState {
@@ -98,7 +98,7 @@ public:
         std::size_t growth_chunk_size{0};
     };
 
-    DebugState debugState(base::FunctionId id) const;
+    DebugState debugState(base::FunctionHandle id) const;
 #endif
 
 private:
@@ -116,9 +116,9 @@ private:
 
     void destroyState(State& state);
 
-    State& ensureAliveState(base::FunctionId id);
+    State& ensureAliveState(base::FunctionHandle id);
 
-    const State& ensureAliveState(base::FunctionId id) const {
+    const State& ensureAliveState(base::FunctionHandle id) const {
         return const_cast<MpsComputePipelineStateManager*>(this)->ensureAliveState(id);
     }
 
@@ -126,11 +126,11 @@ private:
 
     void growStatePool(std::size_t additional);
 
-    base::FunctionId encodeId(std::size_t index, std::uint32_t generation) const;
+    base::FunctionHandle encodeId(std::size_t index, std::uint32_t generation) const;
 
-    std::size_t indexFromId(base::FunctionId id) const;
+    std::size_t indexFromId(base::FunctionHandle id) const;
 
-    std::uint32_t generationFromId(base::FunctionId id) const;
+    std::uint32_t generationFromId(base::FunctionHandle id) const;
 
     ::orteaf::internal::base::HeapVector<State> states_{};
     ::orteaf::internal::base::HeapVector<std::size_t> free_list_{};

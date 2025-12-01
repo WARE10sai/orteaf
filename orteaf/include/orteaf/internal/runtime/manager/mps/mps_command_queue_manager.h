@@ -55,22 +55,22 @@ public:
 
   void growCapacity(std::size_t additional);
 
-  base::CommandQueueId acquire();
+  base::CommandQueueHandle acquire();
 
-  void release(base::CommandQueueId id);
+  void release(base::CommandQueueHandle id);
 
   void releaseUnusedQueues();
 
   ::orteaf::internal::backend::mps::MPSCommandQueue_t
-  getCommandQueue(base::CommandQueueId id) const;
+  getCommandQueue(base::CommandQueueHandle id) const;
 
-  std::uint64_t submitSerial(base::CommandQueueId id) const;
+  std::uint64_t submitSerial(base::CommandQueueHandle id) const;
 
-  void setSubmitSerial(base::CommandQueueId id, std::uint64_t value);
+  void setSubmitSerial(base::CommandQueueHandle id, std::uint64_t value);
 
-  std::uint64_t completedSerial(base::CommandQueueId id) const;
+  std::uint64_t completedSerial(base::CommandQueueHandle id) const;
 
-  void setCompletedSerial(base::CommandQueueId id, std::uint64_t value);
+  void setCompletedSerial(base::CommandQueueHandle id, std::uint64_t value);
 
 #if ORTEAF_ENABLE_TEST
   struct DebugState {
@@ -82,7 +82,7 @@ public:
     std::size_t growth_chunk_size{0};
   };
 
-  DebugState debugState(base::CommandQueueId id) const;
+  DebugState debugState(base::CommandQueueHandle id) const;
 #endif
 
 private:
@@ -105,20 +105,20 @@ private:
 
   void growStatePool(std::size_t additional_count);
 
-  State &ensureActiveState(base::CommandQueueId id);
+  State &ensureActiveState(base::CommandQueueHandle id);
 
-  const State &ensureActiveState(base::CommandQueueId id) const {
+  const State &ensureActiveState(base::CommandQueueHandle id) const {
     return const_cast<MpsCommandQueueManager *>(this)->ensureActiveState(id);
   }
 
-  base::CommandQueueId encodeId(std::size_t index,
+  base::CommandQueueHandle encodeId(std::size_t index,
                                 std::uint32_t generation) const;
 
-  std::size_t indexFromId(base::CommandQueueId id) const;
+  std::size_t indexFromId(base::CommandQueueHandle id) const;
 
-  std::size_t indexFromIdRaw(base::CommandQueueId id) const;
+  std::size_t indexFromIdRaw(base::CommandQueueHandle id) const;
 
-  std::uint32_t generationFromId(base::CommandQueueId id) const;
+  std::uint32_t generationFromId(base::CommandQueueHandle id) const;
 
   ::orteaf::internal::base::HeapVector<State> states_;
   ::orteaf::internal::base::HeapVector<std::size_t> free_list_;

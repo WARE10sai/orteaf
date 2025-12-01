@@ -84,11 +84,11 @@ public:
 
   std::size_t capacity() const noexcept { return states_.size(); }
 
-  base::HeapId getOrCreate(const HeapDescriptorKey &key);
+  base::HeapHandle getOrCreate(const HeapDescriptorKey &key);
 
-  void release(base::HeapId id);
+  void release(base::HeapHandle id);
 
-  ::orteaf::internal::backend::mps::MPSHeap_t getHeap(base::HeapId id) const;
+  ::orteaf::internal::backend::mps::MPSHeap_t getHeap(base::HeapHandle id) const;
 
 #if ORTEAF_ENABLE_TEST
   struct DebugState {
@@ -110,7 +110,7 @@ public:
     std::size_t growth_chunk_size{0};
   };
 
-  DebugState debugState(base::HeapId id) const;
+  DebugState debugState(base::HeapHandle id) const;
 #endif
 
 private:
@@ -131,9 +131,9 @@ private:
 
   void validateKey(const HeapDescriptorKey &key) const;
 
-  State &ensureAliveState(base::HeapId id);
+  State &ensureAliveState(base::HeapHandle id);
 
-  const State &ensureAliveState(base::HeapId id) const {
+  const State &ensureAliveState(base::HeapHandle id) const {
     return const_cast<MpsHeapManager *>(this)->ensureAliveState(id);
   }
 
@@ -141,11 +141,11 @@ private:
 
   void growStatePool(std::size_t additional);
 
-  base::HeapId encodeId(std::size_t index, std::uint32_t generation) const;
+  base::HeapHandle encodeId(std::size_t index, std::uint32_t generation) const;
 
-  std::size_t indexFromId(base::HeapId id) const;
+  std::size_t indexFromId(base::HeapHandle id) const;
 
-  std::uint32_t generationFromId(base::HeapId id) const;
+  std::uint32_t generationFromId(base::HeapHandle id) const;
 
   ::orteaf::internal::backend::mps::MPSHeap_t
   createHeap(const HeapDescriptorKey &key);

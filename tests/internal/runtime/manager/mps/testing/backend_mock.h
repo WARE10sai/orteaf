@@ -25,7 +25,7 @@ struct MpsBackendOpsMock
   MOCK_METHOD(void, releaseDevice,
               (::orteaf::internal::backend::mps::MPSDevice_t), (override));
   MOCK_METHOD(::orteaf::internal::architecture::Architecture,
-              detectArchitecture, (::orteaf::internal::base::DeviceId),
+              detectArchitecture, (::orteaf::internal::base::DeviceHandle),
               (override));
   MOCK_METHOD(::orteaf::internal::backend::mps::MPSCommandQueue_t,
               createCommandQueue,

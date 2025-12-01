@@ -23,7 +23,7 @@ namespace orteaf::internal::architecture {
 Architecture detectCudaArchitecture(int compute_capability, std::string_view vendor_hint = "nvidia");
 
 /**
- * @brief Enumerate CUDA devices and detect the architecture for the requested `DeviceId`.
+ * @brief Enumerate CUDA devices and detect the architecture for the requested `DeviceHandle`.
  *
  * When CUDA is enabled, the helper queries `backend::cuda` for the device count, extracts
  * the compute capability and vendor for the requested device, and then delegates to
@@ -33,6 +33,6 @@ Architecture detectCudaArchitecture(int compute_capability, std::string_view ven
  * @param device_id Strong-typed CUDA device identifier.
  * @return The detected CUDA `Architecture`, or `Architecture::CudaGeneric` when enumeration fails.
  */
-Architecture detectCudaArchitectureForDeviceId(::orteaf::internal::base::DeviceId device_id);
+Architecture detectCudaArchitectureForDeviceId(::orteaf::internal::base::DeviceHandle device_id);
 
 } // namespace orteaf::internal::architecture

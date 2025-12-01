@@ -175,8 +175,8 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest, AccessBeforeInitializationTh
     auto& manager = this->manager();
     const auto key = mps_rt::FunctionKey::Named("Unused");
     ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.getOrCreate(key); });
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { manager.release(base::FunctionId{0}); });
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.getPipelineState(base::FunctionId{0}); });
+    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { manager.release(base::FunctionHandle{0}); });
+    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.getPipelineState(base::FunctionHandle{0}); });
 }
 
 TYPED_TEST(MpsComputePipelineStateManagerTypedTest, InitializeRejectsNullDevice) {
@@ -339,7 +339,7 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest, ReleaseDestroysHandlesAndAll
     EXPECT_FALSE(released_snapshot.alive);
 
     const auto reacquired = manager.getOrCreate(key);
-    EXPECT_NE(reacquired, base::FunctionId{});
+    EXPECT_NE(reacquired, base::FunctionHandle{});
     if constexpr (TypeParam::is_mock) {
         EXPECT_EQ(manager.getPipelineState(reacquired), second_pipeline);
     } else {
@@ -391,7 +391,7 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest, GetPipelineStateRejectsInval
         return;
     }
     ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] {
-        (void)manager.getPipelineState(base::FunctionId{std::numeric_limits<std::uint32_t>::max()});
+        (void)manager.getPipelineState(base::FunctionHandle{std::numeric_limits<std::uint32_t>::max()});
     });
 }
 

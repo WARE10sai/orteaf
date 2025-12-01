@@ -20,7 +20,7 @@ void MpsComputePipelineStateManager::initialize(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "MPS compute pipeline state manager requires valid ops");
   }
-  if (capacity > base::FunctionId::invalid_index()) {
+  if (capacity > base::FunctionHandle::invalid_index()) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "Requested MPS compute pipeline capacity exceeds supported limit");
@@ -56,7 +56,7 @@ void MpsComputePipelineStateManager::shutdown() {
   initialized_ = false;
 }
 
-base::FunctionId
+base::FunctionHandle
 MpsComputePipelineStateManager::getOrCreate(const FunctionKey &key) {
   ensureInitialized();
   validateKey(key);
@@ -88,7 +88,7 @@ MpsComputePipelineStateManager::getOrCreate(const FunctionKey &key) {
   return id;
 }
 
-void MpsComputePipelineStateManager::release(base::FunctionId id) {
+void MpsComputePipelineStateManager::release(base::FunctionHandle id) {
   State &state = ensureAliveState(id);
   key_to_index_.erase(state.key);
   destroyState(state);
@@ -97,18 +97,18 @@ void MpsComputePipelineStateManager::release(base::FunctionId id) {
 }
 
 ::orteaf::internal::backend::mps::MPSComputePipelineState_t
-MpsComputePipelineStateManager::getPipelineState(base::FunctionId id) const {
+MpsComputePipelineStateManager::getPipelineState(base::FunctionHandle id) const {
   return ensureAliveState(id).pipeline_state;
 }
 
 ::orteaf::internal::backend::mps::MPSFunction_t
-MpsComputePipelineStateManager::getFunction(base::FunctionId id) const {
+MpsComputePipelineStateManager::getFunction(base::FunctionHandle id) const {
   return ensureAliveState(id).function;
 }
 
 #if ORTEAF_ENABLE_TEST
 MpsComputePipelineStateManager::DebugState
-MpsComputePipelineStateManager::debugState(base::FunctionId id) const {
+MpsComputePipelineStateManager::debugState(base::FunctionHandle id) const {
   DebugState snapshot{};
   snapshot.growth_chunk_size = growth_chunk_size_;
   const std::size_t index = indexFromId(id);
@@ -156,7 +156,7 @@ void MpsComputePipelineStateManager::destroyState(State &state) {
 }
 
 MpsComputePipelineStateManager::State &
-MpsComputePipelineStateManager::ensureAliveState(base::FunctionId id) {
+MpsComputePipelineStateManager::ensureAliveState(base::FunctionHandle id) {
   ensureInitialized();
   const std::size_t index = indexFromId(id);
   if (index >= states_.size()) {
@@ -171,7 +171,7 @@ MpsComputePipelineStateManager::ensureAliveState(base::FunctionId id) {
         "MPS compute pipeline state is inactive");
   }
   const std::uint32_t expected_generation = generationFromId(id);
-  if (static_cast<base::FunctionId::generation_type>(state.generation) != expected_generation) {
+  if (static_cast<base::FunctionHandle::generation_type>(state.generation) != expected_generation) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS compute pipeline handle is stale");
@@ -197,7 +197,7 @@ void MpsComputePipelineStateManager::growStatePool(std::size_t additional) {
   if (additional == 0) {
     return;
   }
-  if (additional > (base::FunctionId::invalid_index() - states_.size())) {
+  if (additional > (base::FunctionHandle::invalid_index() - states_.size())) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "Requested MPS compute pipeline capacity exceeds supported limit");
@@ -211,19 +211,19 @@ void MpsComputePipelineStateManager::growStatePool(std::size_t additional) {
   }
 }
 
-base::FunctionId
+base::FunctionHandle
 MpsComputePipelineStateManager::encodeId(std::size_t index,
                                          std::uint32_t generation) const {
-  return base::FunctionId{static_cast<std::uint32_t>(index), static_cast<std::uint8_t>(generation)};
+  return base::FunctionHandle{static_cast<std::uint32_t>(index), static_cast<std::uint8_t>(generation)};
 }
 
 std::size_t
-MpsComputePipelineStateManager::indexFromId(base::FunctionId id) const {
+MpsComputePipelineStateManager::indexFromId(base::FunctionHandle id) const {
   return static_cast<std::size_t>(id.index);
 }
 
 std::uint32_t
-MpsComputePipelineStateManager::generationFromId(base::FunctionId id) const {
+MpsComputePipelineStateManager::generationFromId(base::FunctionHandle id) const {
   return static_cast<std::uint32_t>(id.generation);
 }
 

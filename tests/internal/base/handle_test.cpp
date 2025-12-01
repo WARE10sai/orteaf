@@ -5,9 +5,9 @@
 namespace base = orteaf::internal::base;
 
 TEST(Handle, BasicComparisonAndConversion) {
-    base::StreamId stream1{3};
-    base::StreamId stream2{3};
-    base::StreamId stream3{4};
+    base::StreamHandle stream1{3};
+    base::StreamHandle stream2{3};
+    base::StreamHandle stream3{4};
 
     EXPECT_EQ(stream1, stream2);
     EXPECT_NE(stream1, stream3);
@@ -17,17 +17,17 @@ TEST(Handle, BasicComparisonAndConversion) {
 }
 
 TEST(Handle, InvalidHelper) {
-    constexpr auto bad = base::ContextId::invalid();
+    constexpr auto bad = base::ContextHandle::invalid();
     EXPECT_FALSE(bad.isValid());
-    EXPECT_EQ(static_cast<uint32_t>(bad), base::ContextId::invalid_index());
+    EXPECT_EQ(static_cast<uint32_t>(bad), base::ContextHandle::invalid_index());
 }
 
 TEST(Handle, DeviceTypeIsIndependent) {
-    base::DeviceId device{0};
-    base::StreamId stream{0};
+    base::DeviceHandle device{0};
+    base::StreamHandle stream{0};
     // Ensure there is no implicit conversion between different Handle tags.
-    static_assert(!std::is_convertible_v<base::StreamId, base::DeviceId>);
-    static_assert(!std::is_convertible_v<base::DeviceId, base::StreamId>);
+    static_assert(!std::is_convertible_v<base::StreamHandle, base::DeviceHandle>);
+    static_assert(!std::is_convertible_v<base::DeviceHandle, base::StreamHandle>);
     EXPECT_EQ(static_cast<uint32_t>(device), 0u);
     EXPECT_EQ(static_cast<uint32_t>(stream), 0u);
 }

@@ -50,7 +50,7 @@ orteaf/
 - **DeviceManager**  
   - デバイス列挙と `DeviceState` の保持。`initialize_devices()` / `shutdown()` / `get_state()` を提供。
   - 各バックエンド固有のアーキ情報（SM 数や Metal Feature Set など）を保持する構造体もここに置く。
-  - ID 系の誤用を防ぐため、`base/handle.h` で提供する `DeviceId`/`StreamId`/`ContextId` を API 引数／返り値に強制し、`uint8_t`/`uint32_t` をそのまま受け取らない。
+  - ID 系の誤用を防ぐため、`base/handle.h` で提供する `DeviceHandle`/`StreamHandle`/`ContextHandle` を API 引数／返り値に強制し、`uint8_t`/`uint32_t` をそのまま受け取らない。
 - **ContextManager**  
   - CUDA などドライバが明示的なコンテキストを要求するバックエンド専用。  
   - `ContextState` に `StreamManager`/`EventManager`/`Allocator` のハンドルを内包し、遅延生成・破棄を管理する。
@@ -83,7 +83,7 @@ orteaf/
 
 ## 今後の検討事項
 
-- Manager 間で共有する小さなユーティリティ（`DeviceHandle`, `StreamId` など）を `runtime/common/` のように切り出すかどうか。
+- Manager 間で共有する小さなユーティリティ（`DeviceHandle`, `StreamHandle` など）を `runtime/common/` のように切り出すかどうか。
 - ops レイヤを `runtime/ops` に置くか、`runtime/manager/ops` としてサブディレクトリ化するか。  
   - 便利機能の利用頻度・API 表現を見ながら決める。
 - Allocator を ops から直接呼ぶケース（例: 一時バッファ確保）に備えて、スレッドローカル Context から安全に取得できる仕組みを整える。

@@ -16,7 +16,7 @@ namespace orteaf::internal::runtime::allocator::policies {
 template <typename Resource, ::orteaf::internal::backend::Backend B>
 class DirectResourceLargeAllocPolicy {
 public:
-    using BufferId = ::orteaf::internal::base::BufferId;
+    using BufferHandle = ::orteaf::internal::base::BufferHandle;
     using BufferView = typename ::orteaf::internal::backend::BackendTraits<B>::BufferView;
     using MemoryBlock = ::orteaf::internal::runtime::allocator::MemoryBlock<B>;
 
@@ -45,7 +45,7 @@ public:
         return MemoryBlock(encodeId(index), buffer);
     }
 
-    void deallocate(BufferId id, std::size_t size, std::size_t alignment) {
+    void deallocate(BufferHandle id, std::size_t size, std::size_t alignment) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!isLargeAlloc(id)) {
             return;
@@ -73,12 +73,12 @@ public:
         free_list_.pushBack(static_cast<std::size_t>(index));
     }
 
-    bool isLargeAlloc(BufferId id) const {
+    bool isLargeAlloc(BufferHandle id) const {
         // 上位ビットでLarge/Chunkを判定
-        return (static_cast<BufferId::underlying_type>(id) & kLargeMask) != 0;
+        return (static_cast<BufferHandle::underlying_type>(id) & kLargeMask) != 0;
     }
 
-    bool isAlive(BufferId id) const {
+    bool isAlive(BufferHandle id) const {
         if (!isLargeAlloc(id)) {
             return false;
         }
@@ -93,8 +93,8 @@ public:
     }
 
 private:
-    static constexpr BufferId::underlying_type kLargeMask = BufferId::underlying_type{1u} << 31;
-    static constexpr BufferId::underlying_type kIndexMask = ~kLargeMask;
+    static constexpr BufferHandle::underlying_type kLargeMask = BufferHandle::underlying_type{1u} << 31;
+    static constexpr BufferHandle::underlying_type kIndexMask = ~kLargeMask;
 
     struct Entry {
         BufferView view{};
@@ -105,14 +105,14 @@ private:
 #endif
     };
 
-    BufferId encodeId(std::size_t index) const {
+    BufferHandle encodeId(std::size_t index) const {
         // Large用のビットを立てて衝突を避ける
-        return BufferId{static_cast<BufferId::underlying_type>(index) | kLargeMask};
+        return BufferHandle{static_cast<BufferHandle::underlying_type>(index) | kLargeMask};
     }
 
-    std::size_t indexFromId(BufferId id) const {
+    std::size_t indexFromId(BufferHandle id) const {
         // Large判定ビットを落としてインデックスに戻す
-        return static_cast<std::size_t>(static_cast<BufferId::underlying_type>(id) & kIndexMask);
+        return static_cast<std::size_t>(static_cast<BufferHandle::underlying_type>(id) & kIndexMask);
     }
 
     std::size_t reserveSlot() {

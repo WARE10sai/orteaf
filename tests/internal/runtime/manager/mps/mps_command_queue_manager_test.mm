@@ -243,7 +243,7 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest, AcquireFailsWhenGrowthWouldExceedLim
 
 TYPED_TEST(MpsCommandQueueManagerTypedTest, ReleaseFailsBeforeInitialization) {
     auto& manager = this->manager();
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { manager.release(base::CommandQueueId{0}); });
+    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { manager.release(base::CommandQueueHandle{0}); });
 }
 
 TYPED_TEST(MpsCommandQueueManagerTypedTest, ReleaseRejectsNonAcquiredId) {
@@ -252,7 +252,7 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest, ReleaseRejectsNonAcquiredId) {
     this->adapter().expectCreateCommandQueues({makeQueue(0x700)});
     this->adapter().expectCreateEvents({makeEvent(0x7000)});
     manager.initialize(device, this->getOps(), 1);
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { manager.release(base::CommandQueueId{0}); });
+    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { manager.release(base::CommandQueueHandle{0}); });
 }
 
 TYPED_TEST(MpsCommandQueueManagerTypedTest, ReleaseRequiresCompletedWork) {
@@ -287,7 +287,7 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest, ReleaseMakesHandleStaleAndRecyclesSt
 
 TYPED_TEST(MpsCommandQueueManagerTypedTest, GetCommandQueueFailsBeforeInitialization) {
     auto& manager = this->manager();
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.getCommandQueue(base::CommandQueueId{0}); });
+    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.getCommandQueue(base::CommandQueueHandle{0}); });
 }
 
 TYPED_TEST(MpsCommandQueueManagerTypedTest, HazardCountersDefaultToZero) {
@@ -362,7 +362,7 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest, GetCommandQueueRejectsOutOfRangeId) 
     this->adapter().expectCreateEvents({makeEvent(0x8110)});
     manager.initialize(device, this->getOps(), 1);
     ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] {
-        (void)manager.getCommandQueue(base::CommandQueueId{10});
+        (void)manager.getCommandQueue(base::CommandQueueHandle{10});
     });
 }
 

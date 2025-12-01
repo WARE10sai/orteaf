@@ -115,8 +115,8 @@ TYPED_TEST(MpsHeapManagerTypedTest, AccessBeforeInitializationThrows) {
     auto& manager = this->manager();
     const auto key = this->defaultKey();
     ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.getOrCreate(key); });
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { manager.release(base::HeapId{0}); });
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.getHeap(base::HeapId{0}); });
+    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { manager.release(base::HeapHandle{0}); });
+    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.getHeap(base::HeapHandle{0}); });
 }
 
 TYPED_TEST(MpsHeapManagerTypedTest, InitializeRejectsNullDevice) {
@@ -268,7 +268,7 @@ TYPED_TEST(MpsHeapManagerTypedTest, GetHeapRejectsInvalidId) {
     auto& manager = this->manager();
     const auto device = this->adapter().device();
     manager.initialize(device, this->getOps(), 0);
-    ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] { (void)manager.getHeap(base::HeapId{0xFF}); });
+    ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] { (void)manager.getHeap(base::HeapHandle{0xFF}); });
     manager.shutdown();
 }
 

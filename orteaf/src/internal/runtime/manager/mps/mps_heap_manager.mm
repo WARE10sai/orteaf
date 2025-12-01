@@ -18,7 +18,7 @@ void MpsHeapManager::initialize(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "MPS heap manager requires valid ops");
   }
-  if (capacity > base::HeapId::invalid_index()) {
+  if (capacity > base::HeapHandle::invalid_index()) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "Requested MPS heap capacity exceeds supported limit");
@@ -56,7 +56,7 @@ void MpsHeapManager::shutdown() {
   initialized_ = false;
 }
 
-base::HeapId MpsHeapManager::getOrCreate(const HeapDescriptorKey &key) {
+base::HeapHandle MpsHeapManager::getOrCreate(const HeapDescriptorKey &key) {
   ensureInitialized();
   validateKey(key);
   if (auto it = key_to_index_.find(key); it != key_to_index_.end()) {
@@ -73,7 +73,7 @@ base::HeapId MpsHeapManager::getOrCreate(const HeapDescriptorKey &key) {
   return id;
 }
 
-void MpsHeapManager::release(base::HeapId id) {
+void MpsHeapManager::release(base::HeapHandle id) {
   State &state = ensureAliveState(id);
   key_to_index_.erase(state.key);
   ops_->destroyHeap(state.heap);
@@ -83,12 +83,12 @@ void MpsHeapManager::release(base::HeapId id) {
 }
 
 ::orteaf::internal::backend::mps::MPSHeap_t
-MpsHeapManager::getHeap(base::HeapId id) const {
+MpsHeapManager::getHeap(base::HeapHandle id) const {
   return ensureAliveState(id).heap;
 }
 
 #if ORTEAF_ENABLE_TEST
-MpsHeapManager::DebugState MpsHeapManager::debugState(base::HeapId id) const {
+MpsHeapManager::DebugState MpsHeapManager::debugState(base::HeapHandle id) const {
   DebugState snapshot{};
   snapshot.growth_chunk_size = growth_chunk_size_;
   const std::size_t index = indexFromId(id);
@@ -126,7 +126,7 @@ void MpsHeapManager::validateKey(const HeapDescriptorKey &key) const {
   }
 }
 
-MpsHeapManager::State &MpsHeapManager::ensureAliveState(base::HeapId id) {
+MpsHeapManager::State &MpsHeapManager::ensureAliveState(base::HeapHandle id) {
   ensureInitialized();
   const std::size_t index = indexFromId(id);
   if (index >= states_.size()) {
@@ -141,7 +141,7 @@ MpsHeapManager::State &MpsHeapManager::ensureAliveState(base::HeapId id) {
         "MPS heap handle is inactive");
   }
   const std::uint32_t expected_generation = generationFromId(id);
-  if (static_cast<base::HeapId::generation_type>(state.generation) != expected_generation) {
+  if (static_cast<base::HeapHandle::generation_type>(state.generation) != expected_generation) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS heap handle is stale");
@@ -167,7 +167,7 @@ void MpsHeapManager::growStatePool(std::size_t additional) {
   if (additional == 0) {
     return;
   }
-  if (additional > (base::HeapId::invalid_index() - states_.size())) {
+  if (additional > (base::HeapHandle::invalid_index() - states_.size())) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "Requested MPS heap capacity exceeds supported limit");
@@ -181,16 +181,16 @@ void MpsHeapManager::growStatePool(std::size_t additional) {
   }
 }
 
-base::HeapId MpsHeapManager::encodeId(std::size_t index,
+base::HeapHandle MpsHeapManager::encodeId(std::size_t index,
                                       std::uint32_t generation) const {
-  return base::HeapId{static_cast<std::uint32_t>(index), static_cast<std::uint8_t>(generation)};
+  return base::HeapHandle{static_cast<std::uint32_t>(index), static_cast<std::uint8_t>(generation)};
 }
 
-std::size_t MpsHeapManager::indexFromId(base::HeapId id) const {
+std::size_t MpsHeapManager::indexFromId(base::HeapHandle id) const {
   return static_cast<std::size_t>(id.index);
 }
 
-std::uint32_t MpsHeapManager::generationFromId(base::HeapId id) const {
+std::uint32_t MpsHeapManager::generationFromId(base::HeapHandle id) const {
   return static_cast<std::uint32_t>(id.generation);
 }
 
