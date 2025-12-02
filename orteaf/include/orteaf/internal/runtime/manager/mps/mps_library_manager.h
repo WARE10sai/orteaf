@@ -102,7 +102,7 @@ public:
     std::size_t growth_chunk_size{0};
   };
 
-  DebugState debugState(base::LibraryHandle id) const;
+  DebugState debugState(base::LibraryHandle handle) const;
 #endif
 
 private:
@@ -126,10 +126,10 @@ private:
 
   void validateKey(const LibraryKey &key) const;
 
-  State &ensureAliveState(base::LibraryHandle id);
+  State &ensureAliveState(base::LibraryHandle handle);
 
-  const State &ensureAliveState(base::LibraryHandle id) const {
-    return const_cast<MpsLibraryManager *>(this)->ensureAliveState(id);
+  const State &ensureAliveState(base::LibraryHandle handle) const {
+    return const_cast<MpsLibraryManager *>(this)->ensureAliveState(handle);
   }
 
   std::size_t allocateSlot();
@@ -138,9 +138,9 @@ private:
 
   base::LibraryHandle encodeHandle(std::size_t index, std::uint32_t generation) const;
 
-  void releaseHandle(base::LibraryHandle id) noexcept;
+  void releaseHandle(base::LibraryHandle handle) noexcept;
 
-  LibraryLease acquireLibraryFromHandle(base::LibraryHandle id);
+  LibraryLease acquireLibraryFromHandle(base::LibraryHandle handle);
 
   ::orteaf::internal::backend::mps::MPSLibrary_t
   createLibrary(const LibraryKey &key);

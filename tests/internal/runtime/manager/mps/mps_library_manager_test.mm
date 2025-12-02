@@ -309,3 +309,53 @@ TYPED_TEST(MpsLibraryManagerTypedTest, PipelineManagerProvidesNestedFunctionMana
     pipeline_manager_lease.release();
     library_lease.release();
 }
+
+TYPED_TEST(MpsLibraryManagerTypedTest, PipelineManagerCanBeAcquiredByKey) {
+    auto& manager = this->manager();
+    this->initializeManager();
+    if constexpr (!TypeParam::is_mock) {
+        GTEST_SKIP() << "Mock-only test";
+        return;
+    }
+    const auto key = mps_rt::LibraryKey::Named("ByKey");
+    const auto lib_handle = makeLibrary(0x910);
+    this->adapter().expectCreateLibraries({{"ByKey", lib_handle}});
+    this->adapter().expectDestroyLibraries({lib_handle});
+
+    auto pipeline_lease = manager.acquirePipelineManager(key);
+    EXPECT_NE(pipeline_lease.get(), nullptr);
+    const auto snapshot = manager.debugState(pipeline_lease.handle());
+    EXPECT_TRUE(snapshot.alive);
+    EXPECT_EQ(snapshot.use_count, 1u);
+    pipeline_lease.release();
+    const auto released_snapshot = manager.debugState(pipeline_lease.handle());
+    EXPECT_FALSE(released_snapshot.alive);
+}
+
+TYPED_TEST(MpsLibraryManagerTypedTest, LibraryCanBeReacquiredFromPipelineLease) {
+    auto& manager = this->manager();
+    this->initializeManager();
+    if constexpr (!TypeParam::is_mock) {
+        GTEST_SKIP() << "Mock-only test";
+        return;
+    }
+    const auto key = mps_rt::LibraryKey::Named("FromPipeline");
+    const auto lib_handle = makeLibrary(0x920);
+    this->adapter().expectCreateLibraries({{"FromPipeline", lib_handle}});
+    this->adapter().expectDestroyLibraries({lib_handle});
+
+    auto library_lease = manager.acquire(key);              // use_count = 1
+    auto pipeline_lease = manager.acquirePipelineManager(library_lease); // use_count = 2
+    auto extra_library_lease = manager.acquire(pipeline_lease);          // use_count = 3
+
+    EXPECT_EQ(manager.debugState(library_lease.handle()).use_count, 3u);
+
+    library_lease.release();           // use_count = 2
+    EXPECT_EQ(manager.debugState(pipeline_lease.handle()).use_count, 2u);
+    pipeline_lease.release();          // use_count = 1
+    EXPECT_EQ(manager.debugState(extra_library_lease.handle()).use_count, 1u);
+    extra_library_lease.release();     // use_count = 0, destroys
+
+    const auto released_snapshot = manager.debugState(extra_library_lease.handle());
+    EXPECT_FALSE(released_snapshot.alive);
+}
