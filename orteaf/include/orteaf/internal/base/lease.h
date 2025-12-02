@@ -4,8 +4,6 @@
 #include <utility>
 #include <type_traits>
 
-#include "orteaf/internal/diagnostics/error/error_macros.h"
-
 namespace orteaf::internal::base {
 
 /**
@@ -41,14 +39,8 @@ public:
 
     const HandleT& handle() const noexcept { return handle_; }
 
-    ResourceT& get() noexcept {
-        ensureValid();
-        return resource_;
-    }
-    const ResourceT& get() const noexcept {
-        ensureValid();
-        return resource_;
-    }
+    ResourceT& get() noexcept { return resource_; }
+    const ResourceT& get() const noexcept { return resource_; }
 
     ResourceT* operator->() noexcept { return std::addressof(resource_); }
     const ResourceT* operator->() const noexcept { return std::addressof(resource_); }
@@ -59,8 +51,6 @@ public:
     void release() noexcept { doRelease(); }
 
 private:
-    void ensureValid() const noexcept {}
-
     Lease(ManagerT* mgr, HandleT handle, ResourceT resource) noexcept
         : manager_(mgr), handle_(std::move(handle)), resource_(std::move(resource)) {}
 
@@ -104,14 +94,8 @@ public:
 
     ~Lease() noexcept { release(); }
 
-    ResourceT& get() noexcept {
-        ensureValid();
-        return resource_;
-    }
-    const ResourceT& get() const noexcept {
-        ensureValid();
-        return resource_;
-    }
+    ResourceT& get() noexcept { return resource_; }
+    const ResourceT& get() const noexcept { return resource_; }
 
     ResourceT* operator->() noexcept { return std::addressof(resource_); }
     const ResourceT* operator->() const noexcept { return std::addressof(resource_); }
@@ -122,8 +106,6 @@ public:
     void release() noexcept { doRelease(); }
 
 private:
-    void ensureValid() const noexcept {}
-
     Lease(ManagerT* mgr, ResourceT resource) noexcept
         : manager_(mgr), resource_(std::move(resource)) {}
 
