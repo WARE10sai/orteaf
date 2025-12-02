@@ -68,22 +68,22 @@ MpsCommandQueueManager::CommandQueueLease MpsCommandQueueManager::acquire() {
   State &state = states_[index];
   state.in_use = true;
   state.resetHazards();
-  const auto id = base::CommandQueueHandle{static_cast<std::uint32_t>(index),
+  const auto handle = base::CommandQueueHandle{static_cast<std::uint32_t>(index),
                                            static_cast<base::CommandQueueHandle::generation_type>(state.generation)};
-  return CommandQueueLease{this, id, state.command_queue};
+  return CommandQueueLease{this, handle, state.command_queue};
 }
 
 void MpsCommandQueueManager::release(CommandQueueLease& lease) noexcept {
   if (!initialized_ || ops_ == nullptr) {
     return;
   }
-  const auto id = lease.handle();
-  const std::size_t index = static_cast<std::size_t>(id.index);
+  const auto handle = lease.handle();
+  const std::size_t index = static_cast<std::size_t>(handle.index);
   if (index >= states_.size()) {
     return;
   }
   State &state = states_[index];
-  if (!state.in_use || static_cast<base::CommandQueueHandle::generation_type>(state.generation) != id.generation) {
+  if (!state.in_use || static_cast<base::CommandQueueHandle::generation_type>(state.generation) != handle.generation) {
     return;
   }
   state.in_use = false;
@@ -101,23 +101,23 @@ void MpsCommandQueueManager::release(CommandQueueLease& lease) noexcept {
 }
 
 #if ORTEAF_MPS_DEBUG_ENABLED
-MpsCommandQueueManager::EventLease MpsCommandQueueManager::acquireEvent(base::CommandQueueHandle id) {
-  State& state = ensureActiveState(id);
+MpsCommandQueueManager::EventLease MpsCommandQueueManager::acquireEvent(base::CommandQueueHandle handle) {
+  State& state = ensureActiveState(handle);
   ++state.event_refcount;
-  return EventLease{this, id, state.event};
+  return EventLease{this, handle, state.event};
 }
 
 void MpsCommandQueueManager::release(EventLease& lease) noexcept {
   if (!initialized_ || ops_ == nullptr) {
     return;
   }
-  const auto id = lease.handle();
-  const std::size_t index = static_cast<std::size_t>(id.index);
+  const auto handle = lease.handle();
+  const std::size_t index = static_cast<std::size_t>(handle.index);
   if (index >= states_.size()) {
     return;
   }
   State& state = states_[index];
-  if (static_cast<base::CommandQueueHandle::generation_type>(state.generation) != id.generation) {
+  if (static_cast<base::CommandQueueHandle::generation_type>(state.generation) != handle.generation) {
     return;
   }
   if (state.event_refcount == 0) {
@@ -135,23 +135,23 @@ void MpsCommandQueueManager::release(EventLease& lease) noexcept {
   }
 }
 
-MpsCommandQueueManager::SerialLease MpsCommandQueueManager::acquireSerial(base::CommandQueueHandle id) {
-  State& state = ensureActiveState(id);
+MpsCommandQueueManager::SerialLease MpsCommandQueueManager::acquireSerial(base::CommandQueueHandle handle) {
+  State& state = ensureActiveState(handle);
   ++state.serial_refcount;
-  return SerialLease{this, id, &state.serial};
+  return SerialLease{this, handle, &state.serial};
 }
 
 void MpsCommandQueueManager::release(SerialLease& lease) noexcept {
   if (!initialized_ || ops_ == nullptr) {
     return;
   }
-  const auto id = lease.handle();
-  const std::size_t index = static_cast<std::size_t>(id.index);
+  const auto handle = lease.handle();
+  const std::size_t index = static_cast<std::size_t>(handle.index);
   if (index >= states_.size()) {
     return;
   }
   State& state = states_[index];
-  if (static_cast<base::CommandQueueHandle::generation_type>(state.generation) != id.generation) {
+  if (static_cast<base::CommandQueueHandle::generation_type>(state.generation) != handle.generation) {
     return;
   }
   if (state.serial_refcount == 0) {
@@ -212,10 +212,10 @@ void MpsCommandQueueManager::releaseUnusedQueues() {
 
 #if ORTEAF_ENABLE_TEST
 MpsCommandQueueManager::DebugState
-MpsCommandQueueManager::debugState(base::CommandQueueHandle id) const {
+MpsCommandQueueManager::debugState(base::CommandQueueHandle handle) const {
   DebugState snapshot{};
   snapshot.growth_chunk_size = growth_chunk_size_;
-  const std::size_t index = static_cast<std::size_t>(id.index);
+  const std::size_t index = static_cast<std::size_t>(handle.index);
   if (index < states_.size()) {
     const State &state = states_[index];
     snapshot.generation = state.generation;
@@ -314,13 +314,13 @@ void MpsCommandQueueManager::growStatePool(std::size_t additional_count) {
 }
 
 MpsCommandQueueManager::State &
-MpsCommandQueueManager::ensureActiveState(base::CommandQueueHandle id) {
+MpsCommandQueueManager::ensureActiveState(base::CommandQueueHandle handle) {
   ensureInitialized();
-  const std::size_t index = static_cast<std::size_t>(id.index);
+  const std::size_t index = static_cast<std::size_t>(handle.index);
   if (index >= states_.size()) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-        "MPS command queue id out of range");
+        "MPS command queue handle out of range");
   }
   State &state = states_[index];
   if (!state.in_use) {
@@ -328,7 +328,7 @@ MpsCommandQueueManager::ensureActiveState(base::CommandQueueHandle id) {
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS command queue is inactive");
   }
-  if (static_cast<base::CommandQueueHandle::generation_type>(state.generation) != id.generation) {
+  if (static_cast<base::CommandQueueHandle::generation_type>(state.generation) != handle.generation) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS command queue handle is stale");

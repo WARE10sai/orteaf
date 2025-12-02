@@ -76,9 +76,9 @@ public:
   void release(CommandQueueLease& lease) noexcept;
 
 #if ORTEAF_MPS_DEBUG_ENABLED
-  EventLease acquireEvent(::orteaf::internal::base::CommandQueueHandle id);
+  EventLease acquireEvent(::orteaf::internal::base::CommandQueueHandle handle);
   void release(EventLease& lease) noexcept;
-  SerialLease acquireSerial(::orteaf::internal::base::CommandQueueHandle id);
+  SerialLease acquireSerial(::orteaf::internal::base::CommandQueueHandle handle);
   void release(SerialLease& lease) noexcept;
 #endif
 
@@ -98,7 +98,7 @@ public:
 #endif
   };
 
-  DebugState debugState(base::CommandQueueHandle id) const;
+  DebugState debugState(base::CommandQueueHandle handle) const;
 #endif
 
 private:
@@ -125,10 +125,10 @@ private:
 
   void growStatePool(std::size_t additional_count);
 
-  State &ensureActiveState(base::CommandQueueHandle id);
+  State &ensureActiveState(base::CommandQueueHandle handle);
 
-  const State &ensureActiveState(base::CommandQueueHandle id) const {
-    return const_cast<MpsCommandQueueManager *>(this)->ensureActiveState(id);
+  const State &ensureActiveState(base::CommandQueueHandle handle) const {
+    return const_cast<MpsCommandQueueManager *>(this)->ensureActiveState(handle);
   }
 
   ::orteaf::internal::base::HeapVector<State> states_;
