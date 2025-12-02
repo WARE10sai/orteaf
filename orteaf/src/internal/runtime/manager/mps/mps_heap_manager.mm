@@ -56,7 +56,7 @@ void MpsHeapManager::shutdown() {
   initialized_ = false;
 }
 
-MpsHeapManager::HeapLease MpsHeapManager::getOrCreate(const HeapDescriptorKey &key) {
+MpsHeapManager::HeapLease MpsHeapManager::acquire(const HeapDescriptorKey &key) {
   ensureInitialized();
   validateKey(key);
   if (auto it = key_to_index_.find(key); it != key_to_index_.end()) {

@@ -88,7 +88,7 @@ public:
 
   std::size_t capacity() const noexcept { return states_.size(); }
 
-  HeapLease getOrCreate(const HeapDescriptorKey &key);
+  HeapLease acquire(const HeapDescriptorKey &key);
 
   void release(HeapLease &lease) noexcept;
 
