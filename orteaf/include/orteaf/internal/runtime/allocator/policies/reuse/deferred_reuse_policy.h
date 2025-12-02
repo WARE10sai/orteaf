@@ -15,7 +15,7 @@ namespace orteaf::internal::runtime::allocator::policies {
 template <typename Resource, ::orteaf::internal::backend::Backend B>
 class DeferredReusePolicy {
 public:
-    using BufferId = ::orteaf::internal::base::BufferId;
+    using BufferHandle = ::orteaf::internal::base::BufferHandle;
     using MemoryBlock = ::orteaf::internal::runtime::allocator::MemoryBlock<B>;
     using ReuseToken = typename ::orteaf::internal::backend::BackendTraits<B>::ReuseToken;
 
@@ -98,7 +98,7 @@ public:
         return true;
     }
 
-    void removeBlocksInChunk(const BufferId& id) {
+    void removeBlocksInChunk(const BufferHandle& id) {
         filterPending(id);
         filterReady(id);
     }
@@ -118,7 +118,7 @@ private:
         std::size_t freelist_index;
     };
 
-    void filterPending(const BufferId& id) {
+    void filterPending(const BufferHandle& id) {
         ::orteaf::internal::base::HeapVector<PendingReuse> filtered;
         for (std::size_t i = 0; i < pending_queue_.size(); ++i) {
             if (pending_queue_[i].block.id != id) {
@@ -128,7 +128,7 @@ private:
         pending_queue_ = std::move(filtered);
     }
 
-    void filterReady(const BufferId& id) {
+    void filterReady(const BufferHandle& id) {
         ::orteaf::internal::base::HeapVector<ReadyReuse> filtered;
         for (std::size_t i = 0; i < ready_queue_.size(); ++i) {
             if (ready_queue_[i].block.id != id) {

@@ -326,7 +326,7 @@ public:
 
   void expectDetectArchitectures(
       std::initializer_list<
-          std::pair<::orteaf::internal::base::DeviceId,
+          std::pair<::orteaf::internal::base::DeviceHandle,
                     ::orteaf::internal::architecture::Architecture>>
           expectations) {
     if constexpr (Provider::is_mock) {

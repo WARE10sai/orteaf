@@ -58,7 +58,7 @@ protected:
     mps_backend::MPSDevice_t device_{nullptr};
     mps_backend::MPSCommandQueue_t command_queue_{nullptr};
     mps_backend::MPSCommandBuffer_t command_buffer_{nullptr};
-    base::CommandQueueId queue_id_{base::CommandQueueId{9}};
+    base::CommandQueueHandle queue_id_{base::CommandQueueHandle{9}};
 #endif
 };
 
@@ -67,7 +67,7 @@ protected:
 TEST_F(MpsReuseTicketTest, DefaultConstructedIsInvalid) {
     mps_backend::MpsReuseTicket ticket;
     EXPECT_FALSE(ticket.valid());
-    EXPECT_EQ(ticket.commandQueueId(), base::CommandQueueId{});
+    EXPECT_EQ(ticket.commandQueueId(), base::CommandQueueHandle{});
     EXPECT_EQ(ticket.commandBuffer(), nullptr);
 }
 

@@ -9,7 +9,7 @@
 #include <cstddef>
 #include <type_traits>
 
-#include "orteaf/internal/base/strong_id.h"
+#include "orteaf/internal/base/handle.h"
 
 namespace orteaf::internal::runtime::allocator::policies {
 
@@ -31,10 +31,10 @@ concept ChunkLocator = requires(
     Resource* resource,
     std::size_t size,
     std::size_t alignment,
-    typename T::BufferId id
+    typename T::BufferHandle id
 ) {
     // 型エイリアスの存在確認
-    typename T::BufferId;
+    typename T::BufferHandle;
     typename T::BufferView;
     typename T::MemoryBlock;
     typename T::Config;
@@ -59,9 +59,9 @@ concept ChunkLocator = requires(
 };
 
 /**
- * @brief BufferId が共通の型であることを確認する concept。
+ * @brief BufferHandle が共通の型であることを確認する concept。
  */
 template <typename T>
-concept HasStandardBufferId = std::same_as<typename T::BufferId, ::orteaf::internal::base::BufferId>;
+concept HasStandardBufferHandle = std::same_as<typename T::BufferHandle, ::orteaf::internal::base::BufferHandle>;
 
 }  // namespace orteaf::internal::runtime::allocator::policies

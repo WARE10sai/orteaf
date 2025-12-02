@@ -120,12 +120,12 @@ TYPED_TEST(MpsLibraryManagerTypedTest, GrowthChunkSizeControlsPoolExpansion) {
     const auto key = mps_rt::LibraryKey::Named("ChunkedLibrary");
     const auto handle = makeLibrary(0x3501);
     this->adapter().expectCreateLibraries({{"ChunkedLibrary", handle}});
-    const auto id = manager.getOrCreate(key);
+    auto lease = manager.acquire(key);
     EXPECT_EQ(manager.capacity(), 3u);
-    const auto snapshot = manager.debugState(id);
+    const auto snapshot = manager.debugState(lease.handle());
     EXPECT_EQ(snapshot.growth_chunk_size, 3u);
     this->adapter().expectDestroyLibraries({handle});
-    manager.release(id);
+    lease.release();
     manager.shutdown();
 }
 
@@ -133,9 +133,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest, AccessBeforeInitializationThrows) {
     auto& manager = this->manager();
     const auto key = mps_rt::LibraryKey::Named("Unused");
 
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.getOrCreate(key); });
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { manager.release(base::LibraryId{0}); });
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.getLibrary(base::LibraryId{0}); });
+    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.acquire(key); });
 }
 
 TYPED_TEST(MpsLibraryManagerTypedTest, InitializeRejectsNullDevice) {
@@ -179,22 +177,24 @@ TYPED_TEST(MpsLibraryManagerTypedTest, GetOrCreateAllocatesAndCachesLibrary) {
         this->adapter().expectCreateLibraries({{*maybe_name, expected}});
     }
 
-    const auto id0 = manager.getOrCreate(key);
-    const auto id1 = manager.getOrCreate(key);
-    EXPECT_EQ(id0, id1);
+    auto lease0 = manager.acquire(key);
+    auto lease1 = manager.acquire(key);
+    EXPECT_EQ(lease0.handle(), lease1.handle());
     if constexpr (TypeParam::is_mock) {
-        EXPECT_EQ(manager.getLibrary(id0), expected);
+        EXPECT_EQ(lease0.get(), expected);
     } else {
-        EXPECT_NE(manager.getLibrary(id0), nullptr);
+        EXPECT_NE(lease0.get(), nullptr);
     }
 
-    const auto snapshot = manager.debugState(id0);
+    const auto snapshot = manager.debugState(lease0.handle());
     EXPECT_TRUE(snapshot.alive);
     EXPECT_TRUE(snapshot.handle_allocated);
     EXPECT_EQ(snapshot.identifier, *maybe_name);
+    lease1.release();
+    lease0.release();
 }
 
-TYPED_TEST(MpsLibraryManagerTypedTest, ReleaseDestroysHandleAndAllowsRecreation) {
+TYPED_TEST(MpsLibraryManagerTypedTest, ReleasedLeaseDoesNotAffectLibrary) {
     auto& manager = this->manager();
     this->initializeManager();
     const auto maybe_name = this->libraryNameFromEnv();
@@ -204,41 +204,41 @@ TYPED_TEST(MpsLibraryManagerTypedTest, ReleaseDestroysHandleAndAllowsRecreation)
     }
     const auto key = mps_rt::LibraryKey::Named(*maybe_name);
 
-    backend::mps::MPSLibrary_t first_handle = nullptr;
-    backend::mps::MPSLibrary_t second_handle = nullptr;
+    backend::mps::MPSLibrary_t handle = nullptr;
     if constexpr (TypeParam::is_mock) {
-        first_handle = makeLibrary(0x600);
-        second_handle = makeLibrary(0x601);
-        this->adapter().expectCreateLibraries({{*maybe_name, first_handle}, {*maybe_name, second_handle}});
-        this->adapter().expectDestroyLibraries({first_handle});
-        this->adapter().expectDestroyLibraries({second_handle});
+        handle = makeLibrary(0x600);
+        this->adapter().expectCreateLibraries({{*maybe_name, handle}});
+        this->adapter().expectDestroyLibraries({handle});
     }
 
-    const auto id = manager.getOrCreate(key);
-    manager.release(id);
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.getLibrary(id); });
-    const auto released_snapshot = manager.debugState(id);
-    EXPECT_FALSE(released_snapshot.alive);
-    EXPECT_FALSE(released_snapshot.handle_allocated);
+    auto lease = manager.acquire(key);
+    const auto handle_id = lease.handle();
+    lease.release();
+    // Library is not released until shutdown
+    const auto snapshot = manager.debugState(handle_id);
+    EXPECT_TRUE(snapshot.alive);
+    EXPECT_TRUE(snapshot.handle_allocated);
 
-    const auto reacquired = manager.getOrCreate(key);
-    EXPECT_NE(reacquired, base::LibraryId{});
+    // Reacquire returns the same library
+    auto reacquired = manager.acquire(key);
+    EXPECT_EQ(reacquired.handle(), handle_id);
     if constexpr (TypeParam::is_mock) {
-        EXPECT_EQ(manager.getLibrary(reacquired), second_handle);
+        EXPECT_EQ(reacquired.get(), handle);
     } else {
-        EXPECT_NE(manager.getLibrary(reacquired), nullptr);
+        EXPECT_NE(reacquired.get(), nullptr);
     }
+    reacquired.release();
 }
 
 TYPED_TEST(MpsLibraryManagerTypedTest, EmptyIdentifierIsRejected) {
     auto& manager = this->manager();
     this->initializeManager();
     ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] {
-        (void)manager.getOrCreate(mps_rt::LibraryKey::Named(""));
+        (void)manager.acquire(mps_rt::LibraryKey::Named(""));
     });
 }
 
-TYPED_TEST(MpsLibraryManagerTypedTest, ReleaseRejectsStaleId) {
+TYPED_TEST(MpsLibraryManagerTypedTest, ReleaseIsIdempotent) {
     auto& manager = this->manager();
     this->initializeManager();
     const auto maybe_name = this->libraryNameFromEnv();
@@ -255,48 +255,12 @@ TYPED_TEST(MpsLibraryManagerTypedTest, ReleaseRejectsStaleId) {
         this->adapter().expectDestroyLibraries({handle});
     }
 
-    const auto id = manager.getOrCreate(key);
-    manager.release(id);
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { manager.release(id); });
-}
-
-TYPED_TEST(MpsLibraryManagerTypedTest, GetLibraryRejectsInvalidId) {
-    auto& manager = this->manager();
-    this->initializeManager();
-    ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] {
-        (void)manager.getLibrary(base::LibraryId{std::numeric_limits<std::uint32_t>::max()});
-    });
-}
-
-TYPED_TEST(MpsLibraryManagerTypedTest, PipelineManagerAccessBeforeInitializationThrows) {
-    auto& manager = this->manager();
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
-        (void)manager.pipelineManager(base::LibraryId{0});
-    });
-}
-
-TYPED_TEST(MpsLibraryManagerTypedTest, PipelineManagerAccessAfterReleaseThrows) {
-    auto& manager = this->manager();
-    this->initializeManager();
-    const auto maybe_name = this->libraryNameFromEnv();
-    if (!maybe_name.has_value()) {
-        GTEST_SKIP() << "Set " ORTEAF_MPS_ENV_LIBRARY_NAME " to a valid library name to run";
-        return;
-    }
-    const auto key = mps_rt::LibraryKey::Named(*maybe_name);
-
-    backend::mps::MPSLibrary_t handle = nullptr;
-    if constexpr (TypeParam::is_mock) {
-        handle = makeLibrary(0x660);
-        this->adapter().expectCreateLibraries({{*maybe_name, handle}});
-        this->adapter().expectDestroyLibraries({handle});
-    }
-
-    const auto id = manager.getOrCreate(key);
-    manager.release(id);
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
-        (void)manager.pipelineManager(id);
-    });
+    auto lease = manager.acquire(key);
+    const auto handle_id = lease.handle();
+    lease.release();
+    lease.release();  // idempotent - no crash or error
+    const auto snapshot = manager.debugState(handle_id);
+    EXPECT_TRUE(snapshot.alive);  // Library is still alive
 }
 
 TYPED_TEST(MpsLibraryManagerTypedTest, PipelineManagerProvidesNestedFunctionManager) {
@@ -329,15 +293,125 @@ TYPED_TEST(MpsLibraryManagerTypedTest, PipelineManagerProvidesNestedFunctionMana
         this->adapter().expectDestroyLibraries({library_handle});
     }
 
-    const auto library_id = manager.getOrCreate(mps_rt::LibraryKey::Named(*maybe_library));
-    auto& pipeline_manager = manager.pipelineManager(library_id);
-    const auto pipeline_id = pipeline_manager.getOrCreate(mps_rt::FunctionKey::Named(*maybe_function));
+    auto library_lease = manager.acquire(mps_rt::LibraryKey::Named(*maybe_library));
+    auto pipeline_manager_lease = manager.acquirePipelineManager(library_lease);
+    auto* pipeline_manager = pipeline_manager_lease.get();
+    auto pipeline_lease = pipeline_manager->acquire(mps_rt::FunctionKey::Named(*maybe_function));
     if constexpr (TypeParam::is_mock) {
-        EXPECT_EQ(pipeline_manager.getPipelineState(pipeline_id), pipeline_handle);
+        EXPECT_EQ(pipeline_lease.get(), pipeline_handle);
     } else {
-        EXPECT_NE(pipeline_manager.getPipelineState(pipeline_id), nullptr);
+        EXPECT_NE(pipeline_lease.get(), nullptr);
     }
-    const auto snapshot = pipeline_manager.debugState(pipeline_id);
+    const auto snapshot = pipeline_manager->debugState(pipeline_lease.handle());
     EXPECT_TRUE(snapshot.alive);
+    EXPECT_EQ(snapshot.use_count, 1u);
     EXPECT_EQ(snapshot.identifier, *maybe_function);
+    pipeline_lease.release();
+    pipeline_manager_lease.release();
+    library_lease.release();
+}
+
+TYPED_TEST(MpsLibraryManagerTypedTest, PipelineManagerCanBeAcquiredByKey) {
+    auto& manager = this->manager();
+    this->initializeManager();
+    if constexpr (!TypeParam::is_mock) {
+        GTEST_SKIP() << "Mock-only test";
+        return;
+    }
+    const auto key = mps_rt::LibraryKey::Named("ByKey");
+    const auto lib_handle = makeLibrary(0x910);
+    this->adapter().expectCreateLibraries({{"ByKey", lib_handle}});
+    this->adapter().expectDestroyLibraries({lib_handle});
+
+    auto pipeline_lease = manager.acquirePipelineManager(key);
+    EXPECT_NE(pipeline_lease.get(), nullptr);
+    const auto snapshot = manager.debugState(pipeline_lease.handle());
+    EXPECT_TRUE(snapshot.alive);
+    pipeline_lease.release();
+    // Library is still alive after release
+    const auto released_snapshot = manager.debugState(pipeline_lease.handle());
+    EXPECT_TRUE(released_snapshot.alive);
+}
+
+TYPED_TEST(MpsLibraryManagerTypedTest, LibraryCanBeReacquiredFromPipelineLease) {
+    auto& manager = this->manager();
+    this->initializeManager();
+    if constexpr (!TypeParam::is_mock) {
+        GTEST_SKIP() << "Mock-only test";
+        return;
+    }
+    const auto key = mps_rt::LibraryKey::Named("FromPipeline");
+    const auto lib_handle = makeLibrary(0x920);
+    this->adapter().expectCreateLibraries({{"FromPipeline", lib_handle}});
+    this->adapter().expectDestroyLibraries({lib_handle});
+
+    auto library_lease = manager.acquire(key);
+    auto pipeline_lease = manager.acquirePipelineManager(library_lease);
+    auto extra_library_lease = manager.acquire(pipeline_lease);
+
+    // All leases point to the same library
+    EXPECT_EQ(library_lease.handle(), pipeline_lease.handle());
+    EXPECT_EQ(pipeline_lease.handle(), extra_library_lease.handle());
+
+    library_lease.release();
+    pipeline_lease.release();
+    extra_library_lease.release();
+
+    // Library is still alive after all releases
+    const auto snapshot = manager.debugState(extra_library_lease.handle());
+    EXPECT_TRUE(snapshot.alive);
+}
+
+TYPED_TEST(MpsLibraryManagerTypedTest, LibraryPersistsAfterLeaseRelease) {
+    auto& manager = this->manager();
+    this->initializeManager();
+    if constexpr (!TypeParam::is_mock) {
+        GTEST_SKIP() << "Mock-only test";
+        return;
+    }
+    const auto key = mps_rt::LibraryKey::Named("KeepAlive");
+    const auto lib_handle = makeLibrary(0x930);
+    this->adapter().expectCreateLibraries({{"KeepAlive", lib_handle}});
+    this->adapter().expectDestroyLibraries({lib_handle});
+
+    auto library_lease = manager.acquire(key);
+    auto pipeline_lease = manager.acquirePipelineManager(library_lease);
+
+    library_lease.release();
+    const auto snapshot_mid = manager.debugState(pipeline_lease.handle());
+    EXPECT_TRUE(snapshot_mid.alive);
+
+    pipeline_lease.release();
+    // Library is still alive - only destroyed on shutdown
+    const auto snapshot_released = manager.debugState(pipeline_lease.handle());
+    EXPECT_TRUE(snapshot_released.alive);
+}
+
+TYPED_TEST(MpsLibraryManagerTypedTest, PipelineManagerAcquireByKeyReusesExistingLibrary) {
+    auto& manager = this->manager();
+    this->initializeManager();
+    if constexpr (!TypeParam::is_mock) {
+        GTEST_SKIP() << "Mock-only test";
+        return;
+    }
+    const auto key = mps_rt::LibraryKey::Named("ReuseByKey");
+    const auto lib_handle = makeLibrary(0x940);
+    this->adapter().expectCreateLibraries({{"ReuseByKey", lib_handle}});
+    this->adapter().expectDestroyLibraries({lib_handle});
+
+    auto library_lease = manager.acquire(key);
+    auto pm_lease_first = manager.acquirePipelineManager(key);
+    auto pm_lease_second = manager.acquirePipelineManager(key);
+
+    // All leases point to the same library
+    EXPECT_EQ(library_lease.handle(), pm_lease_first.handle());
+    EXPECT_EQ(pm_lease_first.handle(), pm_lease_second.handle());
+
+    pm_lease_second.release();
+    pm_lease_first.release();
+    library_lease.release();
+
+    // Library is still alive after all releases
+    const auto snapshot = manager.debugState(library_lease.handle());
+    EXPECT_TRUE(snapshot.alive);
 }

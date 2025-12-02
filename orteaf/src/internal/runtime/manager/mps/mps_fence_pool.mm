@@ -63,7 +63,7 @@ void MpsFencePool::shutdown() {
   initialized_ = false;
 }
 
-MpsFencePool::Handle MpsFencePool::acquireFence() {
+MpsFencePool::FenceLease MpsFencePool::acquireFence() {
   ensureInitialized();
   if (free_list_.empty()) {
     growFreeList(growth_chunk_size_);
@@ -71,20 +71,15 @@ MpsFencePool::Handle MpsFencePool::acquireFence() {
   auto handle = free_list_.back();
   free_list_.resize(free_list_.size() - 1);
   ++active_count_;
-  return Handle{this, handle};
+  return FenceLease{this, handle};
 }
 
-void MpsFencePool::release(FenceHandle fence) {
-  if (fence == nullptr) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-        "Cannot release null fence to MPS fence pool");
+void MpsFencePool::release(Fence fence) noexcept {
+  if (!initialized_ || fence == nullptr) {
+    return;
   }
-  ensureInitialized();
   if (active_count_ == 0) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "No active fences to release");
+    return;
   }
   free_list_.pushBack(fence);
   --active_count_;

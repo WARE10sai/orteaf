@@ -14,7 +14,7 @@
 #include "orteaf/internal/backend/mps/wrapper/mps_heap.h"
 #include "orteaf/internal/backend/mps/wrapper/mps_library.h"
 #include "orteaf/internal/backend/mps/wrapper/mps_string.h"
-#include "orteaf/internal/base/strong_id.h"
+#include "orteaf/internal/base/handle.h"
 
 namespace orteaf::internal::runtime::backend_ops::mps {
 
@@ -30,7 +30,7 @@ struct MpsSlowOps {
   releaseDevice(::orteaf::internal::backend::mps::MPSDevice_t device) = 0;
 
   virtual ::orteaf::internal::architecture::Architecture
-  detectArchitecture(::orteaf::internal::base::DeviceId device_id) = 0;
+  detectArchitecture(::orteaf::internal::base::DeviceHandle device_id) = 0;
 
   virtual ::orteaf::internal::backend::mps::MPSCommandQueue_t
   createCommandQueue(::orteaf::internal::backend::mps::MPSDevice_t device) = 0;
@@ -122,7 +122,7 @@ struct MpsSlowOpsImpl final : public MpsSlowOps {
       ::orteaf::internal::backend::mps::MPSDevice_t device) override;
 
   ::orteaf::internal::architecture::Architecture
-  detectArchitecture(::orteaf::internal::base::DeviceId device_id) override;
+  detectArchitecture(::orteaf::internal::base::DeviceHandle device_id) override;
 
   ::orteaf::internal::backend::mps::MPSCommandQueue_t
   createCommandQueue(

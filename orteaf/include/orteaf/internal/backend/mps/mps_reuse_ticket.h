@@ -5,14 +5,14 @@
 #include <utility>
 
 #include "orteaf/internal/backend/mps/wrapper/mps_event.h"
-#include "orteaf/internal/base/strong_id.h"
+#include "orteaf/internal/base/handle.h"
 
 namespace orteaf::internal::backend::mps {
 
 class MpsReuseTicket {
 public:
     MpsReuseTicket() noexcept = default;
-    MpsReuseTicket(base::CommandQueueId id,
+    MpsReuseTicket(base::CommandQueueHandle id,
                    ::orteaf::internal::backend::mps::MPSCommandBuffer_t command_buffer) noexcept
         : command_queue_id_(id), command_buffer_(command_buffer) {}
 
@@ -30,12 +30,12 @@ public:
 
     bool valid() const noexcept { return command_buffer_ != nullptr; }
 
-    base::CommandQueueId commandQueueId() const noexcept { return command_queue_id_; }
+    base::CommandQueueHandle commandQueueId() const noexcept { return command_queue_id_; }
     ::orteaf::internal::backend::mps::MPSCommandBuffer_t commandBuffer() const noexcept {
         return command_buffer_;
     }
 
-    MpsReuseTicket& setCommandQueueId(base::CommandQueueId id) noexcept {
+    MpsReuseTicket& setCommandQueueId(base::CommandQueueHandle id) noexcept {
         command_queue_id_ = id;
         return *this;
     }
@@ -59,7 +59,7 @@ private:
         other.command_buffer_ = nullptr;
     }
 
-    base::CommandQueueId command_queue_id_{};
+    base::CommandQueueHandle command_queue_id_{};
     ::orteaf::internal::backend::mps::MPSCommandBuffer_t command_buffer_{nullptr};
 };
 

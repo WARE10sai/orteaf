@@ -18,7 +18,7 @@ void MpsSlowOpsImpl::releaseDevice(
 
 ::orteaf::internal::architecture::Architecture
 MpsSlowOpsImpl::detectArchitecture(
-    ::orteaf::internal::base::DeviceId device_id) {
+    ::orteaf::internal::base::DeviceHandle device_id) {
   return ::orteaf::internal::architecture::detectMpsArchitectureForDeviceId(
       device_id);
 }

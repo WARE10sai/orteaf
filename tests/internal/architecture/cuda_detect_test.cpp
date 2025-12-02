@@ -1,7 +1,7 @@
 #include "orteaf/internal/architecture/architecture.h"
 #include "orteaf/internal/architecture/cuda_detect.h"
 #include "orteaf/internal/backend/backend.h"
-#include "orteaf/internal/base/strong_id.h"
+#include "orteaf/internal/base/handle.h"
 
 #include <cstdint>
 #include <cstdlib>
@@ -24,7 +24,7 @@ TEST(CudaDetect, ManualEnvironmentCheck) {
         device_index = static_cast<std::uint32_t>(std::strtoul(index_env, nullptr, 10));
     }
 
-    const auto arch = architecture::detectCudaArchitectureForDeviceId(base::DeviceId{device_index});
+    const auto arch = architecture::detectCudaArchitectureForDeviceId(base::DeviceHandle{device_index});
     ASSERT_NE(arch, architecture::Architecture::CudaGeneric)
         << "Generic fallback indicates CUDA backend is disabled or device index "
         << device_index << " is unavailable.";
@@ -43,7 +43,7 @@ TEST(CudaDetect, FallsBackToGenericIfNoMatch) {
 
 TEST(CudaDetect, DeviceIndexOutOfRangeFallsBackToGeneric) {
     const auto arch = architecture::detectCudaArchitectureForDeviceId(
-        base::DeviceId{std::numeric_limits<std::uint32_t>::max()});
+        base::DeviceHandle{std::numeric_limits<std::uint32_t>::max()});
     EXPECT_EQ(arch, architecture::Architecture::CudaGeneric);
 }
 #else
@@ -53,7 +53,7 @@ TEST(CudaDetect, DetectCudaArchitectureStillMatchesMetadataWhenCudaDisabled) {
 }
 
 TEST(CudaDetect, DetectCudaArchitectureForDeviceIdIsGenericWhenCudaDisabled) {
-    const auto arch = architecture::detectCudaArchitectureForDeviceId(base::DeviceId{0});
+    const auto arch = architecture::detectCudaArchitectureForDeviceId(base::DeviceHandle{0});
     EXPECT_EQ(arch, architecture::Architecture::CudaGeneric);
 }
 #endif

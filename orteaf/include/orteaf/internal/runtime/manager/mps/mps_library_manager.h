@@ -12,7 +12,8 @@
 #include "orteaf/internal/backend/mps/wrapper/mps_device.h"
 #include "orteaf/internal/backend/mps/wrapper/mps_library.h"
 #include "orteaf/internal/base/heap_vector.h"
-#include "orteaf/internal/base/strong_id.h"
+#include "orteaf/internal/base/handle.h"
+#include "orteaf/internal/base/lease.h"
 #include "orteaf/internal/diagnostics/error/error.h"
 #include "orteaf/internal/runtime/manager/mps/mps_compute_pipeline_state_manager.h"
 
@@ -51,6 +52,11 @@ class MpsLibraryManager {
 public:
   using BackendOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
   using PipelineManager = MpsComputePipelineStateManager;
+  using LibraryLease = ::orteaf::internal::base::Lease<
+      ::orteaf::internal::base::LibraryHandle,
+      ::orteaf::internal::backend::mps::MPSLibrary_t, MpsLibraryManager>;
+  using PipelineManagerLease = ::orteaf::internal::base::Lease<
+      ::orteaf::internal::base::LibraryHandle, PipelineManager *, MpsLibraryManager>;
 
   MpsLibraryManager() = default;
   MpsLibraryManager(const MpsLibraryManager&) = delete;
@@ -77,72 +83,53 @@ public:
 
   std::size_t capacity() const noexcept { return states_.size(); }
 
-  base::LibraryId getOrCreate(const LibraryKey &key);
+  LibraryLease acquire(const LibraryKey &key);
+  LibraryLease acquire(const PipelineManagerLease &pipeline_lease);
+  PipelineManagerLease acquirePipelineManager(const LibraryLease &lease);
+  PipelineManagerLease acquirePipelineManager(const LibraryKey &key);
 
-  void release(base::LibraryId id);
-
-  ::orteaf::internal::backend::mps::MPSLibrary_t
-  getLibrary(base::LibraryId id) const;
-
-  PipelineManager &pipelineManager(base::LibraryId id);
-
-  const PipelineManager &pipelineManager(base::LibraryId id) const;
+  void release(LibraryLease &lease) noexcept;
+  void release(PipelineManagerLease &lease) noexcept;
 
 #if ORTEAF_ENABLE_TEST
   struct DebugState {
     bool alive{false};
     bool handle_allocated{false};
-    std::uint32_t generation{0};
     LibraryKeyKind kind{LibraryKeyKind::kNamed};
     std::string identifier{};
     std::size_t growth_chunk_size{0};
   };
 
-  DebugState debugState(base::LibraryId id) const;
+  DebugState debugState(base::LibraryHandle handle) const;
 #endif
 
 private:
   struct State {
     LibraryKey key{};
     ::orteaf::internal::backend::mps::MPSLibrary_t handle{nullptr};
-    std::uint32_t generation{0};
     bool alive{false};
     PipelineManager pipeline_manager{};
-
-    void reset() {
-      key = LibraryKey{};
-      handle = nullptr;
-      alive = false;
-    }
   };
-
-  static constexpr std::uint32_t kGenerationBits = 8;
-  static constexpr std::uint32_t kIndexBits = 24;
-  static constexpr std::uint32_t kGenerationShift = kIndexBits;
-  static constexpr std::uint32_t kIndexMask = (1u << kIndexBits) - 1u;
-  static constexpr std::uint32_t kGenerationMask = (1u << kGenerationBits) - 1u;
-  static constexpr std::size_t kMaxStateCount =
-      static_cast<std::size_t>(kIndexMask);
 
   void ensureInitialized() const;
 
   void validateKey(const LibraryKey &key) const;
 
-  State &ensureAliveState(base::LibraryId id);
+  State &ensureAliveState(base::LibraryHandle handle);
 
-  const State &ensureAliveState(base::LibraryId id) const {
-    return const_cast<MpsLibraryManager *>(this)->ensureAliveState(id);
+  const State &ensureAliveState(base::LibraryHandle handle) const {
+    return const_cast<MpsLibraryManager *>(this)->ensureAliveState(handle);
   }
 
   std::size_t allocateSlot();
 
   void growStatePool(std::size_t additional);
 
-  base::LibraryId encodeId(std::size_t index, std::uint32_t generation) const;
+  base::LibraryHandle encodeHandle(std::size_t index) const;
 
-  std::size_t indexFromId(base::LibraryId id) const;
+  void releaseHandle(base::LibraryHandle handle) noexcept;
 
-  std::uint32_t generationFromId(base::LibraryId id) const;
+  LibraryLease acquireLibraryFromHandle(base::LibraryHandle handle);
 
   ::orteaf::internal::backend::mps::MPSLibrary_t
   createLibrary(const LibraryKey &key);

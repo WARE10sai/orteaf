@@ -165,7 +165,7 @@ TYPED_TEST(MpsEventPoolTypedTest, MovedFromHandleIsInactive) {
     pool.initialize(device, this->getOps(), 1);
     auto h1 = pool.acquireEvent();
     auto h2 = std::move(h1);
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)h1.get(); });
+    EXPECT_FALSE(h1);
     EXPECT_NE(h2.get(), nullptr);
     h2.release();
     if constexpr (TypeParam::is_mock) {

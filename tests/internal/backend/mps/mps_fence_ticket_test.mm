@@ -65,7 +65,7 @@ protected:
     mps_backend::MPSCommandBuffer_t command_buffer_{nullptr};
     mps_rt::MpsFencePool fence_pool_{};
     ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOpsImpl ops_{};
-    base::CommandQueueId queue_id_{base::CommandQueueId{7}};
+    base::CommandQueueHandle queue_id_{base::CommandQueueHandle{7}};
 #endif
 };
 
@@ -75,7 +75,7 @@ TEST_F(MpsFenceTicketTest, DefaultConstructedIsInvalid) {
     mps_backend::MpsFenceTicket ticket;
     EXPECT_FALSE(ticket.valid());
     EXPECT_FALSE(ticket.hasFence());
-    EXPECT_EQ(ticket.commandQueueId(), base::CommandQueueId{});
+    EXPECT_EQ(ticket.commandQueueId(), base::CommandQueueHandle{});
     EXPECT_EQ(ticket.commandBuffer(), nullptr);
 }
 
@@ -135,7 +135,7 @@ TEST_F(MpsFenceTicketTest, ResetClearsState) {
     EXPECT_FALSE(ticket.valid());
     EXPECT_FALSE(ticket.hasFence());
     EXPECT_EQ(ticket.commandBuffer(), nullptr);
-    EXPECT_EQ(ticket.commandQueueId(), base::CommandQueueId{});
+    EXPECT_EQ(ticket.commandQueueId(), base::CommandQueueHandle{});
 }
 
 static_assert(!std::is_copy_constructible_v<mps_backend::MpsFenceTicket>);

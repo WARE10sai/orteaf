@@ -15,7 +15,8 @@
 #include "orteaf/internal/backend/mps/wrapper/mps_function.h"
 #include "orteaf/internal/backend/mps/wrapper/mps_library.h"
 #include "orteaf/internal/base/heap_vector.h"
-#include "orteaf/internal/base/strong_id.h"
+#include "orteaf/internal/base/handle.h"
+#include "orteaf/internal/base/lease.h"
 #include "orteaf/internal/diagnostics/error/error.h"
 #include "orteaf/internal/backend/mps/mps_slow_ops.h"
 
@@ -51,6 +52,10 @@ struct FunctionKeyHasher {
 class MpsComputePipelineStateManager {
 public:
     using BackendOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
+    using PipelineLease = ::orteaf::internal::base::Lease<
+        ::orteaf::internal::base::FunctionHandle,
+        ::orteaf::internal::backend::mps::MPSComputePipelineState_t,
+        MpsComputePipelineStateManager>;
 
     MpsComputePipelineStateManager() = default;
     MpsComputePipelineStateManager(const MpsComputePipelineStateManager&) = delete;
@@ -79,13 +84,8 @@ public:
 
     std::size_t capacity() const noexcept { return states_.size(); }
 
-    base::FunctionId getOrCreate(const FunctionKey& key);
-
-    void release(base::FunctionId id);
-
-    ::orteaf::internal::backend::mps::MPSComputePipelineState_t getPipelineState(base::FunctionId id) const;
-
-    ::orteaf::internal::backend::mps::MPSFunction_t getFunction(base::FunctionId id) const;
+    PipelineLease acquire(const FunctionKey& key);
+    void release(PipelineLease& lease) noexcept;
 
 #if ORTEAF_ENABLE_TEST
     struct DebugState {
@@ -93,12 +93,13 @@ public:
         bool pipeline_allocated{false};
         bool function_allocated{false};
         std::uint32_t generation{0};
+        std::uint32_t use_count{0};
         FunctionKeyKind kind{FunctionKeyKind::kNamed};
         std::string identifier{};
         std::size_t growth_chunk_size{0};
     };
 
-    DebugState debugState(base::FunctionId id) const;
+    DebugState debugState(base::FunctionHandle handle) const;
 #endif
 
 private:
@@ -107,15 +108,9 @@ private:
         ::orteaf::internal::backend::mps::MPSFunction_t function{nullptr};
         ::orteaf::internal::backend::mps::MPSComputePipelineState_t pipeline_state{nullptr};
         std::uint32_t generation{0};
+        std::uint32_t use_count{0};
         bool alive{false};
     };
-
-    static constexpr std::uint32_t kGenerationBits = 8;
-    static constexpr std::uint32_t kIndexBits = 24;
-    static constexpr std::uint32_t kGenerationShift = kIndexBits;
-    static constexpr std::uint32_t kIndexMask = (1u << kIndexBits) - 1u;
-    static constexpr std::uint32_t kGenerationMask = (1u << kGenerationBits) - 1u;
-    static constexpr std::size_t kMaxStateCount = static_cast<std::size_t>(kIndexMask);
 
     void ensureInitialized() const;
 
@@ -123,21 +118,18 @@ private:
 
     void destroyState(State& state);
 
-    State& ensureAliveState(base::FunctionId id);
+    State& ensureAliveState(base::FunctionHandle handle);
 
-    const State& ensureAliveState(base::FunctionId id) const {
-        return const_cast<MpsComputePipelineStateManager*>(this)->ensureAliveState(id);
+    const State& ensureAliveState(base::FunctionHandle handle) const {
+        return const_cast<MpsComputePipelineStateManager*>(this)->ensureAliveState(handle);
     }
 
     std::size_t allocateSlot();
 
     void growStatePool(std::size_t additional);
 
-    base::FunctionId encodeId(std::size_t index, std::uint32_t generation) const;
-
-    std::size_t indexFromId(base::FunctionId id) const;
-
-    std::uint32_t generationFromId(base::FunctionId id) const;
+    base::FunctionHandle encodeHandle(std::size_t index, std::uint32_t generation) const;
+    void releaseHandle(base::FunctionHandle handle) noexcept;
 
     ::orteaf::internal::base::HeapVector<State> states_{};
     ::orteaf::internal::base::HeapVector<std::size_t> free_list_{};

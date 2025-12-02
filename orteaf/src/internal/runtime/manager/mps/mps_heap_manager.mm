@@ -18,7 +18,7 @@ void MpsHeapManager::initialize(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "MPS heap manager requires valid ops");
   }
-  if (capacity > kMaxStateCount) {
+  if (capacity > base::HeapHandle::invalid_index()) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "Requested MPS heap capacity exceeds supported limit");
@@ -56,42 +56,59 @@ void MpsHeapManager::shutdown() {
   initialized_ = false;
 }
 
-base::HeapId MpsHeapManager::getOrCreate(const HeapDescriptorKey &key) {
+MpsHeapManager::HeapLease MpsHeapManager::acquire(const HeapDescriptorKey &key) {
   ensureInitialized();
   validateKey(key);
   if (auto it = key_to_index_.find(key); it != key_to_index_.end()) {
-    const State &state = states_[it->second];
-    return encodeId(it->second, state.generation);
+    State &state = states_[it->second];
+    if (state.in_use) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+          "MPS heap is already in use");
+    }
+    state.in_use = true;
+    const auto id = base::HeapHandle{static_cast<std::uint32_t>(it->second),
+                                     static_cast<base::HeapHandle::generation_type>(state.generation)};
+    return HeapLease{this, id, state.heap};
   }
   const std::size_t index = allocateSlot();
   State &state = states_[index];
   state.key = key;
   state.heap = createHeap(key);
   state.alive = true;
-  const auto id = encodeId(index, state.generation);
+  state.in_use = true;
+  const auto id = base::HeapHandle{static_cast<std::uint32_t>(index),
+                                   static_cast<base::HeapHandle::generation_type>(state.generation)};
   key_to_index_.emplace(state.key, index);
-  return id;
+  return HeapLease{this, id, state.heap};
 }
 
-void MpsHeapManager::release(base::HeapId id) {
-  State &state = ensureAliveState(id);
-  key_to_index_.erase(state.key);
-  ops_->destroyHeap(state.heap);
-  state.reset();
+void MpsHeapManager::release(HeapLease &lease) noexcept {
+  if (!initialized_ || device_ == nullptr || ops_ == nullptr || !lease) {
+    return;
+  }
+  const auto id = lease.handle();
+  const std::size_t index = static_cast<std::size_t>(id.index);
+  if (index >= states_.size()) {
+    return;
+  }
+  State &state = states_[index];
+  if (!state.alive || !state.in_use) {
+    return;
+  }
+  if (static_cast<base::HeapHandle::generation_type>(state.generation) != id.generation) {
+    return;
+  }
+  state.in_use = false;
   ++state.generation;
-  free_list_.pushBack(indexFromId(id));
-}
-
-::orteaf::internal::backend::mps::MPSHeap_t
-MpsHeapManager::getHeap(base::HeapId id) const {
-  return ensureAliveState(id).heap;
+  lease.invalidate();
 }
 
 #if ORTEAF_ENABLE_TEST
-MpsHeapManager::DebugState MpsHeapManager::debugState(base::HeapId id) const {
+MpsHeapManager::DebugState MpsHeapManager::debugState(base::HeapHandle id) const {
   DebugState snapshot{};
   snapshot.growth_chunk_size = growth_chunk_size_;
-  const std::size_t index = indexFromId(id);
+  const std::size_t index = static_cast<std::size_t>(id.index);
   if (index < states_.size()) {
     const State &state = states_[index];
     snapshot.alive = state.alive;
@@ -126,9 +143,9 @@ void MpsHeapManager::validateKey(const HeapDescriptorKey &key) const {
   }
 }
 
-MpsHeapManager::State &MpsHeapManager::ensureAliveState(base::HeapId id) {
+MpsHeapManager::State &MpsHeapManager::ensureAliveState(base::HeapHandle id) {
   ensureInitialized();
-  const std::size_t index = indexFromId(id);
+  const std::size_t index = static_cast<std::size_t>(id.index);
   if (index >= states_.size()) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
@@ -140,8 +157,7 @@ MpsHeapManager::State &MpsHeapManager::ensureAliveState(base::HeapId id) {
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS heap handle is inactive");
   }
-  const std::uint32_t expected_generation = generationFromId(id);
-  if ((state.generation & kGenerationMask) != expected_generation) {
+  if (static_cast<base::HeapHandle::generation_type>(state.generation) != id.generation) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS heap handle is stale");
@@ -167,7 +183,7 @@ void MpsHeapManager::growStatePool(std::size_t additional) {
   if (additional == 0) {
     return;
   }
-  if (additional > (kMaxStateCount - states_.size())) {
+  if (additional > (base::HeapHandle::invalid_index() - states_.size())) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "Requested MPS heap capacity exceeds supported limit");
@@ -179,22 +195,6 @@ void MpsHeapManager::growStatePool(std::size_t additional) {
     states_.pushBack(State{});
     free_list_.pushBack(start + offset);
   }
-}
-
-base::HeapId MpsHeapManager::encodeId(std::size_t index,
-                                      std::uint32_t generation) const {
-  const std::uint32_t encoded_generation = generation & kGenerationMask;
-  const std::uint32_t encoded = (encoded_generation << kGenerationShift) |
-                                static_cast<std::uint32_t>(index);
-  return base::HeapId{encoded};
-}
-
-std::size_t MpsHeapManager::indexFromId(base::HeapId id) const {
-  return static_cast<std::size_t>(static_cast<std::uint32_t>(id) & kIndexMask);
-}
-
-std::uint32_t MpsHeapManager::generationFromId(base::HeapId id) const {
-  return (static_cast<std::uint32_t>(id) >> kGenerationShift) & kGenerationMask;
 }
 
 ::orteaf::internal::backend::mps::MPSHeap_t

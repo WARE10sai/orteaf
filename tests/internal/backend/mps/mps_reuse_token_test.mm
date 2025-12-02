@@ -65,7 +65,7 @@ protected:
     mps_backend::MPSCommandQueue_t queue_{nullptr};
     mps_backend::MPSCommandBuffer_t command_buffer_a_{nullptr};
     mps_backend::MPSCommandBuffer_t command_buffer_b_{nullptr};
-    base::CommandQueueId queue_id_{base::CommandQueueId{13}};
+    base::CommandQueueHandle queue_id_{base::CommandQueueHandle{13}};
 #endif
 };
 

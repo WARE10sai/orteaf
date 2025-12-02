@@ -9,14 +9,14 @@
 #include "orteaf/internal/backend/backend.h"
 #include "orteaf/internal/backend/backend_traits.h"
 #include "orteaf/internal/backend/cpu/cpu_buffer_view.h"
-#include "orteaf/internal/base/strong_id.h"
+#include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/runtime/allocator/memory_block.h"
 #include "tests/internal/testing/error_assert.h"
 
 namespace allocator = ::orteaf::internal::runtime::allocator;
 namespace policies = ::orteaf::internal::runtime::allocator::policies;
 using Backend = ::orteaf::internal::backend::Backend;
-using BufferId = ::orteaf::internal::base::BufferId;
+using BufferHandle = ::orteaf::internal::base::BufferHandle;
 using CpuView = ::orteaf::internal::backend::cpu::CpuBufferView;
 namespace {
 using MemoryBlock = allocator::MemoryBlock<Backend::Cpu>;
@@ -34,7 +34,7 @@ struct FakeResource {
     }
 };
 
-MemoryBlock makeBlock(BufferId id, void* ptr = reinterpret_cast<void*>(0x10), std::size_t size = 64) {
+MemoryBlock makeBlock(BufferHandle id, void* ptr = reinterpret_cast<void*>(0x10), std::size_t size = 64) {
     return MemoryBlock{id, CpuView{ptr, 0, size}};
 }
 
@@ -51,7 +51,7 @@ TEST(DeferredReusePolicy, MovesCompletedToReady) {
     Policy policy;
     policy.initialize(&resource);
 
-    MemoryBlock block = makeBlock(BufferId{1});
+    MemoryBlock block = makeBlock(BufferHandle{1});
     std::size_t freelist_index = 3;
     CpuReuseToken token{};
 
@@ -71,7 +71,7 @@ TEST(DeferredReusePolicy, KeepsPendingWhenNotCompleted) {
     Policy policy;
     policy.initialize(&resource);
 
-    MemoryBlock block = makeBlock(BufferId{2});
+    MemoryBlock block = makeBlock(BufferHandle{2});
     CpuReuseToken token{};
     policy.scheduleForReuse(block, 1, token);
 
@@ -90,8 +90,8 @@ TEST(DeferredReusePolicy, RemoveBlocksInChunkFiltersPendingAndReady) {
     policy.initialize(&resource);
 
     CpuReuseToken token{};
-    MemoryBlock block1 = makeBlock(BufferId{10});
-    MemoryBlock block2 = makeBlock(BufferId{20}, reinterpret_cast<void*>(0x20));
+    MemoryBlock block1 = makeBlock(BufferHandle{10});
+    MemoryBlock block2 = makeBlock(BufferHandle{20}, reinterpret_cast<void*>(0x20));
 
     policy.scheduleForReuse(block1, 0, token);
     resource.next_result.store(true);
@@ -117,7 +117,7 @@ TEST(DeferredReusePolicy, FlushPendingWaitsUntilComplete) {
 
     CpuReuseToken token{};
     resource.next_result.store(false);
-    policy.scheduleForReuse(makeBlock(BufferId{30}), 2, token);
+    policy.scheduleForReuse(makeBlock(BufferHandle{30}), 2, token);
 
     // Flip to complete after a short delay in another thread.
     std::thread toggler([&resource] {

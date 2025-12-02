@@ -71,7 +71,7 @@ protected:
     mps_backend::MPSCommandBuffer_t command_buffer_b_{nullptr};
     mps_rt::MpsFencePool fence_pool_{};
     ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOpsImpl ops_{};
-    base::CommandQueueId queue_id_{base::CommandQueueId{11}};
+    base::CommandQueueHandle queue_id_{base::CommandQueueHandle{11}};
 #endif
 };
 

@@ -7,7 +7,7 @@
 #include "orteaf/internal/backend/backend.h"
 #include "orteaf/internal/backend/backend_traits.h"
 #include "orteaf/internal/base/heap_vector.h"
-#include "orteaf/internal/base/strong_id.h"
+#include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/runtime/allocator/memory_block.h"
 #include "orteaf/internal/diagnostics/error/error.h"
 #include "orteaf/internal/diagnostics/error/error_macros.h"
@@ -17,7 +17,7 @@ namespace orteaf::internal::runtime::allocator::policies {
 /**
  * @brief Direct スタイルの ChunkLocator ポリシー。
  *
- * BufferId の上位ビットで large/chunk を判別し、下位ビットをチャンクのスロットに割り当てる。
+ * BufferHandle の上位ビットで large/chunk を判別し、下位ビットをチャンクのスロットに割り当てる。
  * device/context ごとに分けず、配列ひとつで O(1) アクセスにする。
  *
  * @tparam Resource リソース管理クラス
@@ -29,7 +29,7 @@ public:
     // ========================================================================
     // Type aliases
     // ========================================================================
-    using BufferId = ::orteaf::internal::base::BufferId;
+    using BufferHandle = ::orteaf::internal::base::BufferHandle;
     using BufferView = typename ::orteaf::internal::backend::BackendTraits<B>::BufferView;
     using MemoryBlock = ::orteaf::internal::runtime::allocator::MemoryBlock<B>;
 
@@ -78,10 +78,10 @@ public:
 
     /**
      * @brief チャンク全体を解放する（used/pending が 0 のときのみ）。
-     * @param id 解放するチャンクの BufferId
+     * @param id 解放するチャンクの BufferHandle
      * @return 解放に成功した場合 true
      */
-    bool releaseChunk(BufferId id) {
+    bool releaseChunk(BufferHandle id) {
         std::lock_guard<std::mutex> lock(mutex_);
         const std::size_t slot = indexFromId(id);
         if (slot >= chunks_.size() || resource_ == nullptr) {
@@ -101,23 +101,23 @@ public:
 
     /**
      * @brief チャンクサイズを取得する。
-     * @param id チャンクの BufferId
+     * @param id チャンクの BufferHandle
      * @return チャンクサイズ（無効な場合 0）
      */
-    std::size_t findChunkSize(BufferId id) const {
+    std::size_t findChunkSize(BufferHandle id) const {
         std::lock_guard<std::mutex> lock(mutex_);
         const ChunkInfo* chunk = find(id);
         return chunk ? chunk->size : 0;
     }
 
-    void incrementUsed(BufferId id) {
+    void incrementUsed(BufferHandle id) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (auto* chunk = find(id)) {
             ++chunk->used;
         }
     }
 
-    void decrementUsed(BufferId id) {
+    void decrementUsed(BufferHandle id) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (auto* chunk = find(id)) {
             if (chunk->used > 0) {
@@ -126,14 +126,14 @@ public:
         }
     }
 
-    void incrementPending(BufferId id) {
+    void incrementPending(BufferHandle id) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (auto* chunk = find(id)) {
             ++chunk->pending;
         }
     }
 
-    void decrementPending(BufferId id) {
+    void decrementPending(BufferHandle id) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (auto* chunk = find(id)) {
             if (chunk->pending > 0) {
@@ -142,7 +142,7 @@ public:
         }
     }
 
-    void decrementPendingAndUsed(BufferId id) {
+    void decrementPendingAndUsed(BufferHandle id) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (auto* chunk = find(id)) {
             if (chunk->pending > 0) {
@@ -156,10 +156,10 @@ public:
 
     /**
      * @brief チャンクが有効かどうかを確認する。
-     * @param id チャンクの BufferId
+     * @param id チャンクの BufferHandle
      * @return 有効な場合 true
      */
-    bool isAlive(BufferId id) const {
+    bool isAlive(BufferHandle id) const {
         std::lock_guard<std::mutex> lock(mutex_);
         const ChunkInfo* chunk = find(id);
         return chunk && chunk->alive;
@@ -169,12 +169,12 @@ public:
     // ID encoding/decoding
     // ========================================================================
 
-    BufferId encodeId(std::size_t slot) const {
-        return BufferId{static_cast<BufferId::underlying_type>(slot) & kChunkMask};
+    BufferHandle encodeId(std::size_t slot) const {
+        return BufferHandle{static_cast<BufferHandle::underlying_type>(slot) & kChunkMask};
     }
 
-    std::size_t indexFromId(BufferId id) const {
-        return static_cast<std::size_t>(static_cast<BufferId::underlying_type>(id) & kChunkMask);
+    std::size_t indexFromId(BufferHandle id) const {
+        return static_cast<std::size_t>(static_cast<BufferHandle::underlying_type>(id) & kChunkMask);
     }
 
 private:
@@ -193,13 +193,13 @@ private:
     // ========================================================================
     // Constants
     // ========================================================================
-    static constexpr BufferId::underlying_type kLargeMask = BufferId::underlying_type{1u} << 31;
-    static constexpr BufferId::underlying_type kChunkMask = ~kLargeMask;
+    static constexpr BufferHandle::underlying_type kLargeMask = BufferHandle::underlying_type{1u} << 31;
+    static constexpr BufferHandle::underlying_type kChunkMask = ~kLargeMask;
 
     // ========================================================================
     // Internal methods
     // ========================================================================
-    ChunkInfo* find(BufferId id) {
+    ChunkInfo* find(BufferHandle id) {
         const std::size_t slot = indexFromId(id);
         if (slot >= chunks_.size()) {
             return nullptr;
@@ -208,7 +208,7 @@ private:
         return chunk.alive ? &chunk : nullptr;
     }
 
-    const ChunkInfo* find(BufferId id) const {
+    const ChunkInfo* find(BufferHandle id) const {
         const std::size_t slot = indexFromId(id);
         if (slot >= chunks_.size()) {
             return nullptr;

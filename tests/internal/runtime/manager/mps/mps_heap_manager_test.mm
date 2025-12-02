@@ -101,22 +101,20 @@ TYPED_TEST(MpsHeapManagerTypedTest, GrowthChunkSizeReflectedInDebugState) {
         this->expectDescriptorConfiguration(key, descriptor);
         this->adapter().expectCreateHeapsInOrder({{descriptor, makeHeap(0x501)}});
     }
-    const auto id = manager.getOrCreate(key);
-    const auto snapshot = manager.debugState(id);
+    auto lease = manager.acquire(key);
+    const auto snapshot = manager.debugState(lease.handle());
     EXPECT_EQ(snapshot.growth_chunk_size, 2u);
+    lease.release();
     if constexpr (TypeParam::is_mock) {
         this->adapter().expectDestroyHeaps({makeHeap(0x501)});
     }
-    manager.release(id);
     manager.shutdown();
 }
 
 TYPED_TEST(MpsHeapManagerTypedTest, AccessBeforeInitializationThrows) {
     auto& manager = this->manager();
     const auto key = this->defaultKey();
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.getOrCreate(key); });
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { manager.release(base::HeapId{0}); });
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.getHeap(base::HeapId{0}); });
+    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.acquire(key); });
 }
 
 TYPED_TEST(MpsHeapManagerTypedTest, InitializeRejectsNullDevice) {
@@ -153,12 +151,12 @@ TYPED_TEST(MpsHeapManagerTypedTest, GrowthChunkControlsPoolExpansion) {
         this->expectDescriptorConfiguration(key, descriptor);
         this->adapter().expectCreateHeapsInOrder({{descriptor, makeHeap(0x600)}});
     }
-    const auto id = manager.getOrCreate(key);
+    auto lease = manager.acquire(key);
     EXPECT_EQ(manager.capacity(), 3u);
+    lease.release();
     if constexpr (TypeParam::is_mock) {
         this->adapter().expectDestroyHeaps({makeHeap(0x600)});
     }
-    manager.release(id);
     manager.shutdown();
 }
 
@@ -172,16 +170,18 @@ TYPED_TEST(MpsHeapManagerTypedTest, GetOrCreateCachesByDescriptor) {
         this->expectDescriptorConfiguration(key, descriptor);
         this->adapter().expectCreateHeapsInOrder({{descriptor, makeHeap(0x700)}});
     }
-    const auto first = manager.getOrCreate(key);
-    const auto second = manager.getOrCreate(key);
-    EXPECT_EQ(first, second);
-    const auto snapshot = manager.debugState(first);
+    auto first = manager.acquire(key);
+    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { (void)manager.acquire(key); });
+    const auto snapshot = manager.debugState(first.handle());
     EXPECT_TRUE(snapshot.alive);
     EXPECT_EQ(snapshot.size_bytes, key.size_bytes);
+    first.release();
+    auto second = manager.acquire(key);
+    EXPECT_NE(first.handle(), second.handle());
+    second.release();
     if constexpr (TypeParam::is_mock) {
         this->adapter().expectDestroyHeaps({makeHeap(0x700)});
     }
-    manager.release(first);
     manager.shutdown();
 }
 
@@ -202,21 +202,21 @@ TYPED_TEST(MpsHeapManagerTypedTest, DistinctDescriptorsAllocateSeparateHeaps) {
         this->adapter().expectCreateHeapsInOrder(
             {{descriptor_a, makeHeap(0x801)}, {descriptor_b, makeHeap(0x802)}});
     }
-    const auto id_a = manager.getOrCreate(key_a);
-    const auto id_b = manager.getOrCreate(key_b);
-    EXPECT_NE(id_a, id_b);
-    const auto snapshot_b = manager.debugState(id_b);
+    auto lease_a = manager.acquire(key_a);
+    auto lease_b = manager.acquire(key_b);
+    EXPECT_NE(lease_a.handle(), lease_b.handle());
+    const auto snapshot_b = manager.debugState(lease_b.handle());
     EXPECT_EQ(snapshot_b.storage_mode, key_b.storage_mode);
     EXPECT_EQ(snapshot_b.heap_type, key_b.heap_type);
+    lease_a.release();
+    lease_b.release();
     if constexpr (TypeParam::is_mock) {
         this->adapter().expectDestroyHeaps({makeHeap(0x801), makeHeap(0x802)});
     }
-    manager.release(id_a);
-    manager.release(id_b);
     manager.shutdown();
 }
 
-TYPED_TEST(MpsHeapManagerTypedTest, ReleaseDestroysHeapAndAllowsRecreation) {
+TYPED_TEST(MpsHeapManagerTypedTest, ReleaseAllowsReuseWithoutRecreation) {
     auto& manager = this->manager();
     const auto device = this->adapter().device();
     manager.initialize(device, this->getOps(), 1);
@@ -226,49 +226,36 @@ TYPED_TEST(MpsHeapManagerTypedTest, ReleaseDestroysHeapAndAllowsRecreation) {
         this->expectDescriptorConfiguration(key, descriptor_first);
         this->adapter().expectCreateHeapsInOrder({{descriptor_first, makeHeap(0x900)}});
     }
-    const auto id = manager.getOrCreate(key);
+    auto lease = manager.acquire(key);
+    lease.release();
+    auto recreated = manager.acquire(key);
+    EXPECT_NE(lease.handle(), recreated.handle());
+    recreated.release();
     if constexpr (TypeParam::is_mock) {
         this->adapter().expectDestroyHeaps({makeHeap(0x900)});
     }
-    manager.release(id);
-    if constexpr (TypeParam::is_mock) {
-        const auto descriptor_second = makeHeapDescriptor(0x1901);
-        this->expectDescriptorConfiguration(key, descriptor_second);
-        this->adapter().expectCreateHeapsInOrder({{descriptor_second, makeHeap(0x901)}});
-    }
-    const auto recreated = manager.getOrCreate(key);
-    EXPECT_NE(id, recreated);
-    if constexpr (TypeParam::is_mock) {
-        this->adapter().expectDestroyHeaps({makeHeap(0x901)});
-    }
-    manager.release(recreated);
     manager.shutdown();
 }
 
-TYPED_TEST(MpsHeapManagerTypedTest, ReleaseRejectsStaleId) {
+TYPED_TEST(MpsHeapManagerTypedTest, ManualReleaseInvalidatesLease) {
     auto& manager = this->manager();
     const auto device = this->adapter().device();
     manager.initialize(device, this->getOps(), 1);
     const auto key = this->defaultKey();
     if constexpr (TypeParam::is_mock) {
-        const auto descriptor = makeHeapDescriptor(0x1A00);
+        const auto descriptor = makeHeapDescriptor(0x1D00);
         this->expectDescriptorConfiguration(key, descriptor);
-        this->adapter().expectCreateHeapsInOrder({{descriptor, makeHeap(0xA00)}});
+        this->adapter().expectCreateHeapsInOrder({{descriptor, makeHeap(0xD00)}});
+        this->adapter().expectDestroyHeaps({makeHeap(0xD00)});
     }
-    const auto id = manager.getOrCreate(key);
-    if constexpr (TypeParam::is_mock) {
-        this->adapter().expectDestroyHeaps({makeHeap(0xA00)});
-    }
-    manager.release(id);
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] { manager.release(id); });
-    manager.shutdown();
-}
 
-TYPED_TEST(MpsHeapManagerTypedTest, GetHeapRejectsInvalidId) {
-    auto& manager = this->manager();
-    const auto device = this->adapter().device();
-    manager.initialize(device, this->getOps(), 0);
-    ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] { (void)manager.getHeap(base::HeapId{0xFF}); });
+    auto lease = manager.acquire(key);
+    const auto handle = lease.handle();
+
+    manager.release(lease);
+    EXPECT_FALSE(static_cast<bool>(lease));
+    EXPECT_GT(manager.debugState(handle).generation, 0u);
+
     manager.shutdown();
 }
 
@@ -278,7 +265,7 @@ TYPED_TEST(MpsHeapManagerTypedTest, DescriptorSizeMustBePositive) {
     manager.initialize(device, this->getOps(), 0);
     mps_rt::HeapDescriptorKey key{};
     key.size_bytes = 0;
-    ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] { (void)manager.getOrCreate(key); });
+    ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] { (void)manager.acquire(key); });
     manager.shutdown();
 }
 
@@ -293,6 +280,6 @@ TYPED_TEST(MpsHeapManagerTypedTest, ShutdownDestroysRemainingHeaps) {
         this->adapter().expectCreateHeapsInOrder({{descriptor, makeHeap(0xB00)}});
         this->adapter().expectDestroyHeaps({makeHeap(0xB00)});
     }
-    (void)manager.getOrCreate(key);
+    (void)manager.acquire(key);
     manager.shutdown();
 }

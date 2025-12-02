@@ -11,8 +11,10 @@
 #include "orteaf/internal/backend/mps/wrapper/mps_command_queue.h"
 #include "orteaf/internal/backend/mps/wrapper/mps_event.h"
 #include "orteaf/internal/base/heap_vector.h"
-#include "orteaf/internal/base/strong_id.h"
+#include "orteaf/internal/base/handle.h"
+#include "orteaf/internal/base/lease.h"
 #include "orteaf/internal/diagnostics/error/error.h"
+#include "orteaf/internal/diagnostics/log/log_config.h"
 #include "orteaf/internal/backend/mps/mps_slow_ops.h"
 
 namespace orteaf::internal::runtime::mps {
@@ -27,6 +29,21 @@ namespace orteaf::internal::runtime::mps {
 class MpsCommandQueueManager {
 public:
   using BackendOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
+  using CommandQueueLease = ::orteaf::internal::base::Lease<::orteaf::internal::base::CommandQueueHandle,
+                                                            ::orteaf::internal::backend::mps::MPSCommandQueue_t,
+                                                            MpsCommandQueueManager>;
+#if ORTEAF_MPS_DEBUG_ENABLED
+  using EventLease = ::orteaf::internal::base::Lease<::orteaf::internal::base::CommandQueueHandle,
+                                                     ::orteaf::internal::backend::mps::MPSEvent_t,
+                                                     MpsCommandQueueManager>;
+  struct SerialState {
+    std::uint64_t submit_serial{0};
+    std::uint64_t completed_serial{0};
+  };
+  using SerialLease = ::orteaf::internal::base::Lease<::orteaf::internal::base::CommandQueueHandle,
+                                                      SerialState*,
+                                                      MpsCommandQueueManager>;
+#endif
 
   MpsCommandQueueManager() = default;
   MpsCommandQueueManager(const MpsCommandQueueManager&) = delete;
@@ -55,57 +72,53 @@ public:
 
   void growCapacity(std::size_t additional);
 
-  base::CommandQueueId acquire();
+  CommandQueueLease acquire();
 
-  void release(base::CommandQueueId id);
+  void release(CommandQueueLease& lease) noexcept;
+
+#if ORTEAF_MPS_DEBUG_ENABLED
+  EventLease acquireEvent(::orteaf::internal::base::CommandQueueHandle handle);
+  void release(EventLease& lease) noexcept;
+  SerialLease acquireSerial(::orteaf::internal::base::CommandQueueHandle handle);
+  void release(SerialLease& lease) noexcept;
+#endif
 
   void releaseUnusedQueues();
 
-  ::orteaf::internal::backend::mps::MPSCommandQueue_t
-  getCommandQueue(base::CommandQueueId id) const;
-
-  std::uint64_t submitSerial(base::CommandQueueId id) const;
-
-  void setSubmitSerial(base::CommandQueueId id, std::uint64_t value);
-
-  std::uint64_t completedSerial(base::CommandQueueId id) const;
-
-  void setCompletedSerial(base::CommandQueueId id, std::uint64_t value);
-
 #if ORTEAF_ENABLE_TEST
   struct DebugState {
-    std::uint64_t submit_serial{0};
-    std::uint64_t completed_serial{0};
     std::uint32_t generation{0};
     bool in_use{false};
     bool queue_allocated{false};
     std::size_t growth_chunk_size{0};
+#if ORTEAF_MPS_DEBUG_ENABLED
+    std::uint64_t submit_serial{0};
+    std::uint64_t completed_serial{0};
+    std::size_t event_refcount{0};
+    std::size_t serial_refcount{0};
+#endif
   };
 
-  DebugState debugState(base::CommandQueueId id) const;
+  DebugState debugState(base::CommandQueueHandle handle) const;
 #endif
 
 private:
   struct State {
     ::orteaf::internal::backend::mps::MPSCommandQueue_t command_queue{nullptr};
-    ::orteaf::internal::backend::mps::MPSEvent_t event{nullptr};
-    std::uint64_t submit_serial{0};
-    std::uint64_t completed_serial{0};
-    std::uint32_t generation{0};
     bool in_use{false};
+    bool on_free_list{true};
+    std::uint32_t generation{0};
+#if ORTEAF_MPS_DEBUG_ENABLED
+    ::orteaf::internal::backend::mps::MPSEvent_t event{nullptr};
+    SerialState serial{};
+    std::size_t event_refcount{0};
+    std::size_t serial_refcount{0};
+#endif
 
     void resetHazards() noexcept;
 
     void destroy(BackendOps *ops) noexcept;
   };
-
-  static constexpr std::uint32_t kGenerationBits = 8;
-  static constexpr std::uint32_t kIndexBits = 24;
-  static constexpr std::uint32_t kGenerationShift = kIndexBits;
-  static constexpr std::uint32_t kIndexMask = (1u << kIndexBits) - 1u;
-  static constexpr std::uint32_t kGenerationMask = (1u << kGenerationBits) - 1u;
-  static constexpr std::size_t kMaxStateCount =
-      static_cast<std::size_t>(kIndexMask);
 
   void ensureInitialized() const;
 
@@ -113,20 +126,11 @@ private:
 
   void growStatePool(std::size_t additional_count);
 
-  State &ensureActiveState(base::CommandQueueId id);
+  State &ensureActiveState(base::CommandQueueHandle handle);
 
-  const State &ensureActiveState(base::CommandQueueId id) const {
-    return const_cast<MpsCommandQueueManager *>(this)->ensureActiveState(id);
+  const State &ensureActiveState(base::CommandQueueHandle handle) const {
+    return const_cast<MpsCommandQueueManager *>(this)->ensureActiveState(handle);
   }
-
-  base::CommandQueueId encodeId(std::size_t index,
-                                std::uint32_t generation) const;
-
-  std::size_t indexFromId(base::CommandQueueId id) const;
-
-  std::size_t indexFromIdRaw(base::CommandQueueId id) const;
-
-  std::uint32_t generationFromId(base::CommandQueueId id) const;
 
   ::orteaf::internal::base::HeapVector<State> states_;
   ::orteaf::internal::base::HeapVector<std::size_t> free_list_;

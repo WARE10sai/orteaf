@@ -11,7 +11,7 @@
 #include <orteaf/internal/backend/mps/wrapper/mps_function.h>
 #include <orteaf/internal/backend/mps/wrapper/mps_heap.h>
 #include <orteaf/internal/backend/mps/wrapper/mps_library.h>
-#include <orteaf/internal/base/strong_id.h>
+#include <orteaf/internal/base/handle.h>
 #include <orteaf/internal/backend/mps/mps_slow_ops.h>
 #include <tests/internal/testing/static_mock.h>
 
@@ -25,7 +25,7 @@ struct MpsBackendOpsMock
   MOCK_METHOD(void, releaseDevice,
               (::orteaf::internal::backend::mps::MPSDevice_t), (override));
   MOCK_METHOD(::orteaf::internal::architecture::Architecture,
-              detectArchitecture, (::orteaf::internal::base::DeviceId),
+              detectArchitecture, (::orteaf::internal::base::DeviceHandle),
               (override));
   MOCK_METHOD(::orteaf::internal::backend::mps::MPSCommandQueue_t,
               createCommandQueue,

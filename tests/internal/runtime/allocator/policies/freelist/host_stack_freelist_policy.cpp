@@ -8,7 +8,7 @@
 
 using ::orteaf::internal::backend::Backend;
 using ::orteaf::internal::backend::cpu::CpuBufferView;
-using ::orteaf::internal::base::BufferId;
+using ::orteaf::internal::base::BufferHandle;
 using ::orteaf::internal::runtime::allocator::testing::MockCpuResource;
 using ::orteaf::internal::runtime::allocator::testing::MockCpuResourceImpl;
 namespace policies = ::orteaf::internal::runtime::allocator::policies;
@@ -41,18 +41,18 @@ TEST(HostStackFreelistPolicy, PushAndPopAreLifoAndResizeStacks) {
     policy.initialize(&resource);
     policy.configureBounds(64, 128);
 
-    MemoryBlock first{BufferId{1}, CpuBufferView{reinterpret_cast<void*>(0x1), 0, 64}};
-    MemoryBlock second{BufferId{2}, CpuBufferView{reinterpret_cast<void*>(0x1), 64, 64}};
+    MemoryBlock first{BufferHandle{1}, CpuBufferView{reinterpret_cast<void*>(0x1), 0, 64}};
+    MemoryBlock second{BufferHandle{2}, CpuBufferView{reinterpret_cast<void*>(0x1), 64, 64}};
 
     policy.push(2, first);
     policy.push(2, second);
 
     auto popped_first = policy.pop(2);
-    EXPECT_EQ(popped_first.id, BufferId{2});
+    EXPECT_EQ(popped_first.id, BufferHandle{2});
     EXPECT_EQ(popped_first.view.offset(), 64u);
 
     auto popped_second = policy.pop(2);
-    EXPECT_EQ(popped_second.id, BufferId{1});
+    EXPECT_EQ(popped_second.id, BufferHandle{1});
     EXPECT_TRUE(policy.empty(2));
 }
 
@@ -66,7 +66,7 @@ TEST(HostStackFreelistPolicy, ExpandSplitsChunkIntoBlocks) {
 
     void* base = reinterpret_cast<void*>(0x1000);
     CpuBufferView chunk_view{base, 0, 256};
-    MemoryBlock chunk{BufferId{3}, chunk_view};
+    MemoryBlock chunk{BufferHandle{3}, chunk_view};
 
     Sequence seq;
     EXPECT_CALL(impl, makeView(chunk_view, 0, 64))
@@ -104,7 +104,7 @@ TEST(HostStackFreelistPolicy, RemoveBlocksInChunkRemovesContainedBlocks) {
 
     void* base = reinterpret_cast<void*>(0x2000);
     CpuBufferView chunk_view{base, 0, 128};
-    MemoryBlock chunk{BufferId{4}, chunk_view};
+    MemoryBlock chunk{BufferHandle{4}, chunk_view};
 
     Sequence seq;
     EXPECT_CALL(impl, makeView(chunk_view, 0, 32))
@@ -121,7 +121,7 @@ TEST(HostStackFreelistPolicy, RemoveBlocksInChunkRemovesContainedBlocks) {
         .WillOnce(Return(CpuBufferView{base, 96, 32}));
 
     policy.expand(0, chunk, 128, 32);
-    MemoryBlock other{BufferId{99}, CpuBufferView{reinterpret_cast<void*>(0xDEADBEEF), 0, 32}};
+    MemoryBlock other{BufferHandle{99}, CpuBufferView{reinterpret_cast<void*>(0xDEADBEEF), 0, 32}};
     policy.push(0, other);
     EXPECT_EQ(policy.get_total_free_blocks(), 5u);
 
@@ -129,7 +129,7 @@ TEST(HostStackFreelistPolicy, RemoveBlocksInChunkRemovesContainedBlocks) {
     EXPECT_EQ(policy.get_total_free_blocks(), 1u);
 
     auto remaining = policy.pop(0);
-    EXPECT_EQ(remaining.id, BufferId{99});
+    EXPECT_EQ(remaining.id, BufferHandle{99});
     EXPECT_FALSE(remaining.view.empty());
     EXPECT_TRUE(policy.empty(0));
 
