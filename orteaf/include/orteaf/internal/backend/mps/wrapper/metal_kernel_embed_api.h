@@ -8,6 +8,7 @@
 #include "orteaf/internal/backend/mps/wrapper/mps_library.h"
 
 #include <cstddef>
+#include <span>
 #include <string_view>
 
 namespace orteaf::internal::backend::mps::metal_kernel_embed {
@@ -28,7 +29,7 @@ namespace orteaf::internal::backend::mps::metal_kernel_embed {
  *
  * MPSDevice_t device = acquire_default_device();  // user-defined helper
  * MPSError_t error = nullptr;
- * MPSFunction_t fn = loadEmbeddedFunction(device,
+ * MPSFunction_t fn = createEmbeddedFunction(device,
  *                                           "embed_test_library",
  *                                           "my_kernel",
  *                                           &error);
@@ -45,11 +46,23 @@ struct MetallibBlob {
     std::size_t size;
 };
 
+struct MetallibEntry {
+    const char* name;
+    const unsigned char* begin;
+    const unsigned char* end;
+};
+
+std::span<const MetallibEntry> libraries();
+
 MetallibBlob findLibraryData(std::string_view library_name);
 
 bool available(std::string_view library_name);
 
-MPSFunction_t loadEmbeddedFunction(MPSDevice_t device,
+MPSLibrary_t createEmbeddedLibrary(MPSDevice_t device,
+                                   std::string_view library_name,
+                                   MPSError_t* error = nullptr);
+
+MPSFunction_t createEmbeddedFunction(MPSDevice_t device,
                                      std::string_view library_name,
                                      std::string_view function_name,
                                      MPSError_t* error = nullptr);
