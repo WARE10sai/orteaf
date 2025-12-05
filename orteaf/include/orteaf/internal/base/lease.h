@@ -17,6 +17,7 @@ class Lease {
     friend ManagerT;
 
 public:
+    Lease() noexcept = default;
     Lease(const Lease&) = delete;
     Lease& operator=(const Lease&) = delete;
 
@@ -82,6 +83,7 @@ class Lease<void, ResourceT, ManagerT> {
     friend ManagerT;
 
 public:
+    Lease() noexcept = default;
     Lease(const Lease&) = delete;
     Lease& operator=(const Lease&) = delete;
 
