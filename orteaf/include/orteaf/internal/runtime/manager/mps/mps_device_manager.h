@@ -183,11 +183,6 @@ private:
     BackendOps *ops_{nullptr};
 };
 
-inline MpsDeviceManager& GetMpsDeviceManager() {
-    static MpsDeviceManager instance{};
-    return instance;
-}
-
 } // namespace orteaf::internal::runtime::mps
 
 #endif // ORTEAF_ENABLE_MPS
