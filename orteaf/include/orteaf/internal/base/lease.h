@@ -70,6 +70,22 @@ public:
         }
     }
 
+    // Pointer access helper (returns raw pointer regardless of ResourceT being pointer or object).
+    auto pointer() noexcept {
+        if constexpr (std::is_pointer_v<ResourceT>) {
+            return resource_;
+        } else {
+            return std::addressof(resource_);
+        }
+    }
+    auto pointer() const noexcept {
+        if constexpr (std::is_pointer_v<ResourceT>) {
+            return resource_;
+        } else {
+            return std::addressof(resource_);
+        }
+    }
+
     template <class F>
     decltype(auto) with_resource(F&& f) {
         return static_cast<F&&>(f)(resource_);
@@ -167,6 +183,22 @@ public:
             return *resource_;
         } else {
             return (resource_);
+        }
+    }
+
+    // Pointer access helper (returns raw pointer regardless of ResourceT being pointer or object).
+    auto pointer() noexcept {
+        if constexpr (std::is_pointer_v<ResourceT>) {
+            return resource_;
+        } else {
+            return std::addressof(resource_);
+        }
+    }
+    auto pointer() const noexcept {
+        if constexpr (std::is_pointer_v<ResourceT>) {
+            return resource_;
+        } else {
+            return std::addressof(resource_);
         }
     }
 
