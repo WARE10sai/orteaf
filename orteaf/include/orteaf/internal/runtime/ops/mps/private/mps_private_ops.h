@@ -27,9 +27,9 @@ public:
     ~MpsPrivateOps() = default;
 
     // Acquire a single pipeline for the given device/library/function key trio.
-    PipelineLease acquirePipeline(DeviceHandle device,
-                                  const LibraryKey& library_key,
-                                  const FunctionKey& function_key) {
+    static PipelineLease acquirePipeline(DeviceHandle device,
+                                         const LibraryKey& library_key,
+                                         const FunctionKey& function_key) {
         Runtime& rt = MpsCommonOps::runtime();
         auto lib_mgr_lease = rt.deviceManager().acquireLibraryManager(device);
         auto library = lib_mgr_lease->acquire(library_key);
