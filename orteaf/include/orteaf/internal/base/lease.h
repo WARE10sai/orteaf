@@ -40,11 +40,35 @@ public:
 
     const HandleT& handle() const noexcept { return handle_; }
 
-    ResourceT* operator->() noexcept { return std::addressof(resource_); }
-    const ResourceT* operator->() const noexcept { return std::addressof(resource_); }
+    auto operator->() noexcept {
+        if constexpr (std::is_pointer_v<ResourceT>) {
+            return resource_;  // allow single arrow when resource_ is already a pointer
+        } else {
+            return std::addressof(resource_);
+        }
+    }
+    auto operator->() const noexcept {
+        if constexpr (std::is_pointer_v<ResourceT>) {
+            return resource_;
+        } else {
+            return std::addressof(resource_);
+        }
+    }
 
-    ResourceT& operator*() noexcept { return resource_; }
-    const ResourceT& operator*() const noexcept { return resource_; }
+    decltype(auto) operator*() noexcept {
+        if constexpr (std::is_pointer_v<ResourceT>) {
+            return *resource_;
+        } else {
+            return (resource_);
+        }
+    }
+    decltype(auto) operator*() const noexcept {
+        if constexpr (std::is_pointer_v<ResourceT>) {
+            return *resource_;
+        } else {
+            return (resource_);
+        }
+    }
 
     template <class F>
     decltype(auto) with_resource(F&& f) {
@@ -77,6 +101,10 @@ private:
         handle_ = HandleT{};
         resource_ = ResourceT{};
     }
+
+    // Manager-only access to underlying resource.
+    ResourceT& getForManager() noexcept { return resource_; }
+    const ResourceT& getForManager() const noexcept { return resource_; }
 
     ManagerT* manager_{nullptr};
     HandleT handle_{};
@@ -112,11 +140,35 @@ public:
 
     ~Lease() noexcept { release(); }
 
-    ResourceT* operator->() noexcept { return std::addressof(resource_); }
-    const ResourceT* operator->() const noexcept { return std::addressof(resource_); }
+    auto operator->() noexcept {
+        if constexpr (std::is_pointer_v<ResourceT>) {
+            return resource_;
+        } else {
+            return std::addressof(resource_);
+        }
+    }
+    auto operator->() const noexcept {
+        if constexpr (std::is_pointer_v<ResourceT>) {
+            return resource_;
+        } else {
+            return std::addressof(resource_);
+        }
+    }
 
-    ResourceT& operator*() noexcept { return resource_; }
-    const ResourceT& operator*() const noexcept { return resource_; }
+    decltype(auto) operator*() noexcept {
+        if constexpr (std::is_pointer_v<ResourceT>) {
+            return *resource_;
+        } else {
+            return (resource_);
+        }
+    }
+    decltype(auto) operator*() const noexcept {
+        if constexpr (std::is_pointer_v<ResourceT>) {
+            return *resource_;
+        } else {
+            return (resource_);
+        }
+    }
 
     template <class F>
     decltype(auto) with_resource(F&& f) {
@@ -148,6 +200,10 @@ private:
         manager_ = nullptr;
         resource_ = ResourceT{};
     }
+
+    // Manager-only access to underlying resource.
+    ResourceT& getForManager() noexcept { return resource_; }
+    const ResourceT& getForManager() const noexcept { return resource_; }
 
     ManagerT* manager_{nullptr};
     ResourceT resource_{};
