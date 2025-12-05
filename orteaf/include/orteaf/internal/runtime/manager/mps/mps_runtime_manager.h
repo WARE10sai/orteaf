@@ -10,6 +10,9 @@
 namespace orteaf::internal::runtime::mps {
 
 class MpsRuntimeManager {
+    using SlowOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
+    using SlowOpsImpl = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOpsImpl;
+
 public:
     MpsRuntimeManager() = default;
     MpsRuntimeManager(const MpsRuntimeManager&) = delete;
@@ -36,9 +39,6 @@ public:
     }
 
 private:
-    using SlowOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
-    using SlowOpsImpl = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOpsImpl;
-
     MpsDeviceManager device_manager_{};
     std::unique_ptr<SlowOps> slow_ops_{};
 };

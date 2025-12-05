@@ -47,7 +47,8 @@ public:
     // Manual release helper for callers wanting explicit return.
     void release(FenceLease& lease) noexcept {
         if (lease) {
-            release(*lease);
+            release(lease.getForManager());
+            lease.invalidate();
         }
     }
 
