@@ -17,6 +17,7 @@ class MpsPrivateOps {
     using LibraryKey = ::orteaf::internal::runtime::mps::LibraryKey;
     using FunctionKey = ::orteaf::internal::runtime::mps::FunctionKey;
     using PipelineLease = ::orteaf::internal::runtime::mps::MpsComputePipelineStateManager::PipelineLease;
+    using FenceLease = ::orteaf::internal::runtime::mps::MpsFencePool::FenceLease;
 
 public:
     MpsPrivateOps() = default;
@@ -35,6 +36,12 @@ public:
         auto library = lib_mgr_lease->acquire(library_key);
         auto pipeline_mgr = lib_mgr_lease->acquirePipelineManager(library);
         return pipeline_mgr->acquire(function_key);
+    }
+
+    static FenceLease acquireFence(DeviceHandle device) {
+        Runtime& rt = MpsCommonOps::runtime();
+        auto fence_pool = rt.deviceManager().acquireFencePool(device);
+        return fence_pool->acquireFence();
     }
 };
 

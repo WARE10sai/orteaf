@@ -2,6 +2,7 @@
 
 #include "orteaf/internal/backend/mps/wrapper/mps_command_buffer.h"
 #include "orteaf/internal/backend/mps/wrapper/mps_compute_command_encorder.h"
+#include "orteaf/internal/backend/mps/wrapper/mps_fence.h"
 
 namespace orteaf::internal::runtime::backend_ops::mps {
 
@@ -50,6 +51,16 @@ struct MpsFastOps {
 
   static inline void commit(::orteaf::internal::backend::mps::MPSCommandBuffer_t command_buffer) {
     ::orteaf::internal::backend::mps::commit(command_buffer);
+  }
+
+  static inline void updateFence(::orteaf::internal::backend::mps::MPSComputeCommandEncoder_t encoder,
+                                 ::orteaf::internal::backend::mps::MPSFence_t fence) {
+    ::orteaf::internal::backend::mps::updateFence(encoder, fence);
+  }
+
+  static inline void waitForFence(::orteaf::internal::backend::mps::MPSComputeCommandEncoder_t encoder,
+                                  ::orteaf::internal::backend::mps::MPSFence_t fence) {
+    ::orteaf::internal::backend::mps::waitForFence(encoder, fence);
   }
 };
 

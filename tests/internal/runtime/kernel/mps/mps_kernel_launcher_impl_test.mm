@@ -4,6 +4,7 @@
 #include "orteaf/internal/backend/mps/mps_fast_ops.h"
 #include "orteaf/internal/backend/mps/wrapper/mps_compute_command_encorder.h"
 #include "orteaf/internal/runtime/ops/mps/private/mps_private_ops.h"
+#include "orteaf/internal/backend/mps/mps_fence_token.h"
 
 namespace base = orteaf::internal::base;
 
@@ -31,6 +32,7 @@ namespace {
 class DummyPrivateOps {
 public:
     using PipelineLease = mps_rt::MpsComputePipelineStateManager::PipelineLease;
+    using FenceLease = mps_rt::MpsFencePool::FenceLease;
     static void reset() {
         last_device = {};
         last_library.clear();
@@ -46,6 +48,11 @@ public:
         last_function = function_key.identifier;
         // Return an empty lease; we only validate call ordering and size.
         return PipelineLease{};
+    }
+
+    static FenceLease acquireFence(base::DeviceHandle device) {
+        last_device = device;
+        return FenceLease{};
     }
 
     static inline base::DeviceHandle last_device{};
@@ -144,6 +151,12 @@ struct MockComputeFastOps {
         last_committed_buffer = command_buffer;
     }
 
+    static void updateFence(::orteaf::internal::backend::mps::MPSComputeCommandEncoder_t encoder,
+                            ::orteaf::internal::backend::mps::MPSFence_t fence) {
+        last_encoder_for_fence_update = encoder;
+        last_fence_updated = fence;
+    }
+
     static inline ::orteaf::internal::backend::mps::MPSCommandQueue_t last_queue{nullptr};
     static inline ::orteaf::internal::backend::mps::MPSCommandBuffer_t fake_buffer{
         reinterpret_cast<::orteaf::internal::backend::mps::MPSCommandBuffer_t>(0x10)};
@@ -163,6 +176,8 @@ struct MockComputeFastOps {
     static inline ::orteaf::internal::backend::mps::MPSSize_t last_threadgroups{};
     static inline ::orteaf::internal::backend::mps::MPSSize_t last_threads_per_threadgroup{};
     static inline ::orteaf::internal::backend::mps::MPSCommandBuffer_t last_committed_buffer{nullptr};
+    static inline ::orteaf::internal::backend::mps::MPSComputeCommandEncoder_t last_encoder_for_fence_update{nullptr};
+    static inline ::orteaf::internal::backend::mps::MPSFence_t last_fence_updated{nullptr};
 };
 
 }  // namespace
@@ -381,4 +396,56 @@ TEST(MpsKernelLauncherImplTest, DispatchOneShotByNameMissingReturnsNullptr) {
     auto* command_buffer = impl.dispatchOneShot<MockComputeFastOps>(queue, device, "missing", "missing",
                                                                     tg, tptg, [](auto*) {});
     EXPECT_EQ(command_buffer, nullptr);
+}
+
+TEST(MpsKernelLauncherImplTest, UpdateFenceReplacesTicketForSameQueue) {
+    mps_rt::MpsKernelLauncherImpl<1> impl({
+        {"lib", "fn"},
+    });
+    const base::DeviceHandle device{0};
+    impl.initialize<DummyPrivateOps>(device);
+
+    base::CommandQueueHandle queue_handle{42};
+    ::orteaf::internal::backend::mps::MpsFenceToken token{};
+
+    auto* encoder = MockComputeFastOps::fake_encoder;
+    auto* cb1 = reinterpret_cast<::orteaf::internal::backend::mps::MPSCommandBuffer_t>(0xAA);
+    auto* cb2 = reinterpret_cast<::orteaf::internal::backend::mps::MPSCommandBuffer_t>(0xBB);
+
+    // First ticket
+    impl.updateFenceAndTrack<MockComputeFastOps, DummyPrivateOps>(device, queue_handle, encoder, cb1,
+                                                                  token);
+    ASSERT_EQ(token.size(), 1u);
+    EXPECT_EQ(token[0].commandBuffer(), cb1);
+
+    // Second call with same queue_handle should replace
+    impl.updateFenceAndTrack<MockComputeFastOps, DummyPrivateOps>(device, queue_handle, encoder, cb2,
+                                                                  token);
+    EXPECT_EQ(token.size(), 1u);
+    EXPECT_EQ(token[0].commandBuffer(), cb2);
+}
+
+TEST(MpsKernelLauncherImplTest, UpdateFenceReturnsTicketAndEncodesUpdate) {
+    mps_rt::MpsKernelLauncherImpl<1> impl({
+        {"lib", "fn"},
+    });
+    const base::DeviceHandle device{0};
+    impl.initialize<DummyPrivateOps>(device);
+
+    base::CommandQueueHandle queue_handle{1};
+    auto* encoder = MockComputeFastOps::fake_encoder;
+    auto* command_buffer = MockComputeFastOps::fake_buffer;
+
+    MockComputeFastOps::last_encoder_for_fence_update = nullptr;
+    MockComputeFastOps::last_fence_updated = reinterpret_cast<::orteaf::internal::backend::mps::MPSFence_t>(0xdead);
+
+    auto ticket = impl.updateFence<MockComputeFastOps, DummyPrivateOps>(device, queue_handle, encoder,
+                                                                        command_buffer);
+
+    EXPECT_EQ(MockComputeFastOps::last_encoder_for_fence_update, encoder);
+    EXPECT_EQ(MockComputeFastOps::last_fence_updated, nullptr);  // DummyPrivateOps returns null fence
+    EXPECT_EQ(ticket.commandQueueId(), queue_handle);
+    EXPECT_EQ(ticket.commandBuffer(), command_buffer);
+    EXPECT_TRUE(ticket.hasFence());
+    EXPECT_EQ(ticket.fenceHandle().pointer(), nullptr);
 }
