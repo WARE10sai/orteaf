@@ -3,8 +3,10 @@
 #if ORTEAF_ENABLE_MPS
 
 #include <array>
+#include <limits>
 #include <initializer_list>
 #include <string>
+#include <string_view>
 #include <utility>
 #include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/base/heap_vector.h"
@@ -58,6 +60,7 @@ public:
     const std::array<Key, N>& keysForTest() const noexcept { return keys_; }
     std::size_t sizeForTest() const noexcept { return size_; }
     PipelineLease& pipelineLeaseForTest(std::size_t index) { return pipelines_[index]; }
+    std::size_t pipelineCountForTest() const noexcept { return pipelines_.size(); }
 #endif
 
     // Convenience: create a command buffer from a command queue without exposing
@@ -71,9 +74,26 @@ public:
     // Convenience: create a compute encoder and bind the pipeline in one step.
     template <typename FastOps = ::orteaf::internal::runtime::backend_ops::mps::MpsFastOps>
     ::orteaf::internal::backend::mps::MPSComputeCommandEncoder_t createComputeEncoder(
-        ::orteaf::internal::backend::mps::MPSCommandBuffer_t command_buffer, PipelineLease& pipeline) const {
+        ::orteaf::internal::backend::mps::MPSCommandBuffer_t command_buffer, std::size_t pipeline_index) const {
+        if (!initialized_ || pipeline_index >= pipelines_.size()) {
+            return nullptr;
+        }
         auto* encoder = FastOps::createComputeCommandEncoder(command_buffer);
-        FastOps::setPipelineState(encoder, pipeline.pointer());
+        FastOps::setPipelineState(encoder, pipelines_[pipeline_index].pointer());
+        return encoder;
+    }
+
+    template <typename FastOps = ::orteaf::internal::runtime::backend_ops::mps::MpsFastOps>
+    ::orteaf::internal::backend::mps::MPSComputeCommandEncoder_t createComputeEncoder(
+        ::orteaf::internal::backend::mps::MPSCommandBuffer_t command_buffer,
+        std::string_view library,
+        std::string_view function) const {
+        const std::size_t idx = findKeyIndex(library, function);
+        if (!initialized_ || idx >= pipelines_.size()) {
+            return nullptr;
+        }
+        auto* encoder = FastOps::createComputeCommandEncoder(command_buffer);
+        FastOps::setPipelineState(encoder, pipelines_[idx].pointer());
         return encoder;
     }
 
@@ -90,6 +110,16 @@ private:
         }
         keys_[size_++] = Key{lib, func};
         initialized_ = false;
+    }
+
+    std::size_t findKeyIndex(std::string_view library, std::string_view function) const noexcept {
+        for (std::size_t i = 0; i < size_; ++i) {
+            const auto& key = keys_[i];
+            if (key.first.identifier == library && key.second.identifier == function) {
+                return i;
+            }
+        }
+        return std::numeric_limits<std::size_t>::max();
     }
 
     bool isDuplicate(const LibraryKey& lib, const FunctionKey& func) const {

@@ -170,17 +170,63 @@ TEST(MpsKernelLauncherImplTest, CreateComputeEncoderBindsPipeline) {
         {"lib", "fn"},
     });
 
-    // pipeline lease defaults to nullptr resource; sufficient to verify passthrough.
-    mps_rt::MpsKernelLauncherImpl<1>::PipelineLease pipeline{};
+    // Initialize to populate pipelines_; DummyPrivateOps returns empty leases (null pipeline is fine).
+    const base::DeviceHandle device{0};
+    impl.initialize<DummyPrivateOps>(device);
 
     MockComputeFastOps::last_command_buffer = nullptr;
     MockComputeFastOps::last_encoder = nullptr;
     MockComputeFastOps::last_pipeline = nullptr;
 
-    auto* encoder = impl.createComputeEncoder<MockComputeFastOps>(MockComputeFastOps::fake_buffer, pipeline);
+    auto* encoder = impl.createComputeEncoder<MockComputeFastOps>(MockComputeFastOps::fake_buffer, 0);
 
     EXPECT_EQ(MockComputeFastOps::last_command_buffer, MockComputeFastOps::fake_buffer);
     EXPECT_EQ(MockComputeFastOps::last_encoder, MockComputeFastOps::fake_encoder);
-    EXPECT_EQ(MockComputeFastOps::last_pipeline, pipeline.pointer());  // should forward raw pipeline pointer
+    EXPECT_EQ(MockComputeFastOps::last_pipeline, nullptr);  // DummyPrivateOps yields null pipeline
     EXPECT_EQ(encoder, MockComputeFastOps::fake_encoder);
+}
+
+TEST(MpsKernelLauncherImplTest, CreateComputeEncoderByNameAndIndex) {
+    mps_rt::MpsKernelLauncherImpl<2> impl({
+        {"libA", "fnA"},
+        {"libB", "fnB"},
+    });
+
+    const base::DeviceHandle device{0};
+    impl.initialize<DummyPrivateOps>(device);
+    ASSERT_TRUE(impl.initialized());
+    ASSERT_EQ(impl.sizeForTest(), 2u);
+    ASSERT_EQ(impl.pipelineCountForTest(), 2u);
+    // Ensure pipeline storage exists (DummyPrivateOps returns null pipeline, but slot is present).
+    ASSERT_NO_THROW({
+        auto& lease = impl.pipelineLeaseForTest(0);
+        (void)lease;
+    });
+
+    MockComputeFastOps::last_command_buffer = nullptr;
+    MockComputeFastOps::last_encoder = nullptr;
+    MockComputeFastOps::last_pipeline = nullptr;
+
+    // By index
+    auto* enc_idx = impl.createComputeEncoder<MockComputeFastOps>(MockComputeFastOps::fake_buffer, 1);
+    EXPECT_EQ(enc_idx, MockComputeFastOps::fake_encoder);
+    EXPECT_EQ(MockComputeFastOps::last_command_buffer, MockComputeFastOps::fake_buffer);
+    EXPECT_EQ(MockComputeFastOps::last_pipeline, nullptr);
+
+    // By name
+    MockComputeFastOps::last_command_buffer = nullptr;
+    MockComputeFastOps::last_encoder = nullptr;
+    MockComputeFastOps::last_pipeline = nullptr;
+
+    auto* enc_name = impl.createComputeEncoder<MockComputeFastOps>(MockComputeFastOps::fake_buffer,
+                                                                   "libA", "fnA");
+    EXPECT_EQ(enc_name, MockComputeFastOps::fake_encoder);
+    EXPECT_EQ(MockComputeFastOps::last_command_buffer, MockComputeFastOps::fake_buffer);
+    EXPECT_EQ(MockComputeFastOps::last_pipeline, nullptr);
+
+    // Missing pipeline returns nullptr and does not configure encoder
+    MockComputeFastOps::last_encoder = nullptr;
+    auto* enc_missing = impl.createComputeEncoder<MockComputeFastOps>(MockComputeFastOps::fake_buffer,
+                                                                      "missing", "missing");
+    EXPECT_EQ(enc_missing, nullptr);
 }
