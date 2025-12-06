@@ -21,6 +21,18 @@
 
 namespace orteaf::internal::runtime::mps {
 
+/**
+ * @brief MPS/Metal compute pipeline launcher with per-device pipeline caching.
+ *
+ * Key points:
+ * - Keys (library/function) are fixed at construction.
+ * - Pipelines are cached per device handle. `initialize(device)` must be called
+ *   before use on that device; subsequent calls for another device keep a separate cache.
+ * - Convenience helpers wrap command buffer / encoder creation, pipeline binding,
+ *   argument binding (buffers/bytes), threadgroup dispatch, end/commit, and optional fence tracking.
+ * - Fence helpers can encode an update on an encoder, return a ticket, and optionally
+ *   track it in a `MpsFenceToken` keyed by command queue handle.
+ */
 template <std::size_t N>
 class MpsKernelLauncherImpl {
 public:
