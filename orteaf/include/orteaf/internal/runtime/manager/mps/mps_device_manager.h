@@ -19,6 +19,7 @@
 #include "orteaf/internal/runtime/manager/mps/mps_heap_manager.h"
 #include "orteaf/internal/runtime/manager/mps/mps_fence_pool.h"
 #include "orteaf/internal/runtime/manager/mps/mps_library_manager.h"
+#include "orteaf/internal/runtime/manager/mps/mps_graph_manager.h"
 
 namespace orteaf::internal::runtime::mps {
 
@@ -32,6 +33,7 @@ struct MpsDeviceManagerState {
       command_queue_manager{};
   ::orteaf::internal::runtime::mps::MpsHeapManager heap_manager{};
   ::orteaf::internal::runtime::mps::MpsLibraryManager library_manager{};
+  ::orteaf::internal::runtime::mps::MpsGraphManager graph_manager{};
   ::orteaf::internal::runtime::mps::MpsEventPool event_pool{};
   ::orteaf::internal::runtime::mps::MpsFencePool fence_pool{};
 
@@ -81,6 +83,9 @@ public:
   using LibraryManagerLease = ::orteaf::internal::base::Lease<
       void, ::orteaf::internal::runtime::mps::MpsLibraryManager *,
       MpsDeviceManager>;
+  using GraphManagerLease = ::orteaf::internal::base::Lease<
+      void, ::orteaf::internal::runtime::mps::MpsGraphManager *,
+      MpsDeviceManager>;
   using EventPoolLease = ::orteaf::internal::base::Lease<
       void, ::orteaf::internal::runtime::mps::MpsEventPool *, MpsDeviceManager>;
   using FencePoolLease = ::orteaf::internal::base::Lease<
@@ -117,6 +122,14 @@ public:
     return library_initial_capacity_;
   }
 
+  void setGraphInitialCapacity(std::size_t capacity) {
+    graph_initial_capacity_ = capacity;
+  }
+
+  std::size_t graphInitialCapacity() const noexcept {
+    return graph_initial_capacity_;
+  }
+
   void initialize(SlowOps *slow_ops);
 
   void shutdown();
@@ -137,6 +150,10 @@ public:
   LibraryManagerLease
   acquireLibraryManager(::orteaf::internal::base::DeviceHandle handle);
   void release(LibraryManagerLease &lease) noexcept;
+
+  GraphManagerLease
+  acquireGraphManager(::orteaf::internal::base::DeviceHandle handle);
+  void release(GraphManagerLease &lease) noexcept;
 
   EventPoolLease
   acquireEventPool(::orteaf::internal::base::DeviceHandle handle);
@@ -183,6 +200,7 @@ private:
   std::size_t command_queue_initial_capacity_{0};
   std::size_t heap_initial_capacity_{0};
   std::size_t library_initial_capacity_{0};
+  std::size_t graph_initial_capacity_{0};
 };
 
 } // namespace orteaf::internal::runtime::mps
