@@ -11,7 +11,7 @@
 #include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/base/heap_vector.h"
 #include "orteaf/internal/backend/mps/mps_fast_ops.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_compute_command_encorder.h"
+#include "orteaf/internal/backend/mps/wrapper/mps_compute_command_encoder.h"
 #include "orteaf/internal/backend/mps/mps_fence_token.h"
 #include "orteaf/internal/backend/mps/mps_fence_ticket.h"
 #include "orteaf/internal/runtime/ops/mps/common/mps_common_ops.h"

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "orteaf/internal/backend/mps/wrapper/mps_command_buffer.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_compute_command_encorder.h"
+#include "orteaf/internal/backend/mps/wrapper/mps_compute_command_encoder.h"
 #include "orteaf/internal/backend/mps/wrapper/mps_fence.h"
 
 namespace orteaf::internal::runtime::backend_ops::mps {

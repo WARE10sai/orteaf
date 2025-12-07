@@ -2,7 +2,7 @@
 
 #include "orteaf/internal/runtime/kernel/mps/mps_kernel_launcher_impl.h"
 #include "orteaf/internal/backend/mps/mps_fast_ops.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_compute_command_encorder.h"
+#include "orteaf/internal/backend/mps/wrapper/mps_compute_command_encoder.h"
 #include "orteaf/internal/runtime/ops/mps/private/mps_private_ops.h"
 #include "orteaf/internal/backend/mps/mps_fence_token.h"
 
