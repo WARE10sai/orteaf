@@ -1,13 +1,13 @@
 #include <gtest/gtest.h>
 
-#include "orteaf/internal/backend/mps/wrapper/metal_kernel_embed_api.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_device.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_error.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_function.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_library.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/metal_kernel_embed_api.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_device.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_error.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_function.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_library.h"
 
-namespace embed = orteaf::internal::backend::mps::metal_kernel_embed;
-namespace mps = orteaf::internal::backend::mps;
+namespace embed = orteaf::internal::runtime::mps::platform::metal_kernel_embed;
+namespace mps = orteaf::internal::runtime::mps::platform::wrapper;
 
 namespace {
 

@@ -11,8 +11,8 @@
 #include <utility>
 #include <vector>
 
-#include "orteaf/internal/backend/mps/wrapper/mps_graph.h"
-#include "orteaf/internal/backend/mps/mps_slow_ops.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_graph.h"
+#include "orteaf/internal/runtime/mps/platform/mps_slow_ops.h"
 #include "orteaf/internal/base/heap_vector.h"
 #include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/base/lease.h"
@@ -27,8 +27,8 @@ struct GraphKey {
   GraphKeyKind kind{GraphKeyKind::kNamed};
   std::string identifier{};
   std::vector<std::int64_t> shape{};
-  ::orteaf::internal::backend::mps::MpsGraphDataType data_type{
-      ::orteaf::internal::backend::mps::MpsGraphDataType::kInvalid};
+    ::orteaf::internal::runtime::mps::platform::wrapper::MpsGraphDataType data_type{
+      ::orteaf::internal::runtime::mps::platform::wrapper::MpsGraphDataType::kInvalid};
   std::size_t target_tensor_count{0};
   bool has_gradients{false};
 
@@ -69,7 +69,7 @@ struct GraphKeyHasher {
 struct MpsGraphManagerState;
 
 struct MpsGraphManagerTraits {
-  using DeviceType = ::orteaf::internal::backend::mps::MPSDevice_t;
+  using DeviceType = ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t;
   using OpsType = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
   using StateType = struct MpsGraphManagerState;
   static constexpr const char* Name = "MPS graph manager";
@@ -77,8 +77,8 @@ struct MpsGraphManagerTraits {
 
 struct MpsGraphManagerState {
   GraphKey key{};
-  ::orteaf::internal::backend::mps::MPSGraph_t graph{nullptr};
-  ::orteaf::internal::backend::mps::MPSGraphExecutable_t executable{nullptr};
+  ::orteaf::internal::runtime::mps::platform::wrapper::MPSGraph_t graph{nullptr};
+  ::orteaf::internal::runtime::mps::platform::wrapper::MPSGraphExecutable_t executable{nullptr};
   std::uint32_t generation{0};
   bool alive{false};
 };
@@ -87,12 +87,12 @@ class MpsGraphManager
     : public base::BaseManager<MpsGraphManager, MpsGraphManagerTraits> {
 public:
   using SlowOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
-  using GraphLease = ::orteaf::internal::base::Lease<
+    using GraphLease = ::orteaf::internal::base::Lease<
       ::orteaf::internal::base::GraphHandle,
-      ::orteaf::internal::backend::mps::MPSGraphExecutable_t, MpsGraphManager>;
-  using CompileFn = std::function<::orteaf::internal::backend::mps::MPSGraphExecutable_t(
-      ::orteaf::internal::backend::mps::MPSGraph_t graph,
-      ::orteaf::internal::backend::mps::MPSDevice_t device, SlowOps* slow_ops)>;
+      ::orteaf::internal::runtime::mps::platform::wrapper::MPSGraphExecutable_t, MpsGraphManager>;
+    using CompileFn = std::function<::orteaf::internal::runtime::mps::platform::wrapper::MPSGraphExecutable_t(
+      ::orteaf::internal::runtime::mps::platform::wrapper::MPSGraph_t graph,
+      ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t device, SlowOps* slow_ops)>;
 
   MpsGraphManager() = default;
   MpsGraphManager(const MpsGraphManager&) = delete;
@@ -101,7 +101,7 @@ public:
   MpsGraphManager& operator=(MpsGraphManager&&) = default;
   ~MpsGraphManager() = default;
 
-  void initialize(::orteaf::internal::backend::mps::MPSDevice_t device,
+  void initialize(::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t device,
                   SlowOps* slow_ops, std::size_t capacity);
 
   void shutdown();
@@ -120,8 +120,8 @@ public:
     std::uint32_t generation{0};
     std::size_t growth_chunk_size{0};
     std::vector<std::int64_t> shape{};
-    ::orteaf::internal::backend::mps::MpsGraphDataType data_type{
-        ::orteaf::internal::backend::mps::MpsGraphDataType::kInvalid};
+    ::orteaf::internal::runtime::mps::platform::wrapper::MpsGraphDataType data_type{
+      ::orteaf::internal::runtime::mps::platform::wrapper::MpsGraphDataType::kInvalid};
     std::size_t target_tensor_count{0};
     bool has_gradients{false};
   };

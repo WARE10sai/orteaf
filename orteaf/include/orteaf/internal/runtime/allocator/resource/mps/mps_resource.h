@@ -4,10 +4,11 @@
 
 #include <cstddef>
 
-#include "orteaf/internal/backend/mps/mps_buffer_view.h"
-#include "orteaf/internal/backend/mps/mps_reuse_token.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_buffer.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_heap.h"
+#include "orteaf/internal/runtime/mps/resource/mps_buffer_view.h"
+#include "orteaf/internal/runtime/mps/resource/mps_reuse_token.h"
+#include "orteaf/internal/runtime/mps/resource/mps_fence_token.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_buffer.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_heap.h"
 #include <orteaf/internal/backend/backend_traits.h>
 
 namespace orteaf::internal::backend::mps {
@@ -15,9 +16,9 @@ namespace orteaf::internal::backend::mps {
 // Simple MPS resource that keeps device/heap handles per instance and creates buffers at offset 0.
 class MpsResource {
 public:
-    using BufferView = ::orteaf::internal::backend::mps::MpsBufferView;
-    using FenceToken = ::orteaf::internal::backend::mps::MpsFenceToken;
-    using ReuseToken = ::orteaf::internal::backend::mps::MpsReuseToken;
+    using BufferView = ::orteaf::internal::runtime::mps::resource::MpsBufferView;
+    using FenceToken = ::orteaf::internal::runtime::mps::resource::MpsFenceToken;
+    using ReuseToken = ::orteaf::internal::runtime::mps::resource::MpsReuseToken;
 
     struct Config {
         MPSDevice_t device{nullptr};

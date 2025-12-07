@@ -7,12 +7,12 @@
 #include <utility>
 
 #include "orteaf/internal/architecture/architecture.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_device.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_device.h"
 #include "orteaf/internal/base/heap_vector.h"
 #include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/base/lease.h"
 #include "orteaf/internal/diagnostics/error/error.h"
-#include "orteaf/internal/backend/mps/mps_slow_ops.h"
+#include "orteaf/internal/runtime/mps/platform/mps_slow_ops.h"
 #include "orteaf/internal/runtime/base/base_manager.h"
 #include "orteaf/internal/runtime/manager/mps/mps_command_queue_manager.h"
 #include "orteaf/internal/runtime/manager/mps/mps_event_pool.h"
@@ -25,7 +25,7 @@ namespace orteaf::internal::runtime::mps {
 
 struct MpsDeviceManagerState {
   using SlowOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
-  ::orteaf::internal::backend::mps::MPSDevice_t device{nullptr};
+  ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t device{nullptr};
   ::orteaf::internal::architecture::Architecture arch{
       ::orteaf::internal::architecture::Architecture::MpsGeneric};
   bool is_alive{false};
@@ -72,8 +72,8 @@ class MpsDeviceManager
     : public base::BaseManager<MpsDeviceManager, MpsDeviceManagerTraits> {
 public:
   using SlowOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
-  using DeviceLease = ::orteaf::internal::base::Lease<
-      void, ::orteaf::internal::backend::mps::MPSDevice_t, MpsDeviceManager>;
+    using DeviceLease = ::orteaf::internal::base::Lease<
+      void, ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t, MpsDeviceManager>;
   using CommandQueueManagerLease = ::orteaf::internal::base::Lease<
       void, ::orteaf::internal::runtime::mps::MpsCommandQueueManager *,
       MpsDeviceManager>;

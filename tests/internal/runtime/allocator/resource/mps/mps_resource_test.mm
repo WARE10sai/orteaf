@@ -4,8 +4,8 @@
 
 #include <gtest/gtest.h>
 
-#include "orteaf/internal/backend/mps/wrapper/mps_device.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_heap.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_device.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_heap.h"
 #include "tests/internal/testing/error_assert.h"
 
 namespace orteaf::tests {

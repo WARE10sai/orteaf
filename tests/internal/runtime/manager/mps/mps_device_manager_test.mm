@@ -18,6 +18,7 @@ namespace backend = orteaf::internal::backend;
 namespace base = orteaf::internal::base;
 namespace diag_error = orteaf::internal::diagnostics::error;
 namespace mps_rt = orteaf::internal::runtime::mps;
+namespace mps_wrapper = orteaf::internal::runtime::mps::platform::wrapper;
 namespace testing_mps = orteaf::tests::runtime::mps::testing;
 
 using orteaf::tests::ExpectError;
@@ -27,16 +28,16 @@ using orteaf::tests::ExpectError;
 
 namespace {
 
-backend::mps::MPSDevice_t makeDevice(std::uintptr_t value) {
-  return reinterpret_cast<backend::mps::MPSDevice_t>(value);
+mps_wrapper::MPSDevice_t makeDevice(std::uintptr_t value) {
+  return reinterpret_cast<mps_wrapper::MPSDevice_t>(value);
 }
 
-backend::mps::MPSCommandQueue_t makeQueue(std::uintptr_t value) {
-  return reinterpret_cast<backend::mps::MPSCommandQueue_t>(value);
+mps_wrapper::MPSCommandQueue_t makeQueue(std::uintptr_t value) {
+  return reinterpret_cast<mps_wrapper::MPSCommandQueue_t>(value);
 }
 
-backend::mps::MPSEvent_t makeEvent(std::uintptr_t value) {
-  return reinterpret_cast<backend::mps::MPSEvent_t>(value);
+mps_wrapper::MPSEvent_t makeEvent(std::uintptr_t value) {
+  return reinterpret_cast<mps_wrapper::MPSEvent_t>(value);
 }
 
 bool shouldRunHardwareTests() {
@@ -161,7 +162,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, InitializeMarksManagerInitialized) {
 TYPED_TEST(MpsDeviceManagerTypedTest, GetDeviceReturnsRegisteredHandle) {
   auto &manager = this->manager();
 
-  std::vector<backend::mps::MPSDevice_t> expected_handles;
+  std::vector<mps_wrapper::MPSDevice_t> expected_handles;
   int expected_count = -1;
   if (const char *expected_env = std::getenv(ORTEAF_MPS_ENV_COUNT)) {
     expected_count = std::stoi(expected_env);
@@ -473,11 +474,11 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
     auto queue_manager_lease = manager.acquireCommandQueueManager(id);
     EXPECT_EQ(queue_manager_lease->capacity(), kCapacity);
     if constexpr (TypeParam::is_mock) {
-      std::vector<backend::mps::MPSCommandQueue_t> expected_handles =
+      std::vector<mps_wrapper::MPSCommandQueue_t> expected_handles =
           (index == 0)
-              ? std::vector<backend::mps::MPSCommandQueue_t>{makeQueue(0x900),
+              ? std::vector<mps_wrapper::MPSCommandQueue_t>{makeQueue(0x900),
                                                              makeQueue(0x901)}
-              : std::vector<backend::mps::MPSCommandQueue_t>{makeQueue(0x902),
+              : std::vector<mps_wrapper::MPSCommandQueue_t>{makeQueue(0x902),
                                                              makeQueue(0x903)};
       std::vector<mps_rt::MpsCommandQueueManager::CommandQueueLease> acquired_leases;
       const std::size_t expected_count = expected_handles.size();

@@ -5,7 +5,7 @@
 namespace orteaf::internal::runtime::mps {
 
 void MpsGraphManager::initialize(
-    ::orteaf::internal::backend::mps::MPSDevice_t device, SlowOps* slow_ops,
+  ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t device, SlowOps* slow_ops,
     std::size_t capacity) {
   shutdown();
   if (device == nullptr) {
@@ -133,8 +133,8 @@ void MpsGraphManager::validateKey(const GraphKey& key) const {
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "Graph identifier cannot be empty");
   }
-  if (key.data_type ==
-      ::orteaf::internal::backend::mps::MpsGraphDataType::kInvalid) {
+    if (key.data_type ==
+      ::orteaf::internal::runtime::mps::platform::wrapper::MpsGraphDataType::kInvalid) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "Graph data type must be valid");

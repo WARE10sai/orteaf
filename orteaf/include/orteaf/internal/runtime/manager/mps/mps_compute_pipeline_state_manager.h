@@ -11,14 +11,14 @@
 #include <unordered_map>
 #include <utility>
 
-#include "orteaf/internal/backend/mps/wrapper/mps_compute_pipeline_state.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_function.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_library.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_compute_pipeline_state.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_function.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_library.h"
 #include "orteaf/internal/base/heap_vector.h"
 #include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/base/lease.h"
 #include "orteaf/internal/diagnostics/error/error.h"
-#include "orteaf/internal/backend/mps/mps_slow_ops.h"
+#include "orteaf/internal/runtime/mps/platform/mps_slow_ops.h"
 #include "orteaf/internal/runtime/base/base_manager.h"
 
 namespace orteaf::internal::runtime::mps {
@@ -52,15 +52,15 @@ struct FunctionKeyHasher {
 
 struct MpsComputePipelineStateManagerState {
     FunctionKey key{};
-    ::orteaf::internal::backend::mps::MPSFunction_t function{nullptr};
-    ::orteaf::internal::backend::mps::MPSComputePipelineState_t pipeline_state{nullptr};
+    ::orteaf::internal::runtime::mps::platform::wrapper::MPSFunction_t function{nullptr};
+    ::orteaf::internal::runtime::mps::platform::wrapper::MPSComputePipelineState_t pipeline_state{nullptr};
     std::uint32_t generation{0};
     std::uint32_t use_count{0};
     bool alive{false};
 };
 
 struct MpsComputePipelineStateManagerTraits {
-    using DeviceType = ::orteaf::internal::backend::mps::MPSDevice_t;
+    using DeviceType = ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t;
     using OpsType = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
     using StateType = MpsComputePipelineStateManagerState;
     static constexpr const char *Name = "MPS compute pipeline state manager";
@@ -71,7 +71,7 @@ public:
     using SlowOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
     using PipelineLease = ::orteaf::internal::base::Lease<
         ::orteaf::internal::base::FunctionHandle,
-        ::orteaf::internal::backend::mps::MPSComputePipelineState_t,
+        ::orteaf::internal::runtime::mps::platform::wrapper::MPSComputePipelineState_t,
         MpsComputePipelineStateManager>;
 
     MpsComputePipelineStateManager() = default;
@@ -81,8 +81,8 @@ public:
     MpsComputePipelineStateManager& operator=(MpsComputePipelineStateManager&&) = default;
     ~MpsComputePipelineStateManager() = default;
 
-    void initialize(::orteaf::internal::backend::mps::MPSDevice_t device,
-                    ::orteaf::internal::backend::mps::MPSLibrary_t library,
+    void initialize(::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t device,
+                    ::orteaf::internal::runtime::mps::platform::wrapper::MPSLibrary_t library,
                     SlowOps *slow_ops,
                     std::size_t capacity);
 
@@ -121,7 +121,7 @@ private:
     void releaseHandle(::orteaf::internal::base::FunctionHandle handle) noexcept;
 
     std::unordered_map<FunctionKey, std::size_t, FunctionKeyHasher> key_to_index_{};
-    ::orteaf::internal::backend::mps::MPSLibrary_t library_{nullptr};
+    ::orteaf::internal::runtime::mps::platform::wrapper::MPSLibrary_t library_{nullptr};
 };
 
 }  // namespace orteaf::internal::runtime::mps

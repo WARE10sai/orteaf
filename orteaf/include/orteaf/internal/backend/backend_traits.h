@@ -16,12 +16,12 @@
 #endif
 
 #if ORTEAF_ENABLE_MPS
-#include <orteaf/internal/backend/mps/mps_buffer_view.h>
-#include <orteaf/internal/backend/mps/mps_heap_region.h>
-#include <orteaf/internal/backend/mps/mps_fence_token.h>
-#include <orteaf/internal/backend/mps/mps_reuse_token.h>
-#include <orteaf/internal/backend/mps/wrapper/mps_command_queue.h>
-#include <orteaf/internal/backend/mps/wrapper/mps_device.h>
+#include <orteaf/internal/runtime/mps/resource/mps_buffer_view.h>
+#include <orteaf/internal/runtime/mps/resource/mps_heap_region.h>
+#include <orteaf/internal/runtime/mps/resource/mps_fence_token.h>
+#include <orteaf/internal/runtime/mps/resource/mps_reuse_token.h>
+#include <orteaf/internal/runtime/mps/platform/wrapper/mps_command_queue.h>
+#include <orteaf/internal/runtime/mps/platform/wrapper/mps_device.h>
 #endif
 
 namespace orteaf::internal::backend {
@@ -59,13 +59,13 @@ struct BackendTraits<Backend::Cuda> {
 #if ORTEAF_ENABLE_MPS
 template <>
 struct BackendTraits<Backend::Mps> {
-    using BufferView = mps::MpsBufferView;
-    using HeapRegion = mps::MpsHeapRegion;
-    using Stream = mps::MPSCommandQueue_t;    // command queue as stream token
-    using Device = mps::MPSDevice_t;          // opaque Metal device handle
+    using BufferView = ::orteaf::internal::runtime::mps::resource::MpsBufferView;
+    using HeapRegion = ::orteaf::internal::runtime::mps::resource::MpsHeapRegion;
     using Context = int;                      // placeholder until context abstraction exists
-    using FenceToken = mps::MpsFenceToken;
-    using ReuseToken = mps::MpsReuseToken;
+    using Stream = ::orteaf::internal::runtime::mps::platform::wrapper::MPSCommandQueue_t;    // command queue as stream token
+    using Device = ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t;          // opaque Metal device handle
+    using FenceToken = ::orteaf::internal::runtime::mps::resource::MpsFenceToken;
+    using ReuseToken = ::orteaf::internal::runtime::mps::resource::MpsReuseToken;
 };
 #endif  // ORTEAF_ENABLE_MPS
 

@@ -7,29 +7,29 @@
 #include <limits>
 #include <unordered_map>
 
-#include "orteaf/internal/backend/mps/wrapper/mps_heap.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_heap.h"
 #include "orteaf/internal/base/heap_vector.h"
 #include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/base/lease.h"
 #include "orteaf/internal/diagnostics/error/error.h"
-#include "orteaf/internal/backend/mps/mps_slow_ops.h"
+#include "orteaf/internal/runtime/mps/platform/mps_slow_ops.h"
 #include "orteaf/internal/runtime/base/base_manager.h"
 
 namespace orteaf::internal::runtime::mps {
 
 struct HeapDescriptorKey {
   std::size_t size_bytes{0};
-  ::orteaf::internal::backend::mps::MPSResourceOptions_t resource_options{
-      ::orteaf::internal::backend::mps::kMPSDefaultResourceOptions};
-  ::orteaf::internal::backend::mps::MPSStorageMode_t storage_mode{
-      ::orteaf::internal::backend::mps::kMPSStorageModeShared};
-  ::orteaf::internal::backend::mps::MPSCPUCacheMode_t cpu_cache_mode{
-      ::orteaf::internal::backend::mps::kMPSCPUCacheModeDefaultCache};
-  ::orteaf::internal::backend::mps::MPSHazardTrackingMode_t
+    ::orteaf::internal::runtime::mps::platform::wrapper::MPSResourceOptions_t resource_options{
+      ::orteaf::internal::runtime::mps::platform::wrapper::kMPSDefaultResourceOptions};
+    ::orteaf::internal::runtime::mps::platform::wrapper::MPSStorageMode_t storage_mode{
+      ::orteaf::internal::runtime::mps::platform::wrapper::kMPSStorageModeShared};
+    ::orteaf::internal::runtime::mps::platform::wrapper::MPSCPUCacheMode_t cpu_cache_mode{
+      ::orteaf::internal::runtime::mps::platform::wrapper::kMPSCPUCacheModeDefaultCache};
+    ::orteaf::internal::runtime::mps::platform::wrapper::MPSHazardTrackingMode_t
       hazard_tracking_mode{
-          ::orteaf::internal::backend::mps::kMPSHazardTrackingModeDefault};
-  ::orteaf::internal::backend::mps::MPSHeapType_t heap_type{
-      ::orteaf::internal::backend::mps::kMPSHeapTypeAutomatic};
+        ::orteaf::internal::runtime::mps::platform::wrapper::kMPSHazardTrackingModeDefault};
+    ::orteaf::internal::runtime::mps::platform::wrapper::MPSHeapType_t heap_type{
+      ::orteaf::internal::runtime::mps::platform::wrapper::kMPSHeapTypeAutomatic};
 
   static HeapDescriptorKey Sized(std::size_t size) {
     HeapDescriptorKey key{};
@@ -59,7 +59,7 @@ struct HeapDescriptorKeyHasher {
 
 struct MpsHeapManagerState {
   HeapDescriptorKey key{};
-  ::orteaf::internal::backend::mps::MPSHeap_t heap{nullptr};
+  ::orteaf::internal::runtime::mps::platform::wrapper::MPSHeap_t heap{nullptr};
   std::uint32_t generation{0};
   bool alive{false};
   bool in_use{false};
@@ -73,7 +73,7 @@ struct MpsHeapManagerState {
 };
 
 struct MpsHeapManagerTraits {
-  using DeviceType = ::orteaf::internal::backend::mps::MPSDevice_t;
+  using DeviceType = ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t;
   using OpsType = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
   using StateType = MpsHeapManagerState;
   static constexpr const char *Name = "MPS heap manager";
@@ -84,7 +84,7 @@ class MpsHeapManager
 public:
   using SlowOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
   using HeapLease = ::orteaf::internal::base::Lease<::orteaf::internal::base::HeapHandle,
-                                                    ::orteaf::internal::backend::mps::MPSHeap_t,
+                                                    ::orteaf::internal::runtime::mps::platform::wrapper::MPSHeap_t,
                                                     MpsHeapManager>;
 
   MpsHeapManager() = default;
@@ -94,7 +94,7 @@ public:
   MpsHeapManager& operator=(MpsHeapManager&&) = default;
   ~MpsHeapManager() = default;
 
-  void initialize(::orteaf::internal::backend::mps::MPSDevice_t device,
+  void initialize(::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t device,
                   SlowOps *slow_ops, std::size_t capacity);
 
   void shutdown();
@@ -109,17 +109,17 @@ public:
     bool heap_allocated{false};
     std::uint32_t generation{0};
     std::size_t size_bytes{0};
-    ::orteaf::internal::backend::mps::MPSResourceOptions_t resource_options{
-        ::orteaf::internal::backend::mps::kMPSDefaultResourceOptions};
-    ::orteaf::internal::backend::mps::MPSStorageMode_t storage_mode{
-        ::orteaf::internal::backend::mps::kMPSStorageModeShared};
-    ::orteaf::internal::backend::mps::MPSCPUCacheMode_t cpu_cache_mode{
-        ::orteaf::internal::backend::mps::kMPSCPUCacheModeDefaultCache};
-    ::orteaf::internal::backend::mps::MPSHazardTrackingMode_t
-        hazard_tracking_mode{
-            ::orteaf::internal::backend::mps::kMPSHazardTrackingModeDefault};
-    ::orteaf::internal::backend::mps::MPSHeapType_t heap_type{
-        ::orteaf::internal::backend::mps::kMPSHeapTypeAutomatic};
+      ::orteaf::internal::runtime::mps::platform::wrapper::MPSResourceOptions_t resource_options{
+        ::orteaf::internal::runtime::mps::platform::wrapper::kMPSDefaultResourceOptions};
+    ::orteaf::internal::runtime::mps::platform::wrapper::MPSStorageMode_t storage_mode{
+      ::orteaf::internal::runtime::mps::platform::wrapper::kMPSStorageModeShared};
+    ::orteaf::internal::runtime::mps::platform::wrapper::MPSCPUCacheMode_t cpu_cache_mode{
+      ::orteaf::internal::runtime::mps::platform::wrapper::kMPSCPUCacheModeDefaultCache};
+    ::orteaf::internal::runtime::mps::platform::wrapper::MPSHazardTrackingMode_t
+      hazard_tracking_mode{
+        ::orteaf::internal::runtime::mps::platform::wrapper::kMPSHazardTrackingModeDefault};
+    ::orteaf::internal::runtime::mps::platform::wrapper::MPSHeapType_t heap_type{
+      ::orteaf::internal::runtime::mps::platform::wrapper::kMPSHeapTypeAutomatic};
     std::size_t growth_chunk_size{0};
   };
 
@@ -135,7 +135,7 @@ private:
     return const_cast<MpsHeapManager *>(this)->ensureAliveState(handle);
   }
 
-  ::orteaf::internal::backend::mps::MPSHeap_t
+  ::orteaf::internal::runtime::mps::platform::wrapper::MPSHeap_t
   createHeap(const HeapDescriptorKey &key);
 
   std::unordered_map<HeapDescriptorKey, std::size_t, HeapDescriptorKeyHasher>

@@ -5,11 +5,11 @@
 
 #import <Metal/Metal.h>
 
-#include "orteaf/internal/backend/mps/wrapper/mps_device.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_fence.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_command_queue.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_command_buffer.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_compute_command_encoder.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_device.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_fence.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_command_queue.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_command_buffer.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_compute_command_encoder.h"
 
 #include <gtest/gtest.h>
 

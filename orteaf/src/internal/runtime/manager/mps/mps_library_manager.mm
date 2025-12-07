@@ -5,7 +5,7 @@
 namespace orteaf::internal::runtime::mps {
 
 void MpsLibraryManager::initialize(
-    ::orteaf::internal::backend::mps::MPSDevice_t device, SlowOps *slow_ops,
+  ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t device, SlowOps *slow_ops,
     std::size_t capacity) {
   shutdown();
   if (device == nullptr) {
@@ -180,7 +180,7 @@ MpsLibraryManager::ensureAliveState(::orteaf::internal::base::LibraryHandle hand
   return ::orteaf::internal::base::LibraryHandle{static_cast<std::uint32_t>(index)};
 }
 
-::orteaf::internal::backend::mps::MPSLibrary_t
+::orteaf::internal::runtime::mps::platform::wrapper::MPSLibrary_t
 MpsLibraryManager::createLibrary(const LibraryKey &key) {
   switch (key.kind) {
   case LibraryKeyKind::kNamed:

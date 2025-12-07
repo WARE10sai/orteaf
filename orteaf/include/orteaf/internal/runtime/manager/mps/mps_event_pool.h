@@ -3,14 +3,14 @@
 #if ORTEAF_ENABLE_MPS
 
 #include "orteaf/internal/runtime/base/resource_pool.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_event.h"
-#include "orteaf/internal/backend/mps/mps_slow_ops.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_event.h"
+#include "orteaf/internal/runtime/mps/platform/mps_slow_ops.h"
 
 namespace orteaf::internal::runtime::mps {
 
 struct EventPoolTraits {
-    using ResourceType = ::orteaf::internal::backend::mps::MPSEvent_t;
-    using DeviceType = ::orteaf::internal::backend::mps::MPSDevice_t;
+    using ResourceType = ::orteaf::internal::runtime::mps::platform::wrapper::MPSEvent_t;
+    using DeviceType = ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t;
     using OpsType = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
     
     static constexpr const char* Name = "MPS event pool";

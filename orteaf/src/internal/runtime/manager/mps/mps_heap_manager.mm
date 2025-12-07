@@ -5,7 +5,7 @@
 namespace orteaf::internal::runtime::mps {
 
 void MpsHeapManager::initialize(
-  ::orteaf::internal::backend::mps::MPSDevice_t device, SlowOps *slow_ops,
+  ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t device, SlowOps *slow_ops,
     std::size_t capacity) {
   shutdown();
   if (device == nullptr) {
@@ -155,7 +155,7 @@ MpsHeapManager::State &MpsHeapManager::ensureAliveState(::orteaf::internal::base
   return state;
 }
 
-::orteaf::internal::backend::mps::MPSHeap_t
+::orteaf::internal::runtime::mps::platform::wrapper::MPSHeap_t
 MpsHeapManager::createHeap(const HeapDescriptorKey &key) {
   auto descriptor = ops_->createHeapDescriptor();
   if (descriptor == nullptr) {
@@ -164,7 +164,7 @@ MpsHeapManager::createHeap(const HeapDescriptorKey &key) {
         "Failed to allocate MPS heap descriptor");
   }
   struct DescriptorGuard {
-    ::orteaf::internal::backend::mps::MPSHeapDescriptor_t handle{nullptr};
+    ::orteaf::internal::runtime::mps::platform::wrapper::MPSHeapDescriptor_t handle{nullptr};
     SlowOps *slow_ops{nullptr};
     ~DescriptorGuard() {
       if (handle != nullptr && slow_ops != nullptr) {

@@ -8,14 +8,14 @@
 #include <utility>
 #include <vector>
 
-#include "orteaf/internal/backend/mps/wrapper/mps_command_queue.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_event.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_command_queue.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_event.h"
 #include "orteaf/internal/base/heap_vector.h"
 #include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/base/lease.h"
 #include "orteaf/internal/diagnostics/error/error.h"
 #include "orteaf/internal/diagnostics/log/log_config.h"
-#include "orteaf/internal/backend/mps/mps_slow_ops.h"
+#include "orteaf/internal/runtime/mps/platform/mps_slow_ops.h"
 #include "orteaf/internal/runtime/base/base_manager.h"
 
 namespace orteaf::internal::runtime::mps {
@@ -30,12 +30,12 @@ namespace orteaf::internal::runtime::mps {
 
 struct MpsCommandQueueManagerState {
   using SlowOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
-  ::orteaf::internal::backend::mps::MPSCommandQueue_t command_queue{nullptr};
+  ::orteaf::internal::runtime::mps::platform::wrapper::MPSCommandQueue_t command_queue{nullptr};
   bool in_use{false};
   bool on_free_list{true};
   std::uint32_t generation{0};
 #if ORTEAF_MPS_DEBUG_ENABLED
-  ::orteaf::internal::backend::mps::MPSEvent_t event{nullptr};
+  ::orteaf::internal::runtime::mps::platform::wrapper::MPSEvent_t event{nullptr};
   struct SerialState {
     std::uint64_t submit_serial{0};
     std::uint64_t completed_serial{0};
@@ -50,7 +50,7 @@ struct MpsCommandQueueManagerState {
 };
 
 struct MpsCommandQueueManagerTraits {
-  using DeviceType = ::orteaf::internal::backend::mps::MPSDevice_t;
+  using DeviceType = ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t;
   using OpsType = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
   using StateType = MpsCommandQueueManagerState;
   static constexpr const char *Name = "MPS command queue manager";
@@ -61,14 +61,14 @@ class MpsCommandQueueManager
                                MpsCommandQueueManagerTraits> {
 public:
   using SlowOps = ::orteaf::internal::runtime::backend_ops::mps::MpsSlowOps;
-  using CommandQueueLease = ::orteaf::internal::base::Lease<
+    using CommandQueueLease = ::orteaf::internal::base::Lease<
       ::orteaf::internal::base::CommandQueueHandle,
-      ::orteaf::internal::backend::mps::MPSCommandQueue_t,
+      ::orteaf::internal::runtime::mps::platform::wrapper::MPSCommandQueue_t,
       MpsCommandQueueManager>;
 #if ORTEAF_MPS_DEBUG_ENABLED
-  using EventLease = ::orteaf::internal::base::Lease<
+    using EventLease = ::orteaf::internal::base::Lease<
       ::orteaf::internal::base::CommandQueueHandle,
-      ::orteaf::internal::backend::mps::MPSEvent_t, MpsCommandQueueManager>;
+      ::orteaf::internal::runtime::mps::platform::wrapper::MPSEvent_t, MpsCommandQueueManager>;
   using SerialState = MpsCommandQueueManagerState::SerialState;
   using SerialLease = ::orteaf::internal::base::Lease<
       ::orteaf::internal::base::CommandQueueHandle, SerialState *,
@@ -82,7 +82,7 @@ public:
   MpsCommandQueueManager &operator=(MpsCommandQueueManager &&) = default;
   ~MpsCommandQueueManager() = default;
 
-  void initialize(::orteaf::internal::backend::mps::MPSDevice_t device,
+  void initialize(::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t device,
                   SlowOps *slow_ops, std::size_t capacity);
 
   void shutdown();

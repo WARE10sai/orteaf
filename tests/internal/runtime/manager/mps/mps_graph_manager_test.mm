@@ -10,30 +10,31 @@
 
 namespace backend = orteaf::internal::backend;
 namespace base = orteaf::internal::base;
+namespace mps_wrapper = orteaf::internal::runtime::mps::platform::wrapper;
 namespace diag_error = orteaf::internal::diagnostics::error;
 namespace mps_rt = orteaf::internal::runtime::mps;
 using orteaf::tests::ExpectError;
 
 namespace {
 
-backend::mps::MPSDevice_t makeDevice(std::uintptr_t value) {
-  return reinterpret_cast<backend::mps::MPSDevice_t>(value);
+mps_wrapper::MPSDevice_t makeDevice(std::uintptr_t value) {
+  return reinterpret_cast<mps_wrapper::MPSDevice_t>(value);
 }
 
-backend::mps::MPSGraph_t makeGraph(std::uintptr_t value) {
-  return reinterpret_cast<backend::mps::MPSGraph_t>(value);
+mps_wrapper::MPSGraph_t makeGraph(std::uintptr_t value) {
+  return reinterpret_cast<mps_wrapper::MPSGraph_t>(value);
 }
 
-backend::mps::MPSGraphExecutable_t makeExecutable(std::uintptr_t value) {
-  return reinterpret_cast<backend::mps::MPSGraphExecutable_t>(value);
+mps_wrapper::MPSGraphExecutable_t makeExecutable(std::uintptr_t value) {
+  return reinterpret_cast<mps_wrapper::MPSGraphExecutable_t>(value);
 }
 
-backend::mps::MPSGraphTensor_t makeTensor(std::uintptr_t value) {
-  return reinterpret_cast<backend::mps::MPSGraphTensor_t>(value);
+mps_wrapper::MPSGraphTensor_t makeTensor(std::uintptr_t value) {
+  return reinterpret_cast<mps_wrapper::MPSGraphTensor_t>(value);
 }
 
-backend::mps::MPSGraphTensorData_t makeTensorData(std::uintptr_t value) {
-  return reinterpret_cast<backend::mps::MPSGraphTensorData_t>(value);
+mps_wrapper::MPSGraphTensorData_t makeTensorData(std::uintptr_t value) {
+  return reinterpret_cast<mps_wrapper::MPSGraphTensorData_t>(value);
 }
 
 class MpsGraphManagerTest : public ::testing::Test {
@@ -46,25 +47,25 @@ protected:
 
   mps_rt::MpsGraphManager manager_{};
   ::testing::NiceMock<orteaf::tests::runtime::mps::MpsBackendOpsMock> mock_{};
-  backend::mps::MPSDevice_t device_{nullptr};
+  mps_wrapper::MPSDevice_t device_{nullptr};
 };
 
 TEST_F(MpsGraphManagerTest, AccessBeforeInitializationThrows) {
   mps_rt::GraphKey key = mps_rt::GraphKey::Named("g0");
-  key.data_type = backend::mps::MpsGraphDataType::kFloat32;
+  key.data_type = mps_wrapper::MpsGraphDataType::kFloat32;
   key.target_tensor_count = 1;
   ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
     manager_.acquire(key, [](auto, auto, auto) {
-      return backend::mps::MPSGraphExecutable_t{};
+      return mps_wrapper::MPSGraphExecutable_t{};
     });
   });
 }
 
 TEST_F(MpsGraphManagerTest, AcquireCachesExecutableForSameKey) {
-  backend::mps::MPSGraph_t graph = makeGraph(0x1010);
-  backend::mps::MPSGraphExecutable_t exe = makeExecutable(0x2020);
-  backend::mps::MPSGraphTensor_t target = makeTensor(0x3030);
-  backend::mps::MPSGraphTensorData_t feed_data = makeTensorData(0x4040);
+  mps_wrapper::MPSGraph_t graph = makeGraph(0x1010);
+  mps_wrapper::MPSGraphExecutable_t exe = makeExecutable(0x2020);
+  mps_wrapper::MPSGraphTensor_t target = makeTensor(0x3030);
+  mps_wrapper::MPSGraphTensorData_t feed_data = makeTensorData(0x4040);
 
   EXPECT_CALL(mock_, createGraph()).WillOnce(::testing::Return(graph));
   EXPECT_CALL(mock_, compileGraph(graph, device_, ::testing::_, 1, ::testing::_, 1,
@@ -76,13 +77,13 @@ TEST_F(MpsGraphManagerTest, AcquireCachesExecutableForSameKey) {
   manager_.initialize(device_, &mock_, /*capacity=*/1);
   mps_rt::GraphKey key = mps_rt::GraphKey::Named("g-cache");
   key.shape = {1, 2, 3};
-  key.data_type = backend::mps::MpsGraphDataType::kFloat32;
+  key.data_type = mps_wrapper::MpsGraphDataType::kFloat32;
   key.target_tensor_count = 1;
 
-  auto compile_fn = [&](backend::mps::MPSGraph_t g,
-                        backend::mps::MPSDevice_t dev,
+  auto compile_fn = [&](mps_wrapper::MPSGraph_t g,
+                        mps_wrapper::MPSDevice_t dev,
                         mps_rt::MpsGraphManager::SlowOps* ops) {
-    backend::mps::MpsGraphFeed feed{target, feed_data};
+    mps_wrapper::MpsGraphFeed feed{target, feed_data};
     return ops->compileGraph(g, dev, &feed, 1, &target, 1, nullptr, 0);
   };
 
@@ -96,12 +97,12 @@ TEST_F(MpsGraphManagerTest, AcquireCachesExecutableForSameKey) {
 }
 
 TEST_F(MpsGraphManagerTest, DifferentKeyShapeTriggersNewCompile) {
-  backend::mps::MPSGraph_t graph1 = makeGraph(0x1111);
-  backend::mps::MPSGraphExecutable_t exe1 = makeExecutable(0x2222);
-  backend::mps::MPSGraph_t graph2 = makeGraph(0x3333);
-  backend::mps::MPSGraphExecutable_t exe2 = makeExecutable(0x4444);
-  backend::mps::MPSGraphTensor_t target = makeTensor(0x5555);
-  backend::mps::MPSGraphTensorData_t feed_data = makeTensorData(0x6666);
+  mps_wrapper::MPSGraph_t graph1 = makeGraph(0x1111);
+  mps_wrapper::MPSGraphExecutable_t exe1 = makeExecutable(0x2222);
+  mps_wrapper::MPSGraph_t graph2 = makeGraph(0x3333);
+  mps_wrapper::MPSGraphExecutable_t exe2 = makeExecutable(0x4444);
+  mps_wrapper::MPSGraphTensor_t target = makeTensor(0x5555);
+  mps_wrapper::MPSGraphTensorData_t feed_data = makeTensorData(0x6666);
 
   ::testing::InSequence seq;
   EXPECT_CALL(mock_, createGraph()).WillOnce(::testing::Return(graph1));
@@ -120,16 +121,16 @@ TEST_F(MpsGraphManagerTest, DifferentKeyShapeTriggersNewCompile) {
 
   manager_.initialize(device_, &mock_, /*capacity=*/2);
 
-  auto compile_fn = [&](backend::mps::MPSGraph_t g,
-                        backend::mps::MPSDevice_t dev,
+  auto compile_fn = [&](mps_wrapper::MPSGraph_t g,
+                        mps_wrapper::MPSDevice_t dev,
                         mps_rt::MpsGraphManager::SlowOps* ops) {
-    backend::mps::MpsGraphFeed feed{target, feed_data};
+    mps_wrapper::MpsGraphFeed feed{target, feed_data};
     return ops->compileGraph(g, dev, &feed, 1, &target, 1, nullptr, 0);
   };
 
   mps_rt::GraphKey key1 = mps_rt::GraphKey::Named("g-diff");
   key1.shape = {1, 2};
-  key1.data_type = backend::mps::MpsGraphDataType::kFloat16;
+  key1.data_type = mps_wrapper::MpsGraphDataType::kFloat16;
   key1.target_tensor_count = 1;
 
   mps_rt::GraphKey key2 = key1;
@@ -145,28 +146,28 @@ TEST_F(MpsGraphManagerTest, DifferentKeyShapeTriggersNewCompile) {
 TEST_F(MpsGraphManagerTest, InvalidKeyRejected) {
   manager_.initialize(device_, &mock_, /*capacity=*/1);
   mps_rt::GraphKey key = mps_rt::GraphKey::Named("");
-  key.data_type = backend::mps::MpsGraphDataType::kFloat32;
+  key.data_type = mps_wrapper::MpsGraphDataType::kFloat32;
   key.target_tensor_count = 1;
   ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] {
     manager_.acquire(key, [](auto, auto, auto) {
-      return backend::mps::MPSGraphExecutable_t{};
+      return mps_wrapper::MPSGraphExecutable_t{};
     });
   });
 }
 
 TEST_F(MpsGraphManagerTest, NullExecutableFromCompileThrowsAndCleansUp) {
-  backend::mps::MPSGraph_t graph = makeGraph(0xABCD);
+  mps_wrapper::MPSGraph_t graph = makeGraph(0xABCD);
   EXPECT_CALL(mock_, createGraph()).WillOnce(::testing::Return(graph));
   EXPECT_CALL(mock_, destroyGraph(graph)).Times(1);
 
   manager_.initialize(device_, &mock_, /*capacity=*/1);
   mps_rt::GraphKey key = mps_rt::GraphKey::Named("null-exe");
-  key.data_type = backend::mps::MpsGraphDataType::kFloat32;
+  key.data_type = mps_wrapper::MpsGraphDataType::kFloat32;
   key.target_tensor_count = 1;
 
-  auto compile_fn = [](backend::mps::MPSGraph_t, backend::mps::MPSDevice_t,
+  auto compile_fn = [](mps_wrapper::MPSGraph_t, mps_wrapper::MPSDevice_t,
                        mps_rt::MpsGraphManager::SlowOps*) {
-    return backend::mps::MPSGraphExecutable_t{};
+    return mps_wrapper::MPSGraphExecutable_t{};
   };
 
   ExpectError(diag_error::OrteafErrc::InvalidState,

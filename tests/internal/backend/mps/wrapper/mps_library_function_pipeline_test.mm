@@ -6,13 +6,13 @@
 #import <Metal/Metal.h>
 #import <Foundation/Foundation.h>
 
-#include "orteaf/internal/backend/mps/wrapper/mps_device.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_library.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_function.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_compute_pipeline_state.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_string.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_compile_options.h"
-#include "orteaf/internal/backend/mps/wrapper/mps_error.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_device.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_library.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_function.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_compute_pipeline_state.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_string.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_compile_options.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_error.h"
 
 #include "tests/internal/testing/error_assert.h"
 

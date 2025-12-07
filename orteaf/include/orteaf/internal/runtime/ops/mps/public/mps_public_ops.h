@@ -4,7 +4,7 @@
 
 #include <memory>
 
-#include "orteaf/internal/backend/mps/mps_slow_ops.h"
+#include "orteaf/internal/runtime/mps/platform/mps_slow_ops.h"
 #include "orteaf/internal/runtime/ops/mps/common/mps_common_ops.h"
 
 namespace orteaf::internal::runtime::ops::mps {

@@ -5,7 +5,7 @@
 namespace orteaf::internal::runtime::mps {
 
 void MpsCommandQueueManager::initialize(
-    ::orteaf::internal::backend::mps::MPSDevice_t device, SlowOps *slow_ops,
+  ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t device, SlowOps *slow_ops,
     std::size_t capacity) {
   shutdown();
   if (slow_ops == nullptr) {

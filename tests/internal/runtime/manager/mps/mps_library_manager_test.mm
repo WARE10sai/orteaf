@@ -17,6 +17,7 @@ namespace backend = orteaf::internal::backend;
 namespace base = orteaf::internal::base;
 namespace diag_error = orteaf::internal::diagnostics::error;
 namespace mps_rt = orteaf::internal::runtime::mps;
+namespace mps_wrapper = orteaf::internal::runtime::mps::platform::wrapper;
 namespace testing_mps = orteaf::tests::runtime::mps::testing;
 using orteaf::tests::ExpectError;
 
@@ -25,16 +26,16 @@ using orteaf::tests::ExpectError;
 
 namespace {
 
-backend::mps::MPSLibrary_t makeLibrary(std::uintptr_t value) {
-    return reinterpret_cast<backend::mps::MPSLibrary_t>(value);
+mps_wrapper::MPSLibrary_t makeLibrary(std::uintptr_t value) {
+    return reinterpret_cast<mps_wrapper::MPSLibrary_t>(value);
 }
 
-backend::mps::MPSFunction_t makeFunction(std::uintptr_t value) {
-    return reinterpret_cast<backend::mps::MPSFunction_t>(value);
+mps_wrapper::MPSFunction_t makeFunction(std::uintptr_t value) {
+    return reinterpret_cast<mps_wrapper::MPSFunction_t>(value);
 }
 
-backend::mps::MPSComputePipelineState_t makePipeline(std::uintptr_t value) {
-    return reinterpret_cast<backend::mps::MPSComputePipelineState_t>(value);
+mps_wrapper::MPSComputePipelineState_t makePipeline(std::uintptr_t value) {
+    return reinterpret_cast<mps_wrapper::MPSComputePipelineState_t>(value);
 }
 
 template <class Provider>
@@ -171,7 +172,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest, GetOrCreateAllocatesAndCachesLibrary) {
         return;
     }
     const auto key = mps_rt::LibraryKey::Named(*maybe_name);
-    backend::mps::MPSLibrary_t expected = nullptr;
+    mps_wrapper::MPSLibrary_t expected = nullptr;
     if constexpr (TypeParam::is_mock) {
         expected = makeLibrary(0x501);
         this->adapter().expectCreateLibraries({{*maybe_name, expected}});
@@ -204,7 +205,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest, ReleasedLeaseDoesNotAffectLibrary) {
     }
     const auto key = mps_rt::LibraryKey::Named(*maybe_name);
 
-    backend::mps::MPSLibrary_t handle = nullptr;
+    mps_wrapper::MPSLibrary_t handle = nullptr;
     if constexpr (TypeParam::is_mock) {
         handle = makeLibrary(0x600);
         this->adapter().expectCreateLibraries({{*maybe_name, handle}});
@@ -248,7 +249,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest, ReleaseIsIdempotent) {
     }
     const auto key = mps_rt::LibraryKey::Named(*maybe_name);
 
-    backend::mps::MPSLibrary_t handle = nullptr;
+    mps_wrapper::MPSLibrary_t handle = nullptr;
     if constexpr (TypeParam::is_mock) {
         handle = makeLibrary(0x650);
         this->adapter().expectCreateLibraries({{*maybe_name, handle}});
@@ -278,9 +279,9 @@ TYPED_TEST(MpsLibraryManagerTypedTest, PipelineManagerProvidesNestedFunctionMana
         return;
     }
 
-    backend::mps::MPSLibrary_t library_handle = nullptr;
-    backend::mps::MPSFunction_t function_handle = nullptr;
-    backend::mps::MPSComputePipelineState_t pipeline_handle = nullptr;
+    mps_wrapper::MPSLibrary_t library_handle = nullptr;
+    mps_wrapper::MPSFunction_t function_handle = nullptr;
+    mps_wrapper::MPSComputePipelineState_t pipeline_handle = nullptr;
     if constexpr (TypeParam::is_mock) {
         library_handle = makeLibrary(0x670);
         function_handle = makeFunction(0x770);

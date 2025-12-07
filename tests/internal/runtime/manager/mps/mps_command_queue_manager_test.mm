@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <limits>
 
-#include <orteaf/internal/backend/mps/wrapper/mps_command_queue.h>
-#include <orteaf/internal/backend/mps/wrapper/mps_event.h>
+#include <orteaf/internal/runtime/mps/platform/wrapper/mps_command_queue.h>
+#include <orteaf/internal/runtime/mps/platform/wrapper/mps_event.h>
 #include <orteaf/internal/diagnostics/error/error.h>
 #include <orteaf/internal/diagnostics/log/log_config.h>
 #include <orteaf/internal/runtime/manager/mps/mps_command_queue_manager.h>
@@ -17,18 +17,19 @@ namespace backend = orteaf::internal::backend;
 namespace base = orteaf::internal::base;
 namespace diag_error = orteaf::internal::diagnostics::error;
 namespace mps_rt = orteaf::internal::runtime::mps;
+namespace mps_wrapper = orteaf::internal::runtime::mps::platform::wrapper;
 namespace testing_mps = orteaf::tests::runtime::mps::testing;
 
 using orteaf::tests::ExpectError;
 
 namespace {
 
-backend::mps::MPSCommandQueue_t makeQueue(std::uintptr_t value) {
-    return reinterpret_cast<backend::mps::MPSCommandQueue_t>(value);
+mps_wrapper::MPSCommandQueue_t makeQueue(std::uintptr_t value) {
+    return reinterpret_cast<mps_wrapper::MPSCommandQueue_t>(value);
 }
 
-backend::mps::MPSEvent_t makeEvent(std::uintptr_t value) {
-    return reinterpret_cast<backend::mps::MPSEvent_t>(value);
+mps_wrapper::MPSEvent_t makeEvent(std::uintptr_t value) {
+    return reinterpret_cast<mps_wrapper::MPSEvent_t>(value);
 }
 
 template <class Provider>

@@ -14,18 +14,19 @@ namespace backend = orteaf::internal::backend;
 namespace base = orteaf::internal::base;
 namespace diag_error = orteaf::internal::diagnostics::error;
 namespace mps_rt = orteaf::internal::runtime::mps;
+namespace mps_wrapper = orteaf::internal::runtime::mps::platform::wrapper;
 namespace testing_mps = orteaf::tests::runtime::mps::testing;
 
 using orteaf::tests::ExpectError;
 
 namespace {
 
-backend::mps::MPSHeap_t makeHeap(std::uintptr_t value) {
-    return reinterpret_cast<backend::mps::MPSHeap_t>(value);
+mps_wrapper::MPSHeap_t makeHeap(std::uintptr_t value) {
+    return reinterpret_cast<mps_wrapper::MPSHeap_t>(value);
 }
 
-backend::mps::MPSHeapDescriptor_t makeHeapDescriptor(std::uintptr_t value) {
-    return reinterpret_cast<backend::mps::MPSHeapDescriptor_t>(value);
+mps_wrapper::MPSHeapDescriptor_t makeHeapDescriptor(std::uintptr_t value) {
+    return reinterpret_cast<mps_wrapper::MPSHeapDescriptor_t>(value);
 }
 
 template <class Provider>
@@ -44,7 +45,7 @@ protected:
     }
 
     void expectDescriptorConfiguration(const mps_rt::HeapDescriptorKey& key,
-                                       backend::mps::MPSHeapDescriptor_t descriptor,
+                                       mps_wrapper::MPSHeapDescriptor_t descriptor,
                                        bool expect_creation = true) {
         if constexpr (!Provider::is_mock) {
             (void)key;
@@ -191,8 +192,8 @@ TYPED_TEST(MpsHeapManagerTypedTest, DistinctDescriptorsAllocateSeparateHeaps) {
     manager.initialize(device, this->getOps(), 0);
     auto key_a = this->defaultKey(0x1800);
     auto key_b = this->defaultKey(0x2800);
-    key_b.storage_mode = backend::mps::kMPSStorageModePrivate;
-    key_b.heap_type = backend::mps::kMPSHeapTypePlacement;
+    key_b.storage_mode = mps_wrapper::kMPSStorageModePrivate;
+    key_b.heap_type = mps_wrapper::kMPSHeapTypePlacement;
     if constexpr (TypeParam::is_mock) {
         const auto descriptor_a = makeHeapDescriptor(0x1801);
         const auto descriptor_b = makeHeapDescriptor(0x2802);

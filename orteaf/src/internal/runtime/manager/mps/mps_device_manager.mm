@@ -26,8 +26,8 @@ void MpsDeviceManager::initialize(SlowOps *slow_ops) {
     auto &state = states_[i];
     state.reset(ops_);
 
-    const auto device = ops_->getDevice(
-        static_cast<::orteaf::internal::backend::mps::MPSInt_t>(i));
+      const auto device = ops_->getDevice(
+        static_cast<::orteaf::internal::runtime::mps::platform::wrapper::MPSInt_t>(i));
     state.device = device;
     state.is_alive = device != nullptr;
 
