@@ -44,54 +44,6 @@ public:
 
     std::size_t capacity() const noexcept { return states_.size(); }
 
-    void initialize(Device device, Ops* ops, std::size_t initial_capacity = 0) {
-        if (device == nullptr) {
-            ::orteaf::internal::diagnostics::error::throwError(
-                ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-                std::string(Traits::Name) + " requires a valid device");
-        }
-        if (ops == nullptr) {
-            ::orteaf::internal::diagnostics::error::throwError(
-                ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-                std::string(Traits::Name) + " requires valid ops");
-        }
-        if (initialized_) {
-            shutdown();
-        }
-        device_ = device;
-        ops_ = ops;
-        initialized_ = true;
-
-        states_.clear();
-        free_list_.clear();
-
-        if (initial_capacity > 0) {
-            growPool(initial_capacity);
-        }
-
-        // Delegate specific initialization logic to the derived class
-        static_cast<Derived*>(this)->onInitialize();
-    }
-
-    void shutdown() {
-        if (!initialized_) {
-            states_.clear();
-            free_list_.clear();
-            device_ = nullptr;
-            ops_ = nullptr;
-            return;
-        }
-
-        // Delegate specific shutdown logic to the derived class
-        static_cast<Derived*>(this)->onShutdown();
-
-        states_.clear();
-        free_list_.clear();
-        device_ = nullptr;
-        ops_ = nullptr;
-        initialized_ = false;
-    }
-
 protected:
     void ensureInitialized() const {
         if (!initialized_) {
