@@ -9,16 +9,16 @@
  * automatically update CPU statistics when available.
  */
 
-#include "orteaf/internal/backend/cpu/wrapper/cpu_stats.h"
-#include "orteaf/internal/base/math_utils.h"
-#include "orteaf/internal/diagnostics/error/error.h"
+#include <orteaf/internal/runtime/cpu/platform/wrapper/cpu_stats.h>
+#include <orteaf/internal/base/math_utils.h>
+#include <orteaf/internal/diagnostics/error/error.h>
 
 #include <cstdlib>
 #include <new>
 #include <cstdint>
 #include <cstddef>
 
-namespace orteaf::internal::backend::cpu {
+namespace orteaf::internal::runtime::cpu::platform {
 
 /**
  * @brief Default alignment value for CPU memory allocation.
@@ -112,4 +112,4 @@ inline void dealloc(void* ptr, std::size_t size) noexcept {
 #endif
 }
 
-} // namespace orteaf::internal::backend::cpu
+} // namespace orteaf::internal::runtime::cpu::platform

@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <functional>
 
-namespace orteaf::internal::backend::cpu {
+namespace orteaf::internal::runtime::cpu::resource {
 
 // Lightweight, non-owning CPU buffer view (pointer + offset/size).
 class CpuBufferView {
@@ -50,4 +50,4 @@ private:
     std::size_t size_{0};
 };
 
-}  // namespace orteaf::internal::backend::cpu
+}  // namespace orteaf::internal::runtime::cpu::resource

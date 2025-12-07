@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-namespace orteaf::internal::backend::cpu {
+namespace orteaf::internal::runtime::cpu::resource {
 
 // Chunk-level view for CPU backend. Represents a reserved region (pointer +
 // size) before it is turned into a BufferView for user-facing code.
@@ -30,4 +30,4 @@ private:
     std::size_t size_{0};
 };
 
-}  // namespace orteaf::internal::backend::cpu
+}  // namespace orteaf::internal::runtime::cpu::resource
