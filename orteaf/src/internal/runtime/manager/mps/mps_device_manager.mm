@@ -41,12 +41,14 @@ void MpsDeviceManager::initialize(SlowOps *slow_ops) {
                                              command_queue_initial_capacity_);
       state.heap_manager.initialize(device, ops_, heap_initial_capacity_);
       state.library_manager.initialize(device, ops_, library_initial_capacity_);
+      state.graph_manager.initialize(device, ops_, graph_initial_capacity_);
       state.event_pool.initialize(device, ops_, 0);
       state.fence_pool.initialize(device, ops_, 0);
     } else {
       state.command_queue_manager.shutdown();
       state.heap_manager.shutdown();
       state.library_manager.shutdown();
+      state.graph_manager.shutdown();
       state.event_pool.shutdown();
       state.fence_pool.shutdown();
     }
@@ -110,6 +112,16 @@ void MpsDeviceManager::release(LibraryManagerLease& lease) noexcept {
   lease.invalidate();
 }
 
+MpsDeviceManager::GraphManagerLease
+MpsDeviceManager::acquireGraphManager(::orteaf::internal::base::DeviceHandle handle) {
+  State& state = ensureValidState(handle);
+  return GraphManagerLease{this, &state.graph_manager};
+}
+
+void MpsDeviceManager::release(GraphManagerLease& lease) noexcept {
+  lease.invalidate();
+}
+
 MpsDeviceManager::EventPoolLease
 MpsDeviceManager::acquireEventPool(::orteaf::internal::base::DeviceHandle handle) {
   State& state = ensureValidState(handle);
@@ -170,6 +182,7 @@ void MpsDeviceManagerState::reset(SlowOps *slow_ops) noexcept {
   command_queue_manager.shutdown();
   heap_manager.shutdown();
   library_manager.shutdown();
+  graph_manager.shutdown();
   event_pool.shutdown();
   fence_pool.shutdown();
   if (device != nullptr && slow_ops != nullptr) {
@@ -184,6 +197,7 @@ void MpsDeviceManagerState::moveFrom(MpsDeviceManagerState &&other) noexcept {
   command_queue_manager = std::move(other.command_queue_manager);
   heap_manager = std::move(other.heap_manager);
   library_manager = std::move(other.library_manager);
+  graph_manager = std::move(other.graph_manager);
   event_pool = std::move(other.event_pool);
   fence_pool = std::move(other.fence_pool);
   device = other.device;
