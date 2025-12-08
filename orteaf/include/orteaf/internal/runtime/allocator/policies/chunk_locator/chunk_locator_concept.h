@@ -40,11 +40,13 @@ concept ChunkLocator = requires(
     typename T::Config;
 
     // 初期化
-    { locator.initialize(config, resource) } -> std::same_as<void>;
+    { locator.initialize(config) } -> std::same_as<void>;
+    { config.resource } -> std::convertible_to<Resource*>;
 
     // チャンク確保・解放
     { locator.addChunk(size, alignment) } -> std::same_as<typename T::MemoryBlock>;
     { locator.releaseChunk(id) } -> std::same_as<bool>;
+    { const_locator.findReleasable() } -> std::same_as<typename T::BufferHandle>;
 
     // チャンク情報取得
     { const_locator.findChunkSize(id) } -> std::same_as<std::size_t>;

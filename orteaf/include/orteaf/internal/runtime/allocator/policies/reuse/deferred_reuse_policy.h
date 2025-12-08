@@ -5,9 +5,12 @@
 #include <thread>
 #include <utility>
 
+#include <orteaf/internal/backend/backend.h>
+#include <orteaf/internal/base/handle.h>
 #include <orteaf/internal/base/heap_vector.h>
 #include <orteaf/internal/diagnostics/error/error_macros.h>
 #include <orteaf/internal/runtime/allocator/memory_block.h>
+#include <orteaf/internal/runtime/allocator/policies/policy_config.h>
 #include <orteaf/internal/runtime/base/backend_traits.h>
 
 namespace orteaf::internal::runtime::allocator::policies {
@@ -20,14 +23,14 @@ public:
   using ReuseToken =
       typename ::orteaf::internal::runtime::base::BackendTraits<B>::ReuseToken;
 
-  struct Config {
+  struct Config : PolicyConfig<Resource> {
     std::chrono::milliseconds timeout_ms{std::chrono::milliseconds{1000}};
   };
 
-  void initialize(Resource *resource, const Config &config = {}) {
-    ORTEAF_THROW_IF_NULL(resource,
+  void initialize(const Config &config = {}) {
+    ORTEAF_THROW_IF_NULL(config.resource,
                          "DeferredReusePolicy requires non-null Resource*");
-    resource_ = resource;
+    resource_ = config.resource;
     timeout_ms_ = config.timeout_ms;
   }
 
@@ -91,7 +94,7 @@ public:
     }
   }
 
-  bool getReadyItem(MemoryBlock &block, std::size_t &freelist_index) {
+  bool getReadyItem(std::size_t &freelist_index, MemoryBlock &block) {
     if (ready_queue_.empty())
       return false;
     ReadyReuse item = std::move(ready_queue_.back());

@@ -45,15 +45,16 @@ TEST(DeferredReusePolicy, InitializeFailsWithNullResource) {
   Policy policy;
   Policy::Config cfg{};
 
-  orteaf::tests::ExpectError(
-      ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
-      [&] { policy.initialize(nullptr, cfg); });
+    orteaf::tests::ExpectError(::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+                               [&] { policy.initialize(cfg); });
 }
 
 TEST(DeferredReusePolicy, MovesCompletedToReady) {
-  FakeResource resource;
-  Policy policy;
-  policy.initialize(&resource);
+    FakeResource resource;
+    Policy policy;
+    Policy::Config cfg{};
+    cfg.resource = &resource;
+    policy.initialize(cfg);
 
   MemoryBlock block = makeBlock(BufferHandle{1});
   std::size_t freelist_index = 3;
@@ -64,16 +65,18 @@ TEST(DeferredReusePolicy, MovesCompletedToReady) {
 
   MemoryBlock out_block{};
   std::size_t out_index = 0;
-  EXPECT_TRUE(policy.getReadyItem(out_block, out_index));
+  EXPECT_TRUE(policy.getReadyItem(out_index, out_block));
   EXPECT_EQ(out_block.handle, block.handle);
   EXPECT_EQ(out_index, freelist_index);
 }
 
 TEST(DeferredReusePolicy, KeepsPendingWhenNotCompleted) {
-  FakeResource resource;
-  resource.next_result.store(false);
-  Policy policy;
-  policy.initialize(&resource);
+    FakeResource resource;
+    resource.next_result.store(false);
+    Policy policy;
+    Policy::Config cfg{};
+    cfg.resource = &resource;
+    policy.initialize(cfg);
 
   MemoryBlock block = makeBlock(BufferHandle{2});
   CpuReuseToken token{};
@@ -89,9 +92,11 @@ TEST(DeferredReusePolicy, KeepsPendingWhenNotCompleted) {
 }
 
 TEST(DeferredReusePolicy, RemoveBlocksInChunkFiltersPendingAndReady) {
-  FakeResource resource;
-  Policy policy;
-  policy.initialize(&resource);
+    FakeResource resource;
+    Policy policy;
+    Policy::Config cfg{};
+    cfg.resource = &resource;
+    policy.initialize(cfg);
 
   CpuReuseToken token{};
   MemoryBlock block1 = makeBlock(BufferHandle{10});
@@ -111,14 +116,18 @@ TEST(DeferredReusePolicy, RemoveBlocksInChunkFiltersPendingAndReady) {
 
   MemoryBlock out_block{};
   std::size_t out_index = 0;
-  EXPECT_FALSE(policy.getReadyItem(out_block, out_index));
+  EXPECT_FALSE(policy.getReadyItem(out_index, out_block));
   EXPECT_EQ(policy.getPendingReuseCount(), 0u);
 }
 
 TEST(DeferredReusePolicy, FlushPendingWaitsUntilComplete) {
-  FakeResource resource;
-  Policy policy;
-  policy.initialize(&resource, Policy::Config{std::chrono::milliseconds{5}});
+
+    FakeResource resource;
+    Policy policy;
+    Policy::Config cfg;
+    cfg.resource = &resource;
+    cfg.timeout_ms = std::chrono::milliseconds{5};
+    policy.initialize(cfg);
 
   CpuReuseToken token{};
   resource.next_result.store(false);
@@ -135,7 +144,7 @@ TEST(DeferredReusePolicy, FlushPendingWaitsUntilComplete) {
 
   MemoryBlock out_block{};
   std::size_t out_index = 0;
-  EXPECT_TRUE(policy.getReadyItem(out_block, out_index));
+  EXPECT_TRUE(policy.getReadyItem(out_index, out_block));
   EXPECT_FALSE(policy.hasPending());
 }
 

@@ -1,15 +1,15 @@
 #pragma once
 
 #include <cstddef>
-#include <mutex>
+
 #include <string>
 
 #include "orteaf/internal/backend/backend.h"
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/base/heap_vector.h"
+#include "orteaf/internal/diagnostics/error/error_macros.h"
 #include "orteaf/internal/diagnostics/log/log.h"
 #include "orteaf/internal/runtime/allocator/memory_block.h"
-#include "orteaf/internal/runtime/base/backend_traits.h"
+#include "orteaf/internal/runtime/allocator/policies/policy_config.h"
 
 namespace orteaf::internal::runtime::allocator::policies {
 
@@ -21,15 +21,24 @@ public:
       typename ::orteaf::internal::runtime::base::BackendTraits<B>::BufferView;
   using MemoryBlock = ::orteaf::internal::runtime::allocator::MemoryBlock<B>;
 
-  void initialize() {}
+  struct Config : PolicyConfig<Resource> {};
+
+  void initialize(const Config &config) {
+    ORTEAF_THROW_IF_NULL(
+        config.resource,
+        "DirectResourceLargeAllocPolicy requires non-null Resource*");
+    resource_ = config.resource;
+  }
 
   MemoryBlock allocate(std::size_t size, std::size_t alignment) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    ORTEAF_THROW_IF(resource_ == nullptr, InvalidState,
+                    "DirectResourceLargeAllocPolicy is not initialized");
+
     if (size == 0) {
       return {};
     }
 
-    BufferView buffer = Resource::allocate(size, alignment);
+    BufferView buffer = resource_->allocate(size, alignment);
     if (buffer.empty()) {
       return {};
     }
@@ -48,7 +57,7 @@ public:
 
   void deallocate(BufferHandle handle, std::size_t size,
                   std::size_t alignment) {
-    std::lock_guard<std::mutex> lock(mutex_);
+
     if (!isLargeAlloc(handle)) {
       return;
     }
@@ -87,16 +96,13 @@ public:
     if (!isLargeAlloc(handle)) {
       return false;
     }
-    std::lock_guard<std::mutex> lock(mutex_);
+
     const std::size_t index = indexFromId(handle);
     return index < entries_.size() && entries_[index].in_use &&
            entries_[index].view;
   }
 
-  std::size_t size() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return entries_.size() - free_list_.size();
-  }
+  std::size_t size() const { return entries_.size() - free_list_.size(); }
 
 private:
   static constexpr BufferHandle::underlying_type kLargeMask =
@@ -134,7 +140,7 @@ private:
     return entries_.size() - 1;
   }
 
-  mutable std::mutex mutex_;
+  Resource *resource_{nullptr};
   ::orteaf::internal::base::HeapVector<Entry> entries_;
   ::orteaf::internal::base::HeapVector<std::size_t> free_list_;
 };

@@ -8,7 +8,7 @@
 #include <orteaf/internal/base/heap_vector.h>
 #include <orteaf/internal/diagnostics/error/error_macros.h>
 #include <orteaf/internal/runtime/allocator/memory_block.h>
-#include <orteaf/internal/runtime/base/backend_traits.h>
+#include <orteaf/internal/runtime/allocator/policies/policy_config.h>
 
 namespace orteaf::internal::runtime::allocator::policies {
 
@@ -22,12 +22,21 @@ template <typename Resource, ::orteaf::internal::backend::Backend B>
 class HostStackFreelistPolicy {
 public:
   using MemoryBlock = ::orteaf::internal::runtime::allocator::MemoryBlock<B>;
+  using LaunchParams =
+      typename ::orteaf::internal::runtime::base::BackendTraits<B>::KernelLaunchParams;
 
-  void initialize(Resource *resource) {
-    ORTEAF_THROW_IF_NULL(resource,
-                         "HostStackFreelistPolicy requires non-null Resource*");
-    resource_ = resource;
-  }
+
+    struct Config : PolicyConfig<Resource> {
+        std::size_t min_block_size{64};
+        std::size_t max_block_size{0};
+    };
+
+    void initialize(const Config& config) {
+        ORTEAF_THROW_IF_NULL(config.resource, "HostStackFreelistPolicy requires non-null Resource*");
+        ORTEAF_THROW_IF(config.max_block_size == 0, InvalidParameter, "max_block_size must be non-zero");
+        resource_ = config.resource;
+        configureBounds(config.min_block_size, config.max_block_size);
+    }
 
   void configureBounds(std::size_t min_block_size, std::size_t max_block_size) {
     ORTEAF_THROW_IF(resource_ == nullptr, InvalidState,
@@ -38,7 +47,8 @@ public:
     stacks_.resize(size_class_count_);
   }
 
-  void push(std::size_t list_index, const MemoryBlock &block) {
+  void push(std::size_t list_index, const MemoryBlock &block,
+            const LaunchParams& /*launch_params*/ = {}) {
     ORTEAF_THROW_IF(resource_ == nullptr, InvalidState,
                     "HostStackFreelistPolicy is not initialized");
     if (list_index >= stacks_.size()) {
@@ -47,7 +57,8 @@ public:
     stacks_[list_index].pushBack(block);
   }
 
-  MemoryBlock pop(std::size_t list_index) {
+  MemoryBlock pop(std::size_t list_index,
+                  const LaunchParams& /*launch_params*/ = {}) {
     ORTEAF_THROW_IF(resource_ == nullptr, InvalidState,
                     "HostStackFreelistPolicy is not initialized");
     if (list_index >= stacks_.size() || stacks_[list_index].empty()) {
@@ -75,7 +86,8 @@ public:
   }
 
   void expand(std::size_t list_index, const MemoryBlock &chunk,
-              std::size_t chunk_size, std::size_t block_size) {
+              std::size_t chunk_size, std::size_t block_size,
+              const LaunchParams& /*launch_params*/ = {}) {
     ORTEAF_THROW_IF(resource_ == nullptr, InvalidState,
                     "HostStackFreelistPolicy is not initialized");
     if (!chunk.valid() || block_size == 0) {
@@ -96,7 +108,7 @@ public:
     }
   }
 
-  void removeBlocksInChunk(const MemoryBlock &chunk, std::size_t chunk_size) {
+  void removeBlocksInChunk(::orteaf::internal::base::BufferHandle handle) {
     for (auto &stack : stacks_) {
       if (stack.empty()) {
         continue;
@@ -108,7 +120,7 @@ public:
       while (!stack.empty()) {
         MemoryBlock top = std::move(stack.back());
         stack.resize(stack.size() - 1);
-        if (!chunk.view.contains(top.view, top.view.size())) {
+        if (top.handle != handle) {
           kept.pushBack(std::move(top));
         }
       }
