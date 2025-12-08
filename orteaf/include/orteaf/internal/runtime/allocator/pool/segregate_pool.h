@@ -1,7 +1,6 @@
 #pragma once
 
 #include <algorithm>
-#include <atomic>
 #include <bit>
 #include <limits>
 #include <orteaf/internal/backend/backend.h>
