@@ -1,5 +1,8 @@
 #pragma once
 
+#include <algorithm>
+#include <bit>
+
 #include <orteaf/internal/backend/backend.h>
 #include <orteaf/internal/runtime/base/backend_traits.h>
 #include <orteaf/internal/runtime/allocator/memory_block.h>
@@ -60,11 +63,38 @@ public:
     FreeListPolicy& free_list_policy() { return free_list_policy_; }
 
     MemoryBlock allocate(std::size_t size, std::size_t alignment, LaunchParams& launch_params) {
-        
+        if (size == 0) return MemoryBlock{};
+
+        processPendingReuses(launch_params);
+
+        if (size > max_block_size_) {
+            return large_alloc_policy_.allocate(size, alignment);
+        }
+
+        const std::size_t block_size = std::bit_ceil(std::max(min_block_size_, size));
+        const std::size_t list_idx =
+            std::countr_zero(std::bit_ceil(block_size)) -
+            std::countr_zero(std::bit_ceil(min_block_size_));
+
+        std::lock_guard<ThreadingPolicy> lock(threading_policy_);
+
+        MemoryBlock block = free_list_policy_.pop(list_idx, launch_params);
+
+        if (!block.valid()) {
+            expandPool(list_idx, block_size, launch_params);
+            block = free_list_policy_.pop(list_idx, launch_params);
+            if (!block.valid()) {
+                return {};
+            }
+        }
+
+        chunk_locator_policy_.incrementUsed(block.handle);
+
+        return block;
     }
 
     void deallocate(const MemoryBlock& block, std::size_t size, std::size_t alignment, LaunchParams& launch_params);
-    
+
     void processPendingReuses(LaunchParams& launch_params) {
         reuse_policy_.processPending();
 
@@ -81,14 +111,14 @@ public:
 private:
 
 
-    void expandPool(std::size_t list_idx, std::size_t block_size) {
+    void expandPool(std::size_t list_idx, std::size_t block_size, LaunchParams& launch_params) {
         const std::size_t num_blocks = (chunk_size_ + block_size - 1) / block_size;
         const std::size_t actural_chunk_size = num_blocks * block_size;
 
         MemoryBlock chunk = chunk_locator_policy_.addChunk(actural_chunk_size, 0);
         if (!chunk.valid()) return;
 
-        free_list_policy_.expand(list_idx, chunk, actural_chunk_size, block_size);
+        free_list_policy_.expand(list_idx, chunk, actural_chunk_size, block_size, launch_params);
     }
 
     std::size_t min_block_size_{64};
