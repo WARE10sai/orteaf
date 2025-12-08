@@ -1,17 +1,17 @@
 #include <gtest/gtest.h>
 
-#include "orteaf/internal/runtime/kernel/mps/mps_kernel_launcher_impl.h"
 #include "orteaf/internal/runtime/mps/ops/mps_private_ops.h"
 #include "orteaf/internal/runtime/mps/platform/mps_fast_ops.h"
 #include "orteaf/internal/runtime/mps/platform/wrapper/mps_compute_command_encoder.h"
 #include "orteaf/internal/runtime/mps/resource/mps_fence_token.h"
+#include "orteaf/internal/runtime/mps/resource/mps_kernel_launcher_impl.h"
 
 namespace base = orteaf::internal::base;
 
 namespace mps_rt = orteaf::internal::runtime::mps;
 
 TEST(MpsKernelLauncherImplTest, StoresUniqueKeysInOrder) {
-  mps_rt::MpsKernelLauncherImpl<3> impl({
+  mps_rt::resource::MpsKernelLauncherImpl<3> impl({
       {"libA", "funcX"},
       {"libB", "funcY"},
       {"libA", "funcX"}, // duplicate should be ignored
@@ -65,7 +65,7 @@ public:
 } // namespace
 
 TEST(MpsKernelLauncherImplTest, InitializeAcquiresPipelinesInOrder) {
-  mps_rt::MpsKernelLauncherImpl<2> impl({
+  mps_rt::resource::MpsKernelLauncherImpl<2> impl({
       {"libA", "funcX"},
       {"libB", "funcY"},
   });
@@ -226,7 +226,7 @@ struct MockComputeFastOps {
 } // namespace
 
 TEST(MpsKernelLauncherImplTest, CreateCommandBufferUsesFastOps) {
-  mps_rt::MpsKernelLauncherImpl<1> impl({
+  mps_rt::resource::MpsKernelLauncherImpl<1> impl({
       {"lib", "fn"},
   });
 
@@ -243,7 +243,7 @@ TEST(MpsKernelLauncherImplTest, CreateCommandBufferUsesFastOps) {
 }
 
 TEST(MpsKernelLauncherImplTest, CreateComputeEncoderBindsPipeline) {
-  mps_rt::MpsKernelLauncherImpl<1> impl({
+  mps_rt::resource::MpsKernelLauncherImpl<1> impl({
       {"lib", "fn"},
   });
 
@@ -268,7 +268,7 @@ TEST(MpsKernelLauncherImplTest, CreateComputeEncoderBindsPipeline) {
 }
 
 TEST(MpsKernelLauncherImplTest, CreateComputeEncoderByNameAndIndex) {
-  mps_rt::MpsKernelLauncherImpl<2> impl({
+  mps_rt::resource::MpsKernelLauncherImpl<2> impl({
       {"libA", "fnA"},
       {"libB", "fnB"},
   });
@@ -317,7 +317,7 @@ TEST(MpsKernelLauncherImplTest, CreateComputeEncoderByNameAndIndex) {
 }
 
 TEST(MpsKernelLauncherImplTest, EncoderSetBufferAndBytesForwarded) {
-  mps_rt::MpsKernelLauncherImpl<1> impl({
+  mps_rt::resource::MpsKernelLauncherImpl<1> impl({
       {"lib", "fn"},
   });
 
@@ -361,7 +361,7 @@ TEST(MpsKernelLauncherImplTest, EncoderSetBufferAndBytesForwarded) {
 }
 
 TEST(MpsKernelLauncherImplTest, DispatchEndCommitForwarded) {
-  mps_rt::MpsKernelLauncherImpl<1> impl({
+  mps_rt::resource::MpsKernelLauncherImpl<1> impl({
       {"lib", "fn"},
   });
 
@@ -395,7 +395,7 @@ TEST(MpsKernelLauncherImplTest, DispatchEndCommitForwarded) {
 }
 
 TEST(MpsKernelLauncherImplTest, DispatchOneShotByIndex) {
-  mps_rt::MpsKernelLauncherImpl<1> impl({
+  mps_rt::resource::MpsKernelLauncherImpl<1> impl({
       {"lib", "fn"},
   });
 
@@ -443,7 +443,7 @@ TEST(MpsKernelLauncherImplTest, DispatchOneShotByIndex) {
 }
 
 TEST(MpsKernelLauncherImplTest, DispatchOneShotByNameMissingReturnsNullptr) {
-  mps_rt::MpsKernelLauncherImpl<1> impl({
+  mps_rt::resource::MpsKernelLauncherImpl<1> impl({
       {"lib", "fn"},
   });
   const base::DeviceHandle device{0};
@@ -464,7 +464,7 @@ TEST(MpsKernelLauncherImplTest, DispatchOneShotByNameMissingReturnsNullptr) {
 }
 
 TEST(MpsKernelLauncherImplTest, UpdateFenceReplacesTicketForSameQueue) {
-  mps_rt::MpsKernelLauncherImpl<1> impl({
+  mps_rt::resource::MpsKernelLauncherImpl<1> impl({
       {"lib", "fn"},
   });
   const base::DeviceHandle device{0};
@@ -499,7 +499,7 @@ TEST(MpsKernelLauncherImplTest, UpdateFenceReplacesTicketForSameQueue) {
 }
 
 TEST(MpsKernelLauncherImplTest, DispatchOneShotAddsFenceTicketWhenProvided) {
-  mps_rt::MpsKernelLauncherImpl<1> impl({
+  mps_rt::resource::MpsKernelLauncherImpl<1> impl({
       {"lib", "fn"},
   });
   const base::DeviceHandle device{0};
@@ -536,7 +536,7 @@ TEST(MpsKernelLauncherImplTest, DispatchOneShotAddsFenceTicketWhenProvided) {
 }
 
 TEST(MpsKernelLauncherImplTest, UpdateFenceReturnsTicketAndEncodesUpdate) {
-  mps_rt::MpsKernelLauncherImpl<1> impl({
+  mps_rt::resource::MpsKernelLauncherImpl<1> impl({
       {"lib", "fn"},
   });
   const base::DeviceHandle device{0};

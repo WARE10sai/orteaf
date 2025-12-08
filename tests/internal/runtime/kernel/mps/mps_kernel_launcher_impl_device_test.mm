@@ -1,13 +1,13 @@
 #include <gtest/gtest.h>
 
-#include "orteaf/internal/runtime/kernel/mps/mps_kernel_launcher_impl.h"
+#include "orteaf/internal/runtime/mps/ops/mps_private_ops.h"
 #include "orteaf/internal/runtime/mps/ops/mps_public_ops.h"
 #include "orteaf/internal/runtime/mps/platform/wrapper/mps_buffer.h"
 #include "orteaf/internal/runtime/mps/platform/wrapper/mps_command_buffer.h"
 #include "orteaf/internal/runtime/mps/platform/wrapper/mps_command_queue.h"
 #include "orteaf/internal/runtime/mps/platform/wrapper/mps_device.h"
 #include "orteaf/internal/runtime/mps/platform/wrapper/mps_heap.h"
-#include "orteaf/internal/runtime/mps/ops/mps_private_ops.h"
+#include "orteaf/internal/runtime/mps/resource/mps_kernel_launcher_impl.h"
 
 namespace base = orteaf::internal::base;
 namespace mps_rt = orteaf::internal::runtime::mps;
@@ -22,7 +22,7 @@ TEST(MpsKernelLauncherImplDeviceTest, InitializeWithEmbeddedLibraryRealDevice) {
   ::orteaf::internal::runtime::mps::ops::MpsPublicOps public_ops;
   public_ops.initialize();
 
-  mps_rt::MpsKernelLauncherImpl<1> impl({
+  mps_rt::resource::MpsKernelLauncherImpl<1> impl({
       {"embed_test_library", "orteaf_embed_test_identity"},
   });
 
@@ -47,7 +47,7 @@ TEST(MpsKernelLauncherImplDeviceTest, DispatchOneShotExecutesEmbeddedIdentity) {
   ::orteaf::internal::runtime::mps::ops::MpsPublicOps public_ops;
   public_ops.initialize();
 
-  mps_rt::MpsKernelLauncherImpl<1> impl({
+  mps_rt::resource::MpsKernelLauncherImpl<1> impl({
       {"embed_test_library", "orteaf_embed_test_identity"},
   });
 

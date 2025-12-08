@@ -19,7 +19,7 @@
 #include "orteaf/internal/runtime/mps/manager/mps_compute_pipeline_state_manager.h"
 #include "orteaf/internal/runtime/mps/manager/mps_library_manager.h"
 
-namespace orteaf::internal::runtime::mps {
+namespace orteaf::internal::runtime::mps::resource {
 
 /**
  * @brief MPS/Metal compute pipeline launcher with per-device pipeline caching.
@@ -435,6 +435,6 @@ private:
       std::numeric_limits<std::size_t>::max();
 };
 
-} // namespace orteaf::internal::runtime::mps
+} // namespace orteaf::internal::runtime::mps::resource
 
 #endif // ORTEAF_ENABLE_MPS
