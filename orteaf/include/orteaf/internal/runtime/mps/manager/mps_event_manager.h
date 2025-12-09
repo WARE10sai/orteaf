@@ -22,7 +22,7 @@ struct EventPoolTraits {
   using OpsType = ::orteaf::internal::runtime::mps::platform::MpsSlowOps;
   using HandleType = ::orteaf::internal::base::EventHandle;
 
-  static constexpr const char *Name = "MPS event pool";
+  static constexpr const char *Name = "MPS event manager";
 
   static ResourceType create(OpsType *ops, DeviceType device) {
     return ops->createEvent(device);
