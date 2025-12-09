@@ -60,4 +60,11 @@ public:
 
 } // namespace orteaf::internal::runtime::mps::manager
 
+// Extern template declaration to prevent implicit instantiation
+namespace orteaf::internal::runtime::base {
+extern template class ResourceManager<
+    ::orteaf::internal::runtime::mps::manager::MpsEventManager,
+    ::orteaf::internal::runtime::mps::manager::EventPoolTraits>;
+}
+
 #endif // ORTEAF_ENABLE_MPS
