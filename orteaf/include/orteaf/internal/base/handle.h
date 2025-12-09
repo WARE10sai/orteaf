@@ -77,6 +77,7 @@ struct FunctionTag {};
 struct HeapTag {};
 struct BufferTag {};
 struct GraphTag {};
+struct EventTag {};
 
 using DeviceHandle       = Handle<DeviceTag, uint32_t, void>;
 using StreamHandle       = Handle<StreamTag, uint32_t, uint8_t>;
@@ -87,8 +88,10 @@ using FunctionHandle     = Handle<FunctionTag, uint32_t, uint8_t>;
 using HeapHandle         = Handle<HeapTag, uint32_t, uint8_t>;
 using BufferHandle       = Handle<BufferTag, uint32_t, uint16_t>;
 using GraphHandle        = Handle<GraphTag, uint32_t, uint8_t>;
+using EventHandle        = Handle<EventTag, uint32_t, uint8_t>;
 
 static_assert(std::is_trivially_copyable_v<DeviceHandle>);
 static_assert(std::is_trivially_copyable_v<BufferHandle>);
+static_assert(std::is_trivially_copyable_v<EventHandle>);
 
 } // namespace orteaf::internal::base
