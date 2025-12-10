@@ -24,6 +24,31 @@ template <typename Buffer> struct BufferState {
   Buffer buffer{};
   std::uint32_t generation{0};
   bool in_use{false};
+
+  BufferState() = default;
+  ~BufferState() = default;
+
+  // Move constructor
+  BufferState(BufferState &&other) noexcept
+      : ref_count{other.ref_count.load(std::memory_order_relaxed)},
+        buffer{std::move(other.buffer)}, generation{other.generation},
+        in_use{other.in_use} {}
+
+  // Move assignment
+  BufferState &operator=(BufferState &&other) noexcept {
+    if (this != &other) {
+      ref_count.store(other.ref_count.load(std::memory_order_relaxed),
+                      std::memory_order_relaxed);
+      buffer = std::move(other.buffer);
+      generation = other.generation;
+      in_use = other.in_use;
+    }
+    return *this;
+  }
+
+  // Delete copy operations
+  BufferState(const BufferState &) = delete;
+  BufferState &operator=(const BufferState &) = delete;
 };
 
 /**
@@ -120,16 +145,15 @@ public:
     const std::size_t index = Base::allocateSlot();
     State &state = states_[index];
 
-    const auto handle =
-        BufferHandle{static_cast<typename BufferHandle::index_type>(index),
-                     static_cast<typename BufferHandle::generation_type>(
-                         state.generation)};
+    const auto handle = BufferHandle{
+        static_cast<typename BufferHandle::index_type>(index),
+        static_cast<typename BufferHandle::generation_type>(state.generation)};
 
     state.buffer = Traits::allocate(ops_, size, alignment);
     if (!state.buffer.valid()) {
       // release slot back to free list
       free_list_.pushBack(index);
-      return BufferType{};
+      return {};
     }
 
     state.in_use = true;
@@ -183,8 +207,7 @@ public:
         static_cast<std::size_t>(handle.generation)) {
       return;
     }
-    const auto prev =
-        state.ref_count.fetch_sub(1, std::memory_order_acq_rel);
+    const auto prev = state.ref_count.fetch_sub(1, std::memory_order_acq_rel);
     if (prev == 1) {
       Traits::deallocate(ops_, state.buffer);
       state.buffer = BufferType{};
