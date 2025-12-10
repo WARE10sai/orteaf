@@ -28,6 +28,7 @@ public:
   SegregatePool &operator=(SegregatePool &&) noexcept = default;
 
   struct Config {
+    typename BackendResource::Config resource{};
     typename FastFreePolicy::template Config<BackendResource> fast_free{};
     typename ThreadingPolicy::template Config<BackendResource> threading{};
     typename LargeAllocPolicy::Config large_alloc{};
@@ -41,6 +42,7 @@ public:
   };
 
   void initialize(const Config &config) {
+    resource_.initialize(config.resource);
     fast_free_policy_.initialize(config.fast_free);
     threading_policy_.initialize(config.threading);
     large_alloc_policy_.initialize(config.large_alloc);
@@ -173,7 +175,7 @@ private:
 
   std::size_t chunk_size_{0};
 
-  BackendResource backend_resource_;
+  BackendResource resource_;
   FastFreePolicy fast_free_policy_;
   ThreadingPolicy threading_policy_;
   LargeAllocPolicy large_alloc_policy_;
