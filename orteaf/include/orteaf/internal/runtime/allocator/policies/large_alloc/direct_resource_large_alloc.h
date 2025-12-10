@@ -74,7 +74,7 @@ public:
       return;
     }
 
-    Resource::deallocate(entry.view, size, alignment);
+    resource_->deallocate(entry.view, size, alignment);
 #if ORTEAF_CORE_DEBUG_ENABLED
     ORTEAF_LOG_DEBUG_IF(Core,
                         entry.size != size || entry.alignment != alignment,
