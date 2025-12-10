@@ -24,6 +24,13 @@ public:
   using ReuseToken =
       typename ::orteaf::internal::runtime::base::BackendTraits<B>::ReuseToken;
 
+  DeferredReusePolicy() = default;
+  DeferredReusePolicy(const DeferredReusePolicy &) = delete;
+  DeferredReusePolicy &operator=(const DeferredReusePolicy &) = delete;
+  DeferredReusePolicy(DeferredReusePolicy &&) = default;
+  DeferredReusePolicy &operator=(DeferredReusePolicy &&) = default;
+  ~DeferredReusePolicy() = default;
+
   struct Config : PolicyConfig<Resource> {
     std::chrono::milliseconds timeout_ms{std::chrono::milliseconds{1000}};
   };

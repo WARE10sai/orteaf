@@ -43,6 +43,54 @@ private:
   }();
 
 public:
+  SegregatePoolStats() = default;
+  SegregatePoolStats(const SegregatePoolStats &) = delete;
+  SegregatePoolStats &operator=(const SegregatePoolStats &) = delete;
+
+  SegregatePoolStats(SegregatePoolStats &&other) noexcept
+      : total_allocations_(
+            other.total_allocations_.load(std::memory_order_relaxed)),
+        total_deallocations_(
+            other.total_deallocations_.load(std::memory_order_relaxed)),
+        active_allocations_(
+            other.active_allocations_.load(std::memory_order_relaxed)),
+        large_allocations_(
+            other.large_allocations_.load(std::memory_order_relaxed)),
+        pool_expansions_(
+            other.pool_expansions_.load(std::memory_order_relaxed)),
+        current_allocated_bytes_(
+            other.current_allocated_bytes_.load(std::memory_order_relaxed)),
+        peak_allocated_bytes_(
+            other.peak_allocated_bytes_.load(std::memory_order_relaxed)) {}
+
+  SegregatePoolStats &operator=(SegregatePoolStats &&other) noexcept {
+    if (this != &other) {
+      total_allocations_.store(
+          other.total_allocations_.load(std::memory_order_relaxed),
+          std::memory_order_relaxed);
+      total_deallocations_.store(
+          other.total_deallocations_.load(std::memory_order_relaxed),
+          std::memory_order_relaxed);
+      active_allocations_.store(
+          other.active_allocations_.load(std::memory_order_relaxed),
+          std::memory_order_relaxed);
+      large_allocations_.store(
+          other.large_allocations_.load(std::memory_order_relaxed),
+          std::memory_order_relaxed);
+      pool_expansions_.store(
+          other.pool_expansions_.load(std::memory_order_relaxed),
+          std::memory_order_relaxed);
+      current_allocated_bytes_.store(
+          other.current_allocated_bytes_.load(std::memory_order_relaxed),
+          std::memory_order_relaxed);
+      peak_allocated_bytes_.store(
+          other.peak_allocated_bytes_.load(std::memory_order_relaxed),
+          std::memory_order_relaxed);
+    }
+    return *this;
+  }
+
+  ~SegregatePoolStats() = default;
   uint64_t totalAllocations() const noexcept {
     if constexpr (StatsLevel >= 2) {
       return total_allocations_.load(std::memory_order_relaxed);

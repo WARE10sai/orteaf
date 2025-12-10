@@ -26,8 +26,38 @@ public:
       : resource_(std::move(resource)) {}
   SegregatePool(const SegregatePool &) = delete;
   SegregatePool &operator=(const SegregatePool &) = delete;
-  SegregatePool(SegregatePool &&) noexcept = default;
-  SegregatePool &operator=(SegregatePool &&) noexcept = default;
+
+  SegregatePool(SegregatePool &&other) noexcept
+      : min_block_size_(other.min_block_size_),
+        max_block_size_(other.max_block_size_), chunk_size_(other.chunk_size_),
+        resource_(std::move(other.resource_)),
+        fast_free_policy_(std::move(other.fast_free_policy_)),
+        threading_policy_(std::move(other.threading_policy_)),
+        large_alloc_policy_(std::move(other.large_alloc_policy_)),
+        chunk_locator_policy_(std::move(other.chunk_locator_policy_)),
+        reuse_policy_(std::move(other.reuse_policy_)),
+        free_list_policy_(std::move(other.free_list_policy_)),
+        backend_type_(other.backend_type_), stats_(std::move(other.stats_)) {}
+
+  SegregatePool &operator=(SegregatePool &&other) noexcept {
+    if (this != &other) {
+      min_block_size_ = other.min_block_size_;
+      max_block_size_ = other.max_block_size_;
+      chunk_size_ = other.chunk_size_;
+      resource_ = std::move(other.resource_);
+      fast_free_policy_ = std::move(other.fast_free_policy_);
+      threading_policy_ = std::move(other.threading_policy_);
+      large_alloc_policy_ = std::move(other.large_alloc_policy_);
+      chunk_locator_policy_ = std::move(other.chunk_locator_policy_);
+      reuse_policy_ = std::move(other.reuse_policy_);
+      free_list_policy_ = std::move(other.free_list_policy_);
+      backend_type_ = other.backend_type_;
+      stats_ = std::move(other.stats_);
+    }
+    return *this;
+  }
+
+  ~SegregatePool() = default;
 
   struct Config {
     typename FastFreePolicy::template Config<BackendResource> fast_free{};

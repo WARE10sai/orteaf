@@ -27,6 +27,13 @@ public:
       typename ::orteaf::internal::runtime::base::BackendTraits<
           B>::KernelLaunchParams;
 
+  HostStackFreelistPolicy() = default;
+  HostStackFreelistPolicy(const HostStackFreelistPolicy &) = delete;
+  HostStackFreelistPolicy &operator=(const HostStackFreelistPolicy &) = delete;
+  HostStackFreelistPolicy(HostStackFreelistPolicy &&) = default;
+  HostStackFreelistPolicy &operator=(HostStackFreelistPolicy &&) = default;
+  ~HostStackFreelistPolicy() = default;
+
   struct Config : PolicyConfig<Resource> {
     // サイズクラスの情報は SegregatePool が管理するため、
     // ここには含めない

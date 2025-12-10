@@ -36,6 +36,14 @@ public:
   using BufferResource =
       ::orteaf::internal::runtime::allocator::BufferResource<B>;
 
+  DirectChunkLocatorPolicy() = default;
+  DirectChunkLocatorPolicy(const DirectChunkLocatorPolicy &) = delete;
+  DirectChunkLocatorPolicy &
+  operator=(const DirectChunkLocatorPolicy &) = delete;
+  DirectChunkLocatorPolicy(DirectChunkLocatorPolicy &&) = default;
+  DirectChunkLocatorPolicy &operator=(DirectChunkLocatorPolicy &&) = default;
+  ~DirectChunkLocatorPolicy() = default;
+
   /**
    * @brief DirectChunkLocatorPolicy 固有の設定。
    */

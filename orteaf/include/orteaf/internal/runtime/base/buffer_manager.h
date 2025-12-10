@@ -79,6 +79,13 @@ public:
       ::orteaf::internal::base::SharedLease<BufferHandle, BufferType,
                                             BufferManager>;
 
+  BufferManager() = default;
+  BufferManager(const BufferManager &) = delete;
+  BufferManager &operator=(const BufferManager &) = delete;
+  BufferManager(BufferManager &&) = default;
+  BufferManager &operator=(BufferManager &&) = default;
+  ~BufferManager() = default;
+
   using Base::device_;
   using Base::free_list_;
   using Base::growth_chunk_size_;

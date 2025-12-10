@@ -23,6 +23,16 @@ public:
   using BufferResource =
       ::orteaf::internal::runtime::allocator::BufferResource<B>;
 
+  DirectResourceLargeAllocPolicy() = default;
+  DirectResourceLargeAllocPolicy(const DirectResourceLargeAllocPolicy &) =
+      delete;
+  DirectResourceLargeAllocPolicy &
+  operator=(const DirectResourceLargeAllocPolicy &) = delete;
+  DirectResourceLargeAllocPolicy(DirectResourceLargeAllocPolicy &&) = default;
+  DirectResourceLargeAllocPolicy &
+  operator=(DirectResourceLargeAllocPolicy &&) = default;
+  ~DirectResourceLargeAllocPolicy() = default;
+
   struct Config : PolicyConfig<Resource> {};
 
   void initialize(const Config &config) {

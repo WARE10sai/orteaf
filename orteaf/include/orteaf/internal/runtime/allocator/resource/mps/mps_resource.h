@@ -55,6 +55,16 @@ public:
 
   explicit MpsResource(const Config &config) { initialize(config); }
 
+  // Copy is deleted
+  MpsResource(const MpsResource &) = delete;
+  MpsResource &operator=(const MpsResource &) = delete;
+
+  // Move is allowed
+  MpsResource(MpsResource &&) = default;
+  MpsResource &operator=(MpsResource &&) = default;
+
+  ~MpsResource() = default;
+
   void initialize(const Config &config);
 
   BufferView allocate(std::size_t size, std::size_t alignment);
