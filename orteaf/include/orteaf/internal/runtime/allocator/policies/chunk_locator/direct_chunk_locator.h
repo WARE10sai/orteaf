@@ -8,7 +8,7 @@
 #include "orteaf/internal/base/heap_vector.h"
 #include "orteaf/internal/diagnostics/error/error.h"
 #include "orteaf/internal/diagnostics/error/error_macros.h"
-#include "orteaf/internal/runtime/allocator/memory_block.h"
+#include "orteaf/internal/runtime/allocator/buffer_resource.h"
 #include "orteaf/internal/runtime/allocator/policies/policy_config.h"
 #include "orteaf/internal/runtime/base/backend_traits.h"
 
@@ -33,7 +33,8 @@ public:
   using BufferViewHandle = ::orteaf::internal::base::BufferViewHandle;
   using BufferView =
       typename ::orteaf::internal::runtime::base::BackendTraits<B>::BufferView;
-  using BufferResource = ::orteaf::internal::runtime::allocator::BufferResource<B>;
+  using BufferResource =
+      ::orteaf::internal::runtime::allocator::BufferResource<B>;
 
   /**
    * @brief DirectChunkLocatorPolicy 固有の設定。
@@ -183,8 +184,8 @@ public:
   // ========================================================================
 
   BufferViewHandle encodeId(std::size_t slot) const {
-    return BufferViewHandle{static_cast<BufferViewHandle::underlying_type>(slot) &
-                        kChunkMask};
+    return BufferViewHandle{
+        static_cast<BufferViewHandle::underlying_type>(slot) & kChunkMask};
   }
 
   std::size_t indexFromId(BufferViewHandle handle) const {

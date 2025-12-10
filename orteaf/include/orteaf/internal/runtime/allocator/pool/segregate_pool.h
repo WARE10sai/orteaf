@@ -4,7 +4,7 @@
 #include <bit>
 #include <limits>
 #include <orteaf/internal/backend/backend.h>
-#include <orteaf/internal/runtime/allocator/memory_block.h>
+#include <orteaf/internal/runtime/allocator/buffer_resource.h>
 #include <orteaf/internal/runtime/allocator/pool/segregate_pool_stats.h>
 #include <orteaf/internal/runtime/base/backend_traits.h>
 
@@ -63,7 +63,7 @@ public:
   const SegregatePoolStats<BackendType> &stats() const { return stats_; }
 
   BufferResource allocate(std::size_t size, std::size_t alignment,
-                       LaunchParams &launch_params) {
+                          LaunchParams &launch_params) {
     if (size == 0)
       return BufferResource{};
 

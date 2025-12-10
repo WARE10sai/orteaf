@@ -9,7 +9,7 @@
 #include <orteaf/internal/base/handle.h>
 #include <orteaf/internal/base/heap_vector.h>
 #include <orteaf/internal/diagnostics/error/error_macros.h>
-#include <orteaf/internal/runtime/allocator/memory_block.h>
+#include <orteaf/internal/runtime/allocator/buffer_resource.h>
 #include <orteaf/internal/runtime/allocator/policies/policy_config.h>
 #include <orteaf/internal/runtime/base/backend_traits.h>
 
@@ -19,7 +19,8 @@ template <typename Resource, ::orteaf::internal::backend::Backend B>
 class DeferredReusePolicy {
 public:
   using BufferViewHandle = ::orteaf::internal::base::BufferViewHandle;
-  using BufferResource = ::orteaf::internal::runtime::allocator::BufferResource<B>;
+  using BufferResource =
+      ::orteaf::internal::runtime::allocator::BufferResource<B>;
   using ReuseToken =
       typename ::orteaf::internal::runtime::base::BackendTraits<B>::ReuseToken;
 

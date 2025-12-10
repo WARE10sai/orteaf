@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 
 #include "orteaf/internal/backend/backend.h"
-#include "orteaf/internal/runtime/allocator/memory_block.h"
+#include "orteaf/internal/runtime/allocator/buffer_resource.h"
 #include "orteaf/internal/runtime/allocator/policies/chunk_locator/direct_chunk_locator.h"
 #include "orteaf/internal/runtime/allocator/policies/fast_free/fast_free_policies.h"
 #include "orteaf/internal/runtime/allocator/policies/freelist/host_stack_freelist_policy.h"

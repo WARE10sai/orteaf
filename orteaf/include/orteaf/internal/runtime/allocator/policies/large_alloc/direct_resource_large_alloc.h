@@ -9,7 +9,7 @@
 #include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/diagnostics/error/error_macros.h"
 #include "orteaf/internal/diagnostics/log/log.h"
-#include "orteaf/internal/runtime/allocator/memory_block.h"
+#include "orteaf/internal/runtime/allocator/buffer_resource.h"
 #include "orteaf/internal/runtime/allocator/policies/policy_config.h"
 
 namespace orteaf::internal::runtime::allocator::policies {
@@ -20,7 +20,8 @@ public:
   using BufferViewHandle = ::orteaf::internal::base::BufferViewHandle;
   using BufferView =
       typename ::orteaf::internal::runtime::base::BackendTraits<B>::BufferView;
-  using BufferResource = ::orteaf::internal::runtime::allocator::BufferResource<B>;
+  using BufferResource =
+      ::orteaf::internal::runtime::allocator::BufferResource<B>;
 
   struct Config : PolicyConfig<Resource> {};
 
@@ -89,8 +90,8 @@ public:
 
   bool isLargeAlloc(BufferViewHandle handle) const {
     // 上位ビットでLarge/Chunkを判定
-    return (static_cast<BufferViewHandle::underlying_type>(handle) & kLargeMask) !=
-           0;
+    return (static_cast<BufferViewHandle::underlying_type>(handle) &
+            kLargeMask) != 0;
   }
 
   bool isAlive(BufferViewHandle handle) const {
@@ -121,8 +122,8 @@ private:
 
   BufferViewHandle encodeId(std::size_t index) const {
     // Large用のビットを立てて衝突を避ける
-    return BufferViewHandle{static_cast<BufferViewHandle::underlying_type>(index) |
-                        kLargeMask};
+    return BufferViewHandle{
+        static_cast<BufferViewHandle::underlying_type>(index) | kLargeMask};
   }
 
   std::size_t indexFromId(BufferViewHandle handle) const {

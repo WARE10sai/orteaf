@@ -8,7 +8,7 @@
 
 #include "orteaf/internal/backend/backend.h"
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/runtime/allocator/memory_block.h"
+#include "orteaf/internal/runtime/allocator/buffer_resource.h"
 #include "orteaf/internal/runtime/base/backend_traits.h"
 #include "orteaf/internal/runtime/cpu/resource/cpu_buffer_view.h"
 #include "tests/internal/testing/error_assert.h"
@@ -36,8 +36,8 @@ struct FakeResource {
 };
 
 BufferResource makeBlock(BufferViewHandle id,
-                      void *ptr = reinterpret_cast<void *>(0x10),
-                      std::size_t size = 64) {
+                         void *ptr = reinterpret_cast<void *>(0x10),
+                         std::size_t size = 64) {
   return BufferResource{id, CpuView{ptr, 0, size}};
 }
 
@@ -45,16 +45,17 @@ TEST(DeferredReusePolicy, InitializeFailsWithNullResource) {
   Policy policy;
   Policy::Config cfg{};
 
-    orteaf::tests::ExpectError(::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
-                               [&] { policy.initialize(cfg); });
+  orteaf::tests::ExpectError(
+      ::orteaf::internal::diagnostics::error::OrteafErrc::NullPointer,
+      [&] { policy.initialize(cfg); });
 }
 
 TEST(DeferredReusePolicy, MovesCompletedToReady) {
-    FakeResource resource;
-    Policy policy;
-    Policy::Config cfg{};
-    cfg.resource = &resource;
-    policy.initialize(cfg);
+  FakeResource resource;
+  Policy policy;
+  Policy::Config cfg{};
+  cfg.resource = &resource;
+  policy.initialize(cfg);
 
   BufferResource block = makeBlock(BufferViewHandle{1});
   std::size_t freelist_index = 3;
@@ -71,12 +72,12 @@ TEST(DeferredReusePolicy, MovesCompletedToReady) {
 }
 
 TEST(DeferredReusePolicy, KeepsPendingWhenNotCompleted) {
-    FakeResource resource;
-    resource.next_result.store(false);
-    Policy policy;
-    Policy::Config cfg{};
-    cfg.resource = &resource;
-    policy.initialize(cfg);
+  FakeResource resource;
+  resource.next_result.store(false);
+  Policy policy;
+  Policy::Config cfg{};
+  cfg.resource = &resource;
+  policy.initialize(cfg);
 
   BufferResource block = makeBlock(BufferViewHandle{2});
   CpuReuseToken token{};
@@ -92,11 +93,11 @@ TEST(DeferredReusePolicy, KeepsPendingWhenNotCompleted) {
 }
 
 TEST(DeferredReusePolicy, RemoveBlocksInChunkFiltersPendingAndReady) {
-    FakeResource resource;
-    Policy policy;
-    Policy::Config cfg{};
-    cfg.resource = &resource;
-    policy.initialize(cfg);
+  FakeResource resource;
+  Policy policy;
+  Policy::Config cfg{};
+  cfg.resource = &resource;
+  policy.initialize(cfg);
 
   CpuReuseToken token{};
   BufferResource block1 = makeBlock(BufferViewHandle{10});
@@ -122,12 +123,12 @@ TEST(DeferredReusePolicy, RemoveBlocksInChunkFiltersPendingAndReady) {
 
 TEST(DeferredReusePolicy, FlushPendingWaitsUntilComplete) {
 
-    FakeResource resource;
-    Policy policy;
-    Policy::Config cfg;
-    cfg.resource = &resource;
-    cfg.timeout_ms = std::chrono::milliseconds{5};
-    policy.initialize(cfg);
+  FakeResource resource;
+  Policy policy;
+  Policy::Config cfg;
+  cfg.resource = &resource;
+  cfg.timeout_ms = std::chrono::milliseconds{5};
+  policy.initialize(cfg);
 
   CpuReuseToken token{};
   resource.next_result.store(false);

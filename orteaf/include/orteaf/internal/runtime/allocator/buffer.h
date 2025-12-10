@@ -3,7 +3,7 @@
 #include <variant>
 
 #include "orteaf/internal/backend/backend.h"
-#include "orteaf/internal/runtime/allocator/memory_block.h"
+#include "orteaf/internal/runtime/allocator/buffer_resource.h"
 
 namespace orteaf::internal::runtime::allocator {
 

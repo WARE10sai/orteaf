@@ -7,7 +7,7 @@
 #include <orteaf/internal/backend/backend.h>
 #include <orteaf/internal/base/heap_vector.h>
 #include <orteaf/internal/diagnostics/error/error_macros.h>
-#include <orteaf/internal/runtime/allocator/memory_block.h>
+#include <orteaf/internal/runtime/allocator/buffer_resource.h>
 #include <orteaf/internal/runtime/allocator/policies/policy_config.h>
 
 namespace orteaf::internal::runtime::allocator::policies {
@@ -21,22 +21,25 @@ namespace orteaf::internal::runtime::allocator::policies {
 template <typename Resource, ::orteaf::internal::backend::Backend B>
 class HostStackFreelistPolicy {
 public:
-  using BufferResource = ::orteaf::internal::runtime::allocator::BufferResource<B>;
+  using BufferResource =
+      ::orteaf::internal::runtime::allocator::BufferResource<B>;
   using LaunchParams =
-      typename ::orteaf::internal::runtime::base::BackendTraits<B>::KernelLaunchParams;
+      typename ::orteaf::internal::runtime::base::BackendTraits<
+          B>::KernelLaunchParams;
 
+  struct Config : PolicyConfig<Resource> {
+    std::size_t min_block_size{64};
+    std::size_t max_block_size{0};
+  };
 
-    struct Config : PolicyConfig<Resource> {
-        std::size_t min_block_size{64};
-        std::size_t max_block_size{0};
-    };
-
-    void initialize(const Config& config) {
-        ORTEAF_THROW_IF_NULL(config.resource, "HostStackFreelistPolicy requires non-null Resource*");
-        ORTEAF_THROW_IF(config.max_block_size == 0, InvalidParameter, "max_block_size must be non-zero");
-        resource_ = config.resource;
-        configureBounds(config.min_block_size, config.max_block_size);
-    }
+  void initialize(const Config &config) {
+    ORTEAF_THROW_IF_NULL(config.resource,
+                         "HostStackFreelistPolicy requires non-null Resource*");
+    ORTEAF_THROW_IF(config.max_block_size == 0, InvalidParameter,
+                    "max_block_size must be non-zero");
+    resource_ = config.resource;
+    configureBounds(config.min_block_size, config.max_block_size);
+  }
 
   void configureBounds(std::size_t min_block_size, std::size_t max_block_size) {
     ORTEAF_THROW_IF(resource_ == nullptr, InvalidState,
@@ -48,7 +51,7 @@ public:
   }
 
   void push(std::size_t list_index, const BufferResource &block,
-            const LaunchParams& /*launch_params*/ = {}) {
+            const LaunchParams & /*launch_params*/ = {}) {
     ORTEAF_THROW_IF(resource_ == nullptr, InvalidState,
                     "HostStackFreelistPolicy is not initialized");
     if (list_index >= stacks_.size()) {
@@ -58,7 +61,7 @@ public:
   }
 
   BufferResource pop(std::size_t list_index,
-                  const LaunchParams& /*launch_params*/ = {}) {
+                     const LaunchParams & /*launch_params*/ = {}) {
     ORTEAF_THROW_IF(resource_ == nullptr, InvalidState,
                     "HostStackFreelistPolicy is not initialized");
     if (list_index >= stacks_.size() || stacks_[list_index].empty()) {
@@ -87,7 +90,7 @@ public:
 
   void expand(std::size_t list_index, const BufferResource &chunk,
               std::size_t chunk_size, std::size_t block_size,
-              const LaunchParams& /*launch_params*/ = {}) {
+              const LaunchParams & /*launch_params*/ = {}) {
     ORTEAF_THROW_IF(resource_ == nullptr, InvalidState,
                     "HostStackFreelistPolicy is not initialized");
     if (!chunk.valid() || block_size == 0) {
@@ -103,7 +106,7 @@ public:
     for (std::size_t i = 0; i < num_blocks; ++i) {
       const std::size_t offset = base_offset + i * block_size;
       BufferResource block{chunk.handle,
-                        Resource::makeView(chunk.view, offset, block_size)};
+                           Resource::makeView(chunk.view, offset, block_size)};
       stacks_[list_index].pushBack(std::move(block));
     }
   }
