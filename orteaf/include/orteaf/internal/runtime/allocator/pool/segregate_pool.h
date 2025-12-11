@@ -14,9 +14,11 @@ template <typename BackendResource, typename FastFreePolicy,
           typename FreeListPolicy>
 class SegregatePool {
 public:
-  using BufferResource = typename BackendResource::BufferResource;
-  using LaunchParams = typename BackendResource::LaunchParams;
   static constexpr auto BackendType = BackendResource::backend_type_static();
+  using BufferResource = typename BackendResource::BufferResource;
+  using BufferBlock =
+      ::orteaf::internal::runtime::allocator::BufferBlock<BackendType>;
+  using LaunchParams = typename BackendResource::LaunchParams;
   using Stats = SegregatePoolStats<BackendType>;
 
   SegregatePool() = default;
@@ -102,10 +104,10 @@ public:
 
   const Stats &stats() const { return stats_; }
 
-  BufferResource allocate(std::size_t size, std::size_t alignment,
-                          LaunchParams &launch_params) {
+  BufferBlock allocate(std::size_t size, std::size_t alignment,
+                       LaunchParams &launch_params) {
     if (size == 0)
-      return BufferResource{};
+      return BufferBlock{};
 
     std::lock_guard<ThreadingPolicy> lock(threading_policy_);
 
@@ -119,7 +121,7 @@ public:
     const std::size_t block_size = blockSizeFor(size);
     const std::size_t list_idx = sizeClassIndex(block_size, min_block_size_);
 
-    BufferResource block = free_list_policy_.pop(list_idx, launch_params);
+    BufferBlock block = free_list_policy_.pop(list_idx, launch_params);
 
     if (!block.valid()) {
       expandPool(list_idx, block_size, launch_params);
@@ -135,8 +137,8 @@ public:
     return block;
   }
 
-  void deallocate(const BufferResource &block, std::size_t size,
-                  std::size_t alignment, LaunchParams &launch_params) {
+  void deallocate(BufferResource block, std::size_t size, std::size_t alignment,
+                  LaunchParams &launch_params) {
     if (!block.valid() || size == 0)
       return;
 
@@ -153,7 +155,7 @@ public:
     const std::size_t list_idx = sizeClassIndex(block_size, min_block_size_);
 
     chunk_locator_policy_.incrementPending(block.handle);
-    reuse_policy_.scheduleForReuse(block, list_idx, {});
+    reuse_policy_.scheduleForReuse(std::move(block), list_idx);
     stats_.updateDealloc(size);
   }
 
@@ -161,11 +163,11 @@ public:
     reuse_policy_.processPending();
 
     std::size_t freelist_index = 0;
-    BufferResource block{};
+    BufferBlock ready_block{};
 
-    while (reuse_policy_.getReadyItem(freelist_index, block)) {
-      chunk_locator_policy_.decrementPendingAndUsed(block.handle);
-      free_list_policy_.push(freelist_index, block, launch_params);
+    while (reuse_policy_.getReadyItem(freelist_index, ready_block)) {
+      chunk_locator_policy_.decrementPendingAndUsed(ready_block.handle);
+      free_list_policy_.push(freelist_index, ready_block, launch_params);
     }
   }
 
@@ -203,7 +205,7 @@ private:
     const std::size_t num_blocks = (chunk_size_ + block_size - 1) / block_size;
     const std::size_t actual_chunk_size = num_blocks * block_size;
 
-    BufferResource chunk = chunk_locator_policy_.addChunk(actual_chunk_size, 0);
+    BufferBlock chunk = chunk_locator_policy_.addChunk(actual_chunk_size, 0);
     if (!chunk.valid())
       return;
 

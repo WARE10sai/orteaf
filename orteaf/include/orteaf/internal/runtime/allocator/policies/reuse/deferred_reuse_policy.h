@@ -104,13 +104,13 @@ public:
     }
   }
 
-  bool getReadyItem(std::size_t &freelist_index, BufferResource &result) {
+  bool getReadyItem(std::size_t &freelist_index, BufferBlock &result) {
     if (ready_queue_.empty())
       return false;
     ReadyReuse item = std::move(ready_queue_.back());
     ready_queue_.resize(ready_queue_.size() - 1);
 
-    result = BufferResource::fromBlock(item.block);
+    result = std::move(item.block);
     freelist_index = item.freelist_index;
     return true;
   }

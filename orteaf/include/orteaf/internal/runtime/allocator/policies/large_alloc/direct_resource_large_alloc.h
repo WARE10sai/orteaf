@@ -11,6 +11,7 @@
 #include "orteaf/internal/diagnostics/log/log.h"
 #include "orteaf/internal/runtime/allocator/buffer_resource.h"
 #include "orteaf/internal/runtime/allocator/policies/policy_config.h"
+#include "orteaf/internal/runtime/base/backend_traits.h"
 
 namespace orteaf::internal::runtime::allocator::policies {
 
@@ -20,8 +21,7 @@ public:
   using BufferViewHandle = ::orteaf::internal::base::BufferViewHandle;
   using BufferView =
       typename ::orteaf::internal::runtime::base::BackendTraits<B>::BufferView;
-  using BufferResource =
-      ::orteaf::internal::runtime::allocator::BufferResource<B>;
+  using BufferBlock = ::orteaf::internal::runtime::allocator::BufferBlock<B>;
 
   DirectResourceLargeAllocPolicy() = default;
   DirectResourceLargeAllocPolicy(const DirectResourceLargeAllocPolicy &) =
@@ -42,7 +42,7 @@ public:
     resource_ = config.resource;
   }
 
-  BufferResource allocate(std::size_t size, std::size_t alignment) {
+  BufferBlock allocate(std::size_t size, std::size_t alignment) {
     ORTEAF_THROW_IF(resource_ == nullptr, InvalidState,
                     "DirectResourceLargeAllocPolicy is not initialized");
 
@@ -64,7 +64,7 @@ public:
     entry.alignment = alignment;
 #endif
     entries_[index] = entry;
-    return BufferResource(encodeId(index), buffer);
+    return BufferBlock(encodeId(index), buffer);
   }
 
   void deallocate(BufferViewHandle handle, std::size_t size,

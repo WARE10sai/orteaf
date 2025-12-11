@@ -33,8 +33,7 @@ public:
   using BufferViewHandle = ::orteaf::internal::base::BufferViewHandle;
   using BufferView =
       typename ::orteaf::internal::runtime::base::BackendTraits<B>::BufferView;
-  using BufferResource =
-      ::orteaf::internal::runtime::allocator::BufferResource<B>;
+  using BufferBlock = ::orteaf::internal::runtime::allocator::BufferBlock<B>;
 
   DirectChunkLocatorPolicy() = default;
   DirectChunkLocatorPolicy(const DirectChunkLocatorPolicy &) = delete;
@@ -66,12 +65,12 @@ public:
   }
 
   /**
-   * @brief チャンクを確保して登録し、対応する BufferResource を返す。
+   * @brief チャンクを確保して登録し、対応する BufferBlock を返す。
    * @param size 確保サイズ
    * @param alignment アラインメント
-   * @return 確保された BufferResource（失敗時は空）
+   * @return 確保された BufferBlock（失敗時は空）
    */
-  BufferResource addChunk(std::size_t size, std::size_t alignment) {
+  BufferBlock addChunk(std::size_t size, std::size_t alignment) {
 
     ORTEAF_THROW_IF(resource_ == nullptr, InvalidState,
                     "DirectChunkLocatorPolicy is not initialized");
@@ -84,7 +83,7 @@ public:
 
     const std::size_t slot = reserveSlot();
     chunks_[slot] = ChunkInfo{base, size, alignment, 0u, 0u, true};
-    return BufferResource{encodeId(slot), base};
+    return BufferBlock{encodeId(slot), base};
   }
 
   /**

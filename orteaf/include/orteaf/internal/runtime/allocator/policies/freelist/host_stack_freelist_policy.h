@@ -8,6 +8,7 @@
 #include <orteaf/internal/diagnostics/error/error_macros.h>
 #include <orteaf/internal/runtime/allocator/buffer_resource.h>
 #include <orteaf/internal/runtime/allocator/policies/policy_config.h>
+#include <orteaf/internal/runtime/base/backend_traits.h>
 
 namespace orteaf::internal::runtime::allocator::policies {
 
@@ -21,8 +22,9 @@ namespace orteaf::internal::runtime::allocator::policies {
 template <typename Resource, ::orteaf::internal::backend::Backend B>
 class HostStackFreelistPolicy {
 public:
-  using BufferResource =
-      ::orteaf::internal::runtime::allocator::BufferResource<B>;
+  using BufferBlock = ::orteaf::internal::runtime::allocator::BufferBlock<B>;
+  using BufferView = typename BufferBlock::BufferView;
+  using BufferViewHandle = typename BufferBlock::BufferViewHandle;
   using LaunchParams =
       typename ::orteaf::internal::runtime::base::BackendTraits<
           B>::KernelLaunchParams;
@@ -53,7 +55,7 @@ public:
     }
   }
 
-  void push(std::size_t list_index, const BufferResource &block,
+  void push(std::size_t list_index, const BufferBlock &block,
             const LaunchParams & /*launch_params*/ = {}) {
     ORTEAF_THROW_IF(resource_ == nullptr, InvalidState,
                     "HostStackFreelistPolicy is not initialized");
@@ -61,14 +63,14 @@ public:
     stacks_[list_index].pushBack(block);
   }
 
-  BufferResource pop(std::size_t list_index,
-                     const LaunchParams & /*launch_params*/ = {}) {
+  BufferBlock pop(std::size_t list_index,
+                  const LaunchParams & /*launch_params*/ = {}) {
     ORTEAF_THROW_IF(resource_ == nullptr, InvalidState,
                     "HostStackFreelistPolicy is not initialized");
     if (list_index >= stacks_.size() || stacks_[list_index].empty()) {
       return {};
     }
-    BufferResource block = std::move(stacks_[list_index].back());
+    BufferBlock block = std::move(stacks_[list_index].back());
     stacks_[list_index].resize(stacks_[list_index].size() - 1);
     return block;
   }
@@ -89,7 +91,7 @@ public:
     return total;
   }
 
-  void expand(std::size_t list_index, const BufferResource &chunk,
+  void expand(std::size_t list_index, const BufferBlock &chunk,
               std::size_t chunk_size, std::size_t block_size,
               const LaunchParams & /*launch_params*/ = {}) {
     ORTEAF_THROW_IF(resource_ == nullptr, InvalidState,
@@ -104,8 +106,8 @@ public:
     const std::size_t base_offset = chunk.view.offset();
     for (std::size_t i = 0; i < num_blocks; ++i) {
       const std::size_t offset = base_offset + i * block_size;
-      BufferResource block{chunk.handle,
-                           Resource::makeView(chunk.view, offset, block_size)};
+      BufferBlock block{chunk.handle,
+                        Resource::makeView(chunk.view, offset, block_size)};
       stacks_[list_index].pushBack(std::move(block));
     }
   }
@@ -116,11 +118,11 @@ public:
         continue;
       }
 
-      ::orteaf::internal::base::HeapVector<BufferResource> kept;
+      ::orteaf::internal::base::HeapVector<BufferBlock> kept;
       kept.reserve(stack.size());
 
       while (!stack.empty()) {
-        BufferResource top = std::move(stack.back());
+        BufferBlock top = std::move(stack.back());
         stack.resize(stack.size() - 1);
         if (top.handle != handle) {
           kept.pushBack(std::move(top));
@@ -140,7 +142,7 @@ private:
     }
   }
 
-  using BlockStack = ::orteaf::internal::base::HeapVector<BufferResource>;
+  using BlockStack = ::orteaf::internal::base::HeapVector<BufferBlock>;
 
   Resource *resource_{nullptr};
   ::orteaf::internal::base::HeapVector<BlockStack> stacks_{};
