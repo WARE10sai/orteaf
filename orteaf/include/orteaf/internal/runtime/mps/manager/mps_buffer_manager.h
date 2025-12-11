@@ -70,12 +70,12 @@ template <typename ResourceT> struct MpsBufferManagerTraitsT {
     if (pool == nullptr || !buffer.valid()) {
       return;
     }
-    auto res = buffer.asResource<Backend::Mps>();
+    auto &res = buffer.asResource<Backend::Mps>();
     if (!res.valid()) {
       return;
     }
     typename OpsType::LaunchParams params{};
-    pool->deallocate(res, buffer.size(), buffer.alignment(), params);
+    pool->deallocate(std::move(res), buffer.size(), buffer.alignment(), params);
   }
 };
 
