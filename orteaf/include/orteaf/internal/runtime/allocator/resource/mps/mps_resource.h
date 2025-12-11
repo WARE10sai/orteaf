@@ -38,6 +38,15 @@ public:
         CommandQueueLease command_queue{};
   };
 
+  static constexpr ::orteaf::internal::backend::Backend backend_type_static() {
+    return ::orteaf::internal::backend::Backend::Mps;
+  }
+
+  constexpr ::orteaf::internal::backend::Backend backend_type()
+      const noexcept {
+    return backend_type_static();
+  }
+
   struct Config {
     ::orteaf::internal::base::DeviceHandle device_handle{};
     ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t device{
