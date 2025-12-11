@@ -4,7 +4,7 @@
 
 #include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/base/heap_vector.h"
-#include "orteaf/internal/runtime/mps/ops/mps_common_ops.h" // Fix include
+#include "orteaf/internal/runtime/mps/api/mps_runtime_api.h"
 #include "orteaf/internal/runtime/mps/platform/mps_fast_ops.h"
 #include "orteaf/internal/runtime/mps/platform/wrapper/mps_compute_command_encoder.h"
 #include "orteaf/internal/runtime/mps/resource/mps_fence_ticket.h"
@@ -71,8 +71,9 @@ public:
    * @brief Build per-device pipeline cache for all registered keys.
    * Reinitializing a device clears and rebuilds its cache.
    */
-  template <typename PrivateOps =
-                ::orteaf::internal::runtime::mps::ops::MpsPrivateOps>
+  template <
+      typename PrivateOps =
+          ::orteaf::internal::runtime::mps::api::MpsRuntimeApi>
   void initialize(::orteaf::internal::base::DeviceHandle device) {
     auto entry_idx = findEntryIndex(device);
     if (entry_idx == kInvalidIndex) {
@@ -255,7 +256,7 @@ public:
   template <
       typename FastOps = ::orteaf::internal::runtime::mps::platform::MpsFastOps,
       typename PrivateOps =
-          ::orteaf::internal::runtime::mps::ops::MpsPrivateOps>
+          ::orteaf::internal::runtime::mps::api::MpsRuntimeApi>
   ::orteaf::internal::runtime::mps::resource::MpsFenceTicket updateFence(
       ::orteaf::internal::base::DeviceHandle device,
       const ::orteaf::internal::runtime::mps::manager::MpsCommandQueueManager::
@@ -275,7 +276,7 @@ public:
   template <
       typename FastOps = ::orteaf::internal::runtime::mps::platform::MpsFastOps,
       typename PrivateOps =
-          ::orteaf::internal::runtime::mps::ops::MpsPrivateOps>
+          ::orteaf::internal::runtime::mps::api::MpsRuntimeApi>
   void updateFenceAndTrack(
       ::orteaf::internal::base::DeviceHandle device,
       const ::orteaf::internal::runtime::mps::manager::MpsCommandQueueManager::
@@ -298,7 +299,7 @@ public:
   template <
       typename FastOps = ::orteaf::internal::runtime::mps::platform::MpsFastOps,
       typename PrivateOps =
-          ::orteaf::internal::runtime::mps::ops::MpsPrivateOps,
+          ::orteaf::internal::runtime::mps::api::MpsRuntimeApi,
       typename Binder>
   ::orteaf::internal::runtime::mps::platform::wrapper::MPSCommandBuffer_t
   dispatchOneShot(const ::orteaf::internal::runtime::mps::manager::
@@ -341,7 +342,7 @@ public:
   template <
       typename FastOps = ::orteaf::internal::runtime::mps::platform::MpsFastOps,
       typename PrivateOps =
-          ::orteaf::internal::runtime::mps::ops::MpsPrivateOps,
+          ::orteaf::internal::runtime::mps::api::MpsRuntimeApi,
       typename Binder>
   ::orteaf::internal::runtime::mps::platform::wrapper::MPSCommandBuffer_t
   dispatchOneShot(const ::orteaf::internal::runtime::mps::manager::

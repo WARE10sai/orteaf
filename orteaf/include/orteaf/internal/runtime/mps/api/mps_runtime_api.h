@@ -3,15 +3,17 @@
 #if ORTEAF_ENABLE_MPS
 
 #include <cstddef>
+#include <memory>
 #include <utility>
 
 #include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/runtime/mps/manager/mps_runtime_manager.h"
-#include "orteaf/internal/runtime/mps/ops/mps_common_ops.h"
+#include "orteaf/internal/runtime/mps/platform/mps_slow_ops.h"
 
-namespace orteaf::internal::runtime::mps::ops {
+namespace orteaf::internal::runtime::mps::api {
 
-class MpsPrivateOps {
+class MpsRuntimeApi {
+public:
   using Runtime = ::orteaf::internal::runtime::mps::manager::MpsRuntimeManager;
   using DeviceHandle = ::orteaf::internal::base::DeviceHandle;
   using LibraryKey = ::orteaf::internal::runtime::mps::manager::LibraryKey;
@@ -20,20 +22,23 @@ class MpsPrivateOps {
       MpsComputePipelineStateManager::PipelineLease;
   using FenceLease =
       ::orteaf::internal::runtime::mps::manager::MpsFenceManager::FenceLease;
+  using SlowOps = ::orteaf::internal::runtime::mps::platform::MpsSlowOps;
 
-public:
-  MpsPrivateOps() = default;
-  MpsPrivateOps(const MpsPrivateOps &) = default;
-  MpsPrivateOps &operator=(const MpsPrivateOps &) = default;
-  MpsPrivateOps(MpsPrivateOps &&) = default;
-  MpsPrivateOps &operator=(MpsPrivateOps &&) = default;
-  ~MpsPrivateOps() = default;
+  MpsRuntimeApi() = delete;
+
+  // Initialize runtime with a provided SlowOps implementation, or default
+  // MpsSlowOpsImpl.
+  static void initialize(std::unique_ptr<SlowOps> slow_ops = nullptr) {
+    runtime().initialize(std::move(slow_ops));
+  }
+
+  static void shutdown() { runtime().shutdown(); }
 
   // Acquire a single pipeline for the given device/library/function key trio.
   static PipelineLease acquirePipeline(DeviceHandle device,
                                        const LibraryKey &library_key,
                                        const FunctionKey &function_key) {
-    Runtime &rt = MpsCommonOps::runtime();
+    Runtime &rt = runtime();
     auto lib_mgr_lease = rt.deviceManager().acquireLibraryManager(device);
     auto library = lib_mgr_lease->acquire(library_key);
     auto pipeline_mgr = lib_mgr_lease->acquirePipelineManager(library);
@@ -41,12 +46,19 @@ public:
   }
 
   static FenceLease acquireFence(DeviceHandle device) {
-    Runtime &rt = MpsCommonOps::runtime();
+    Runtime &rt = runtime();
     auto fence_pool = rt.deviceManager().acquireFencePool(device);
     return fence_pool->acquire();
   }
+
+private:
+  // Singleton access to the runtime manager (hidden from external callers).
+  static Runtime &runtime() {
+    static Runtime instance{};
+    return instance;
+  }
 };
 
-} // namespace orteaf::internal::runtime::mps::ops
+} // namespace orteaf::internal::runtime::mps::api
 
 #endif // ORTEAF_ENABLE_MPS
