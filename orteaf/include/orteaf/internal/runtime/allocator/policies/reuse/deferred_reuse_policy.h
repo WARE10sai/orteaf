@@ -11,18 +11,14 @@
 #include <orteaf/internal/diagnostics/error/error_macros.h>
 #include <orteaf/internal/runtime/allocator/buffer_resource.h>
 #include <orteaf/internal/runtime/allocator/policies/policy_config.h>
-#include <orteaf/internal/runtime/base/backend_traits.h>
 
 namespace orteaf::internal::runtime::allocator::policies {
 
-template <typename Resource, ::orteaf::internal::backend::Backend B>
-class DeferredReusePolicy {
+template <typename Resource> class DeferredReusePolicy {
 public:
-  using BufferViewHandle = ::orteaf::internal::base::BufferViewHandle;
-  using BufferResource =
-      ::orteaf::internal::runtime::allocator::BufferResource<B>;
-  using ReuseToken =
-      typename ::orteaf::internal::runtime::base::BackendTraits<B>::ReuseToken;
+  using BufferResource = typename Resource::BufferResource;
+  using BufferViewHandle = typename BufferResource::BufferViewHandle;
+  using ReuseToken = typename Resource::ReuseToken;
 
   DeferredReusePolicy() = default;
   DeferredReusePolicy(const DeferredReusePolicy &) = delete;
