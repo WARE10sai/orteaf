@@ -7,13 +7,15 @@
 #include <limits>
 #include <unordered_map>
 
-#include "orteaf/internal/runtime/mps/platform/wrapper/mps_heap.h"
-#include "orteaf/internal/base/heap_vector.h"
-#include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/base/lease.h"
-#include "orteaf/internal/diagnostics/error/error.h"
-#include "orteaf/internal/runtime/mps/platform/mps_slow_ops.h"
-#include "orteaf/internal/runtime/base/base_manager.h"
+#include <orteaf/internal/runtime/mps/platform/wrapper/mps_heap.h>
+#include <orteaf/internal/base/heap_vector.h>
+#include <orteaf/internal/base/handle.h>
+#include <orteaf/internal/base/lease.h>
+#include <orteaf/internal/diagnostics/error/error.h>
+#include <orteaf/internal/runtime/mps/platform/mps_slow_ops.h>
+#include <orteaf/internal/runtime/base/base_manager.h>
+#include <orteaf/internal/runtime/mps/manager/mps_buffer_manager.h>
+#include <orteaf/internal/runtime/allocator/resource/mps/mps_resource.h>
 
 namespace orteaf::internal::runtime::mps::manager {
 
@@ -60,6 +62,8 @@ struct HeapDescriptorKeyHasher {
 struct MpsHeapManagerState {
   HeapDescriptorKey key{};
   ::orteaf::internal::runtime::mps::platform::wrapper::MPSHeap_t heap{nullptr};
+  ::orteaf::internal::runtime::mps::manager::MpsBufferManagerT<
+      ::orteaf::internal::runtime::allocator::resource::mps::MpsResource> buffer_manager;
   std::uint32_t generation{0};
   bool alive{false};
   bool in_use{false};
