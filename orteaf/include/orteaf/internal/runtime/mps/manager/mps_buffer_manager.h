@@ -110,7 +110,6 @@ public:
   MpsBufferManagerT(MpsBufferManagerT &&other) noexcept
       : Base(std::move(other)), pool_config_(std::move(other.pool_config_)),
         resource_config_(std::move(other.resource_config_)),
-        backend_resource_(std::move(other.backend_resource_)),
         pool_(std::move(other.pool_)) {}
 
   MpsBufferManagerT &operator=(MpsBufferManagerT &&other) noexcept {
@@ -118,7 +117,6 @@ public:
       Base::operator=(std::move(other));
       pool_config_ = std::move(other.pool_config_);
       resource_config_ = std::move(other.resource_config_);
-      backend_resource_ = std::move(other.backend_resource_);
       pool_ = std::move(other.pool_);
     }
     return *this;
@@ -145,9 +143,10 @@ public:
   void initialize(DeviceType device, std::size_t capacity) {
     shutdown();
 
-    backend_resource_.initialize(resource_config_);
+    Resource backend_resource{};
+    backend_resource.initialize(resource_config_);
     pool_.~Pool();
-    new (&pool_) Pool(std::move(backend_resource_));
+    new (&pool_) Pool(std::move(backend_resource));
 
     typename Pool::Config pool_cfg{};
     pool_cfg.chunk_size = pool_config_.chunk_size;
@@ -171,8 +170,6 @@ public:
     Base::shutdown();
     pool_.~Pool();
     new (&pool_) Pool{};
-    backend_resource_.~Resource();
-    new (&backend_resource_) Resource{};
   }
 
   Pool *pool() { return &pool_; }
@@ -194,7 +191,6 @@ private:
   typename Resource::Config resource_config_{};
 
   // Runtime state
-  Resource backend_resource_{};
   Pool pool_{};
 };
 
