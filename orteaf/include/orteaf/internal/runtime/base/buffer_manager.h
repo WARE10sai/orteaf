@@ -87,7 +87,6 @@ public:
   BufferManager &operator=(BufferManager &&) = default;
   ~BufferManager() = default;
 
-  using Base::device_;
   using Base::free_list_;
   using Base::growth_chunk_size_;
   using Base::initialized_;
@@ -229,6 +228,13 @@ public:
     release(lease.handle());
     lease.invalidate();
   }
+
+#if ORTEAF_ENABLE_TEST
+  Device deviceForTest() const noexcept { return device_; }
+#endif
+
+protected:
+  Device device_{nullptr};
 };
 
 } // namespace orteaf::internal::runtime::base

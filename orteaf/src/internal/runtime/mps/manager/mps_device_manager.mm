@@ -159,23 +159,6 @@ bool MpsDeviceManager::isAlive(
   return states_[index].is_alive;
 }
 
-#if ORTEAF_ENABLE_TEST
-MpsDeviceManager::DeviceDebugState MpsDeviceManager::debugState(
-    ::orteaf::internal::base::DeviceHandle handle) const {
-  DeviceDebugState debug{};
-  const std::size_t index =
-      static_cast<std::size_t>(static_cast<std::uint32_t>(handle));
-  if (index < states_.size()) {
-    debug.in_range = true;
-    const auto &state = states_[index];
-    debug.is_alive = state.is_alive;
-    debug.has_device = state.device != nullptr;
-    debug.arch = state.arch;
-  }
-  return debug;
-}
-#endif
-
 void MpsDeviceManagerState::reset(SlowOps *slow_ops) noexcept {
   command_queue_manager.shutdown();
   heap_manager.shutdown();

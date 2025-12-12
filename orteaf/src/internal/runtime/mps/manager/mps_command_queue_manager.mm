@@ -205,30 +205,6 @@ void MpsCommandQueueManager::releaseUnusedQueues() {
   free_list_.clear();
 }
 
-#if ORTEAF_ENABLE_TEST
-MpsCommandQueueManager::DebugState MpsCommandQueueManager::debugState(
-    ::orteaf::internal::base::CommandQueueHandle handle) const {
-  DebugState snapshot{};
-  snapshot.growth_chunk_size = growth_chunk_size_;
-  const std::size_t index = static_cast<std::size_t>(handle.index);
-  if (index < states_.size()) {
-    const State &state = states_[index];
-    snapshot.generation = state.generation;
-    snapshot.in_use = state.in_use;
-    snapshot.queue_allocated = state.command_queue != nullptr;
-#if ORTEAF_MPS_DEBUG_ENABLED
-    snapshot.submit_serial = state.serial.submit_serial;
-    snapshot.completed_serial = state.serial.completed_serial;
-    snapshot.event_refcount = state.event_refcount;
-    snapshot.serial_refcount = state.serial_refcount;
-#endif
-  } else {
-    snapshot.generation = std::numeric_limits<std::uint32_t>::max();
-  }
-  return snapshot;
-}
-#endif
-
 void MpsCommandQueueManagerState::resetHazards() noexcept {
   // Only used in debug builds; keep no-op otherwise.
 #if ORTEAF_MPS_DEBUG_ENABLED

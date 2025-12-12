@@ -175,25 +175,34 @@ public:
   bool isAlive(::orteaf::internal::base::DeviceHandle handle) const;
 
 #if ORTEAF_ENABLE_TEST
-  struct DebugState {
-    std::size_t device_count{0};
-    bool initialized{false};
-  };
-
-  struct DeviceDebugState {
-    bool in_range{false};
-    bool is_alive{false};
-    bool has_device{false};
-    ::orteaf::internal::architecture::Architecture arch{
-        ::orteaf::internal::architecture::Architecture::MpsGeneric};
-  };
-
-  DebugState debugState() const {
-    return DebugState{states_.size(), initialized_};
+  bool isInRangeForTest(::orteaf::internal::base::DeviceHandle handle) const {
+    return static_cast<std::size_t>(handle.index) < states_.size();
   }
 
-  DeviceDebugState
-  debugState(::orteaf::internal::base::DeviceHandle handle) const;
+  bool isAliveForTest(::orteaf::internal::base::DeviceHandle handle) const {
+    const std::size_t index = static_cast<std::size_t>(handle.index);
+    if (index >= states_.size()) {
+      return false;
+    }
+    return states_[index].is_alive;
+  }
+
+  bool hasDeviceForTest(::orteaf::internal::base::DeviceHandle handle) const {
+    const std::size_t index = static_cast<std::size_t>(handle.index);
+    if (index >= states_.size()) {
+      return false;
+    }
+    return states_[index].device != nullptr;
+  }
+
+  ::orteaf::internal::architecture::Architecture
+  archForTest(::orteaf::internal::base::DeviceHandle handle) const {
+    const std::size_t index = static_cast<std::size_t>(handle.index);
+    if (index >= states_.size()) {
+      return ::orteaf::internal::architecture::Architecture::MpsGeneric;
+    }
+    return states_[index].arch;
+  }
 #endif
 
 private:

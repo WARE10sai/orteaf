@@ -112,21 +112,70 @@ public:
   void releaseUnusedQueues();
 
 #if ORTEAF_ENABLE_TEST
-  struct DebugState {
-    std::uint32_t generation{0};
-    bool in_use{false};
-    bool queue_allocated{false};
-    std::size_t growth_chunk_size{0};
-#if ORTEAF_MPS_DEBUG_ENABLED
-    std::uint64_t submit_serial{0};
-    std::uint64_t completed_serial{0};
-    std::size_t event_refcount{0};
-    std::size_t serial_refcount{0};
-#endif
-  };
+  std::uint32_t
+  generationForTest(::orteaf::internal::base::CommandQueueHandle handle) const {
+    const std::size_t index = static_cast<std::size_t>(handle.index);
+    if (index >= states_.size()) {
+      return 0;
+    }
+    return states_[index].generation;
+  }
 
-  DebugState
-  debugState(::orteaf::internal::base::CommandQueueHandle handle) const;
+  bool
+  isInUseForTest(::orteaf::internal::base::CommandQueueHandle handle) const {
+    const std::size_t index = static_cast<std::size_t>(handle.index);
+    if (index >= states_.size()) {
+      return false;
+    }
+    return states_[index].in_use;
+  }
+
+  bool isQueueAllocatedForTest(
+      ::orteaf::internal::base::CommandQueueHandle handle) const {
+    const std::size_t index = static_cast<std::size_t>(handle.index);
+    if (index >= states_.size()) {
+      return false;
+    }
+    return states_[index].command_queue != nullptr;
+  }
+
+#if ORTEAF_MPS_DEBUG_ENABLED
+  std::uint64_t submitSerialForTest(
+      ::orteaf::internal::base::CommandQueueHandle handle) const {
+    const std::size_t index = static_cast<std::size_t>(handle.index);
+    if (index >= states_.size()) {
+      return 0;
+    }
+    return states_[index].serial.submit_serial;
+  }
+
+  std::uint64_t completedSerialForTest(
+      ::orteaf::internal::base::CommandQueueHandle handle) const {
+    const std::size_t index = static_cast<std::size_t>(handle.index);
+    if (index >= states_.size()) {
+      return 0;
+    }
+    return states_[index].serial.completed_serial;
+  }
+
+  std::size_t eventRefcountForTest(
+      ::orteaf::internal::base::CommandQueueHandle handle) const {
+    const std::size_t index = static_cast<std::size_t>(handle.index);
+    if (index >= states_.size()) {
+      return 0;
+    }
+    return states_[index].event_refcount;
+  }
+
+  std::size_t serialRefcountForTest(
+      ::orteaf::internal::base::CommandQueueHandle handle) const {
+    const std::size_t index = static_cast<std::size_t>(handle.index);
+    if (index >= states_.size()) {
+      return 0;
+    }
+    return states_[index].serial_refcount;
+  }
+#endif
 #endif
 
 private:
@@ -141,6 +190,9 @@ private:
     return const_cast<MpsCommandQueueManager *>(this)->ensureActiveState(
         handle);
   }
+
+  ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t device_{
+      nullptr};
 };
 
 } // namespace orteaf::internal::runtime::mps::manager
