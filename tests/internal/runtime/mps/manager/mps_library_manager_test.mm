@@ -191,8 +191,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest, GetOrCreateAllocatesAndCachesLibrary) {
 
   const auto &snapshot = manager.stateForTest(lease0.handle().index);
   EXPECT_TRUE(snapshot.alive);
-  EXPECT_TRUE(snapshot.handle != nullptr);
-  EXPECT_EQ(snapshot.key.identifier, *maybe_name);
+  EXPECT_TRUE(snapshot.resource.library != nullptr);
   lease1.release();
   lease0.release();
 }
@@ -221,7 +220,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest, ReleasedLeaseDoesNotAffectLibrary) {
   // Library is not released until shutdown
   const auto &snapshot = manager.stateForTest(handle_id.index);
   EXPECT_TRUE(snapshot.alive);
-  EXPECT_TRUE(snapshot.handle != nullptr);
+  EXPECT_TRUE(snapshot.resource.library != nullptr);
 
   // Reacquire returns the same library
   auto reacquired = manager.acquire(key);

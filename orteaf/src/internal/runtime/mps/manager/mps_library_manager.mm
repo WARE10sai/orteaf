@@ -2,37 +2,34 @@
 
 #if ORTEAF_ENABLE_MPS
 
+#include "orteaf/internal/diagnostics/error/error.h"
+
 namespace orteaf::internal::runtime::mps::manager {
 
-void MpsLibraryManager::initialize(
-    ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t device,
-    SlowOps *slow_ops, std::size_t capacity) {
+void MpsLibraryManager::initialize(DeviceType device, SlowOps *ops,
+                                   std::size_t capacity) {
   shutdown();
   if (device == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "MPS library manager requires a valid device");
   }
-  if (slow_ops == nullptr) {
+  if (ops == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "MPS library manager requires valid ops");
   }
-  if (capacity > ::orteaf::internal::base::LibraryHandle::invalid_index()) {
+  if (capacity > static_cast<std::size_t>(LibraryHandle::invalid_index())) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-        "Requested MPS library capacity exceeds supported limit");
+        "MPS library manager capacity exceeds maximum handle range");
   }
-
   device_ = device;
-  ops_ = slow_ops;
-
-  states_.clear();
-  free_list_.clear();
+  ops_ = ops;
+  clearCacheStates();
   key_to_index_.clear();
-
   if (capacity > 0) {
-    growPool(capacity);
+    states_.reserve(capacity);
   }
   initialized_ = true;
 }
@@ -44,12 +41,15 @@ void MpsLibraryManager::shutdown() {
   for (std::size_t i = 0; i < states_.size(); ++i) {
     State &state = states_[i];
     if (state.alive) {
-      state.pipeline_manager.shutdown();
-      ops_->destroyLibrary(state.handle);
+      state.resource.pipeline_manager.shutdown();
+      if (state.resource.library != nullptr) {
+        ops_->destroyLibrary(state.resource.library);
+        state.resource.library = nullptr;
+      }
+      state.alive = false;
     }
   }
-  states_.clear();
-  free_list_.clear();
+  clearCacheStates();
   key_to_index_.clear();
   device_ = nullptr;
   ops_ = nullptr;
@@ -60,29 +60,39 @@ MpsLibraryManager::LibraryLease
 MpsLibraryManager::acquire(const LibraryKey &key) {
   ensureInitialized();
   validateKey(key);
+
+  // Check if already cached
   if (auto it = key_to_index_.find(key); it != key_to_index_.end()) {
-    return acquireLibraryFromHandle(encodeHandle(it->second));
+    incrementUseCount(it->second);
+    return LibraryLease{this, createHandle<LibraryHandle>(it->second),
+                        states_[it->second].resource.library};
   }
+
+  // Create new entry
   const std::size_t index = allocateSlot();
   State &state = states_[index];
-  state.handle = createLibrary(key);
-  state.key = key;
-  state.pipeline_manager.initialize(device_, state.handle, ops_, 0);
-  state.alive = true;
-  const auto handle = encodeHandle(index);
-  key_to_index_.emplace(state.key, index);
-  return LibraryLease{this, handle, state.handle};
+  state.resource.library = createLibrary(key);
+  state.resource.pipeline_manager.initialize(device_, state.resource.library,
+                                             ops_, 0);
+  markSlotAlive(index);
+  key_to_index_.emplace(key, index);
+
+  return LibraryLease{this, createHandle<LibraryHandle>(index),
+                      state.resource.library};
 }
 
 MpsLibraryManager::LibraryLease
 MpsLibraryManager::acquire(const PipelineManagerLease &pipeline_lease) {
-  return acquireLibraryFromHandle(pipeline_lease.handle());
+  State &state = validateAndGetState(pipeline_lease.handle());
+  incrementUseCount(static_cast<std::size_t>(pipeline_lease.handle().index));
+  return LibraryLease{this, pipeline_lease.handle(), state.resource.library};
 }
 
 MpsLibraryManager::PipelineManagerLease
 MpsLibraryManager::acquirePipelineManager(const LibraryLease &lease) {
-  State &state = ensureAliveState(lease.handle());
-  return PipelineManagerLease{this, lease.handle(), &state.pipeline_manager};
+  State &state = validateAndGetState(lease.handle());
+  return PipelineManagerLease{this, lease.handle(),
+                              &state.resource.pipeline_manager};
 }
 
 MpsLibraryManager::PipelineManagerLease
@@ -92,35 +102,30 @@ MpsLibraryManager::acquirePipelineManager(const LibraryKey &key) {
 
   std::size_t index = 0;
   State *state = nullptr;
+
   if (auto it = key_to_index_.find(key); it != key_to_index_.end()) {
     index = it->second;
     state = &states_[index];
-    ensureAliveState(encodeHandle(index));
+    incrementUseCount(index);
   } else {
     index = allocateSlot();
     state = &states_[index];
-    state->handle = createLibrary(key);
-    state->key = key;
-    state->pipeline_manager.initialize(device_, state->handle, ops_, 0);
-    state->alive = true;
-    key_to_index_.emplace(state->key, index);
+    state->resource.library = createLibrary(key);
+    state->resource.pipeline_manager.initialize(
+        device_, state->resource.library, ops_, 0);
+    markSlotAlive(index);
+    key_to_index_.emplace(key, index);
   }
 
-  const auto handle = encodeHandle(index);
-  return PipelineManagerLease{this, handle, &state->pipeline_manager};
-}
-
-MpsLibraryManager::LibraryLease MpsLibraryManager::acquireLibraryFromHandle(
-    ::orteaf::internal::base::LibraryHandle handle) {
-  State &state = ensureAliveState(handle);
-  return LibraryLease{this, handle, state.handle};
+  return PipelineManagerLease{this, createHandle<LibraryHandle>(index),
+                              &state->resource.pipeline_manager};
 }
 
 void MpsLibraryManager::release(LibraryLease &lease) noexcept {
   if (!lease) {
     return;
   }
-  releaseHandle(lease.handle());
+  decrementUseCount(static_cast<std::size_t>(lease.handle().index));
   lease.invalidate();
 }
 
@@ -128,13 +133,8 @@ void MpsLibraryManager::release(PipelineManagerLease &lease) noexcept {
   if (!lease) {
     return;
   }
-  releaseHandle(lease.handle());
+  decrementUseCount(static_cast<std::size_t>(lease.handle().index));
   lease.invalidate();
-}
-
-void MpsLibraryManager::releaseHandle(
-    ::orteaf::internal::base::LibraryHandle handle) noexcept {
-  // No-op: Libraries are not released until shutdown
 }
 
 void MpsLibraryManager::validateKey(const LibraryKey &key) const {
@@ -143,30 +143,6 @@ void MpsLibraryManager::validateKey(const LibraryKey &key) const {
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "Library identifier cannot be empty");
   }
-}
-
-MpsLibraryManager::State &MpsLibraryManager::ensureAliveState(
-    ::orteaf::internal::base::LibraryHandle handle) {
-  ensureInitialized();
-  const std::size_t index = static_cast<std::size_t>(handle.index);
-  if (index >= states_.size()) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-        "MPS library handle out of range");
-  }
-  State &state = states_[index];
-  if (!state.alive) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS library handle is inactive");
-  }
-  return state;
-}
-
-::orteaf::internal::base::LibraryHandle
-MpsLibraryManager::encodeHandle(std::size_t index) const {
-  return ::orteaf::internal::base::LibraryHandle{
-      static_cast<std::uint32_t>(index)};
 }
 
 ::orteaf::internal::runtime::mps::platform::wrapper::MPSLibrary_t
