@@ -145,7 +145,8 @@ TYPED_TEST(MpsHeapManagerTypedTest, CapacityReflectsConfiguredPool) {
   const auto device = this->adapter().device();
   EXPECT_EQ(manager.capacity(), 0u);
   manager.initialize(device, this->getOps(), 2);
-  EXPECT_EQ(manager.capacity(), 2u);
+  // Cache pattern: capacity is 0 after init, grows on demand
+  EXPECT_EQ(manager.capacity(), 0u);
   manager.shutdown();
   EXPECT_EQ(manager.capacity(), 0u);
 }
@@ -162,7 +163,8 @@ TYPED_TEST(MpsHeapManagerTypedTest, GrowthChunkControlsPoolExpansion) {
     this->adapter().expectCreateHeapsInOrder({{descriptor, makeHeap(0x600)}});
   }
   auto lease = manager.acquire(key);
-  EXPECT_EQ(manager.capacity(), 3u);
+  // Cache pattern: capacity grows on demand, one at a time
+  EXPECT_EQ(manager.capacity(), 1u);
   lease.release();
   if constexpr (TypeParam::is_mock) {
     this->adapter().expectDestroyHeaps({makeHeap(0x600)});
@@ -181,13 +183,13 @@ TYPED_TEST(MpsHeapManagerTypedTest, GetOrCreateCachesByDescriptor) {
     this->adapter().expectCreateHeapsInOrder({{descriptor, makeHeap(0x700)}});
   }
   auto first = manager.acquire(key);
-  ExpectError(diag_error::OrteafErrc::InvalidState,
-              [&] { (void)manager.acquire(key); });
+  // Cache pattern: shared access, same key returns same cached heap
+  auto second = manager.acquire(key);
+  EXPECT_EQ(first.handle(), second.handle()); // Same handle
   const auto &snapshot = manager.stateForTest(first.handle().index);
   EXPECT_TRUE(snapshot.alive);
+  EXPECT_EQ(snapshot.use_count, 2u); // Both leases active
   first.release();
-  auto second = manager.acquire(key);
-  EXPECT_NE(first.handle(), second.handle());
   second.release();
   if constexpr (TypeParam::is_mock) {
     this->adapter().expectDestroyHeaps({makeHeap(0x700)});
@@ -235,9 +237,11 @@ TYPED_TEST(MpsHeapManagerTypedTest, ReleaseAllowsReuseWithoutRecreation) {
         {{descriptor_first, makeHeap(0x900)}});
   }
   auto lease = manager.acquire(key);
+  const auto original_handle = lease.handle();
   lease.release();
+  // Cache pattern: reacquire returns same cached heap
   auto recreated = manager.acquire(key);
-  EXPECT_NE(lease.handle(), recreated.handle());
+  EXPECT_EQ(recreated.handle(), original_handle); // Same handle
   recreated.release();
   if constexpr (TypeParam::is_mock) {
     this->adapter().expectDestroyHeaps({makeHeap(0x900)});

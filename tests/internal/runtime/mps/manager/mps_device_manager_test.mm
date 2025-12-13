@@ -502,7 +502,8 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
        ++index) {
     const auto id = base::DeviceHandle{index};
     auto heap_manager_lease = manager.acquireHeapManager(id);
-    EXPECT_EQ(heap_manager_lease->capacity(), kCapacity);
+    // Cache pattern: capacity is 0 after init, grows on demand
+    EXPECT_EQ(heap_manager_lease->capacity(), 0u);
   }
 
   manager.shutdown();
@@ -531,7 +532,8 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
        ++index) {
     const auto id = base::DeviceHandle{index};
     auto library_manager_lease = manager.acquireLibraryManager(id);
-    EXPECT_EQ(library_manager_lease->capacity(), kCapacity);
+    // Cache pattern: capacity is 0 after init, grows on demand
+    EXPECT_EQ(library_manager_lease->capacity(), 0u);
   }
   manager.shutdown();
 }

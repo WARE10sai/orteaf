@@ -169,8 +169,8 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
       {{function_handle, pipeline_handle}});
 
   auto lease = manager.acquire(key);
-  EXPECT_EQ(manager.capacity(), 2u);
-  EXPECT_EQ(manager.growthChunkSizeForTest(), 2u);
+  // Cache pattern: capacity grows on demand, one at a time
+  EXPECT_EQ(manager.capacity(), 1u);
 
   this->adapter().expectDestroyComputePipelineStates({pipeline_handle});
   this->adapter().expectDestroyFunctions({function_handle});
@@ -234,7 +234,8 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest, InitializeSetsCapacity) {
   if (!this->initializeManager(2)) {
     return;
   }
-  EXPECT_EQ(manager.capacity(), 2u);
+  // Cache pattern: capacity is 0 after init, grows on demand
+  EXPECT_EQ(manager.capacity(), 0u);
 }
 
 TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
@@ -341,41 +342,40 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
                     " to a valid function name to run";
     return;
   }
+
   mps_wrapper::MPSFunction_t first_function = nullptr;
   mps_wrapper::MPSComputePipelineState_t first_pipeline = nullptr;
-  mps_wrapper::MPSFunction_t second_function = nullptr;
-  mps_wrapper::MPSComputePipelineState_t second_pipeline = nullptr;
   if constexpr (TypeParam::is_mock) {
     first_function = makeFunction(0x820);
     first_pipeline = makePipeline(0x920);
-    second_function = makeFunction(0x821);
-    second_pipeline = makePipeline(0x921);
-    this->adapter().expectCreateFunctions(
-        {{*maybe_name, first_function}, {*maybe_name, second_function}});
-    this->adapter().expectCreateComputePipelineStates({
-        {first_function, first_pipeline},
-        {second_function, second_pipeline},
-    });
-    this->adapter().expectDestroyComputePipelineStates(
-        {first_pipeline, second_pipeline});
-    this->adapter().expectDestroyFunctions({first_function, second_function});
+    this->adapter().expectCreateFunctions({{*maybe_name, first_function}});
+    this->adapter().expectCreateComputePipelineStates(
+        {{first_function, first_pipeline}});
+    // Cache: only destroys at shutdown
+    this->adapter().expectDestroyComputePipelineStates({first_pipeline});
+    this->adapter().expectDestroyFunctions({first_function});
   }
 
   const auto key = mps_rt::FunctionKey::Named(*maybe_name);
   auto lease = manager.acquire(key);
   const auto handle = lease.handle();
   lease.release();
+  // Cache pattern: state stays alive after release
   const auto &released_snapshot = manager.stateForTest(handle.index);
-  EXPECT_FALSE(released_snapshot.alive);
+  EXPECT_TRUE(released_snapshot.alive);
+  EXPECT_EQ(released_snapshot.use_count, 0u);
 
+  // Reacquire returns the same cached resource
   auto reacquired = manager.acquire(key);
-  EXPECT_NE(reacquired.handle(), base::FunctionHandle{});
+  EXPECT_EQ(reacquired.handle(), handle); // Same handle
   if constexpr (TypeParam::is_mock) {
     EXPECT_EQ(reacquired.with_resource([](auto &r) { return r; }),
-              second_pipeline);
+              first_pipeline); // Same resource
   } else {
     EXPECT_TRUE(reacquired);
   }
+  reacquired.release();
+  manager.shutdown();
 }
 
 TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
@@ -388,6 +388,7 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
     GTEST_SKIP() << "Mock-only test";
     return;
   }
+
   const auto maybe_name = this->functionNameFromEnv();
   if (!maybe_name.has_value()) {
     GTEST_SKIP() << "Set " ORTEAF_MPS_ENV_FUNCTION_NAME
@@ -409,8 +410,11 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
   manager.release(lease);
   EXPECT_FALSE(static_cast<bool>(lease));
 
+  // Cache pattern: state stays alive after release
   const auto &snapshot = manager.stateForTest(original_handle.index);
-  EXPECT_FALSE(snapshot.alive);
+  EXPECT_TRUE(snapshot.alive);
+  EXPECT_EQ(snapshot.use_count, 0u);
+  manager.shutdown();
 }
 
 TYPED_TEST(MpsComputePipelineStateManagerTypedTest, EmptyIdentifierIsRejected) {

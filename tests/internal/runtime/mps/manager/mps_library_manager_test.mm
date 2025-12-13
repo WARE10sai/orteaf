@@ -121,8 +121,8 @@ TYPED_TEST(MpsLibraryManagerTypedTest, GrowthChunkSizeControlsPoolExpansion) {
   const auto handle = makeLibrary(0x3501);
   this->adapter().expectCreateLibraries({{"ChunkedLibrary", handle}});
   auto lease = manager.acquire(key);
-  EXPECT_EQ(manager.capacity(), 3u);
-  EXPECT_EQ(manager.growthChunkSizeForTest(), 3u);
+  // Cache pattern: capacity grows on demand, one at a time
+  EXPECT_EQ(manager.capacity(), 1u);
   this->adapter().expectDestroyLibraries({handle});
   lease.release();
   manager.shutdown();
@@ -160,7 +160,8 @@ TYPED_TEST(MpsLibraryManagerTypedTest, InitializeWithZeroCapacityIsAllowed) {
 TYPED_TEST(MpsLibraryManagerTypedTest, InitializeSetsCapacity) {
   auto &manager = this->manager();
   this->initializeManager(3);
-  EXPECT_EQ(manager.capacity(), 3u);
+  // Cache pattern: capacity is 0 after init, grows on demand
+  EXPECT_EQ(manager.capacity(), 0u);
 }
 
 TYPED_TEST(MpsLibraryManagerTypedTest, GetOrCreateAllocatesAndCachesLibrary) {
