@@ -9,18 +9,27 @@
 #include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/diagnostics/error/error_macros.h"
 #include "orteaf/internal/diagnostics/log/log.h"
-#include "orteaf/internal/runtime/allocator/memory_block.h"
+#include "orteaf/internal/runtime/allocator/buffer_resource.h"
 #include "orteaf/internal/runtime/allocator/policies/policy_config.h"
 
 namespace orteaf::internal::runtime::allocator::policies {
 
-template <typename Resource, ::orteaf::internal::backend::Backend B>
+template <typename Resource>
 class DirectResourceLargeAllocPolicy {
 public:
-  using BufferHandle = ::orteaf::internal::base::BufferHandle;
-  using BufferView =
-      typename ::orteaf::internal::runtime::base::BackendTraits<B>::BufferView;
-  using MemoryBlock = ::orteaf::internal::runtime::allocator::MemoryBlock<B>;
+  using BufferViewHandle = ::orteaf::internal::base::BufferViewHandle;
+  using BufferView = Resource::BufferView;
+  using BufferBlock = Resource::BufferBlock;
+
+  DirectResourceLargeAllocPolicy() = default;
+  DirectResourceLargeAllocPolicy(const DirectResourceLargeAllocPolicy &) =
+      delete;
+  DirectResourceLargeAllocPolicy &
+  operator=(const DirectResourceLargeAllocPolicy &) = delete;
+  DirectResourceLargeAllocPolicy(DirectResourceLargeAllocPolicy &&) = default;
+  DirectResourceLargeAllocPolicy &
+  operator=(DirectResourceLargeAllocPolicy &&) = default;
+  ~DirectResourceLargeAllocPolicy() = default;
 
   struct Config : PolicyConfig<Resource> {};
 
@@ -31,7 +40,7 @@ public:
     resource_ = config.resource;
   }
 
-  MemoryBlock allocate(std::size_t size, std::size_t alignment) {
+  BufferBlock allocate(std::size_t size, std::size_t alignment) {
     ORTEAF_THROW_IF(resource_ == nullptr, InvalidState,
                     "DirectResourceLargeAllocPolicy is not initialized");
 
@@ -53,10 +62,10 @@ public:
     entry.alignment = alignment;
 #endif
     entries_[index] = entry;
-    return MemoryBlock(encodeId(index), buffer);
+    return BufferBlock(encodeId(index), buffer);
   }
 
-  void deallocate(BufferHandle handle, std::size_t size,
+  void deallocate(BufferViewHandle handle, std::size_t size,
                   std::size_t alignment) {
 
     if (!isLargeAlloc(handle)) {
@@ -73,7 +82,7 @@ public:
       return;
     }
 
-    Resource::deallocate(entry.view, size, alignment);
+    resource_->deallocate(entry.view, size, alignment);
 #if ORTEAF_CORE_DEBUG_ENABLED
     ORTEAF_LOG_DEBUG_IF(Core,
                         entry.size != size || entry.alignment != alignment,
@@ -87,13 +96,13 @@ public:
     free_list_.pushBack(static_cast<std::size_t>(index));
   }
 
-  bool isLargeAlloc(BufferHandle handle) const {
+  bool isLargeAlloc(BufferViewHandle handle) const {
     // 上位ビットでLarge/Chunkを判定
-    return (static_cast<BufferHandle::underlying_type>(handle) & kLargeMask) !=
-           0;
+    return (static_cast<BufferViewHandle::underlying_type>(handle) &
+            kLargeMask) != 0;
   }
 
-  bool isAlive(BufferHandle handle) const {
+  bool isAlive(BufferViewHandle handle) const {
     if (!isLargeAlloc(handle)) {
       return false;
     }
@@ -106,9 +115,9 @@ public:
   std::size_t size() const { return entries_.size() - free_list_.size(); }
 
 private:
-  static constexpr BufferHandle::underlying_type kLargeMask =
-      BufferHandle::underlying_type{1u} << 31;
-  static constexpr BufferHandle::underlying_type kIndexMask = ~kLargeMask;
+  static constexpr BufferViewHandle::underlying_type kLargeMask =
+      BufferViewHandle::underlying_type{1u} << 31;
+  static constexpr BufferViewHandle::underlying_type kIndexMask = ~kLargeMask;
 
   struct Entry {
     BufferView view{};
@@ -119,16 +128,16 @@ private:
 #endif
   };
 
-  BufferHandle encodeId(std::size_t index) const {
+  BufferViewHandle encodeId(std::size_t index) const {
     // Large用のビットを立てて衝突を避ける
-    return BufferHandle{static_cast<BufferHandle::underlying_type>(index) |
-                        kLargeMask};
+    return BufferViewHandle{
+        static_cast<BufferViewHandle::underlying_type>(index) | kLargeMask};
   }
 
-  std::size_t indexFromId(BufferHandle handle) const {
+  std::size_t indexFromId(BufferViewHandle handle) const {
     // Large判定ビットを落としてインデックスに戻す
     return static_cast<std::size_t>(
-        static_cast<BufferHandle::underlying_type>(handle) & kIndexMask);
+        static_cast<BufferViewHandle::underlying_type>(handle) & kIndexMask);
   }
 
   std::size_t reserveSlot() {

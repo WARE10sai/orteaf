@@ -4,19 +4,16 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 
-#include "orteaf/internal/runtime/mps/platform/wrapper/mps_device.h"
-#include "orteaf/internal/runtime/mps/platform/wrapper/mps_library.h"
-#include "orteaf/internal/base/heap_vector.h"
 #include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/base/lease.h"
-#include "orteaf/internal/diagnostics/error/error.h"
-#include "orteaf/internal/runtime/base/base_manager.h"
+#include "orteaf/internal/runtime/base/shared_cache_manager.h"
 #include "orteaf/internal/runtime/mps/manager/mps_compute_pipeline_state_manager.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_device.h"
+#include "orteaf/internal/runtime/mps/platform/wrapper/mps_library.h"
 
 namespace orteaf::internal::runtime::mps::manager {
 
@@ -49,31 +46,37 @@ struct LibraryKeyHasher {
   }
 };
 
-struct MpsLibraryManagerState {
-  using PipelineManager = MpsComputePipelineStateManager;
-  LibraryKey key{};
-  ::orteaf::internal::runtime::mps::platform::wrapper::MPSLibrary_t handle{nullptr};
-  bool alive{false};
-  PipelineManager pipeline_manager{};
+// Resource struct: holds library + pipeline_manager
+struct MpsLibraryResource {
+  ::orteaf::internal::runtime::mps::platform::wrapper::MPSLibrary_t library{
+      nullptr};
+  MpsComputePipelineStateManager pipeline_manager{};
 };
 
+// Use SharedCacheState template with MpsLibraryResource
+using MpsLibraryManagerState =
+    ::orteaf::internal::runtime::base::SharedCacheState<MpsLibraryResource>;
+
 struct MpsLibraryManagerTraits {
-  using DeviceType = ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t;
   using OpsType = ::orteaf::internal::runtime::mps::platform::MpsSlowOps;
   using StateType = MpsLibraryManagerState;
   static constexpr const char *Name = "MPS library manager";
 };
 
 class MpsLibraryManager
-    : public base::BaseManager<MpsLibraryManager, MpsLibraryManagerTraits> {
+    : public ::orteaf::internal::runtime::base::SharedCacheManager<
+          MpsLibraryManager, MpsLibraryManagerTraits> {
 public:
+  using Base = ::orteaf::internal::runtime::base::SharedCacheManager<
+      MpsLibraryManager, MpsLibraryManagerTraits>;
   using SlowOps = ::orteaf::internal::runtime::mps::platform::MpsSlowOps;
+  using DeviceType =
+      ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t;
   using PipelineManager = MpsComputePipelineStateManager;
-    using LibraryLease = ::orteaf::internal::base::Lease<
-      ::orteaf::internal::base::LibraryHandle,
-      ::orteaf::internal::runtime::mps::platform::wrapper::MPSLibrary_t, MpsLibraryManager>;
-  using PipelineManagerLease = ::orteaf::internal::base::Lease<
-      ::orteaf::internal::base::LibraryHandle, PipelineManager *,
+  using LibraryHandle = ::orteaf::internal::base::LibraryHandle;
+  using LibraryLease = ::orteaf::internal::base::Lease<
+      LibraryHandle,
+      ::orteaf::internal::runtime::mps::platform::wrapper::MPSLibrary_t,
       MpsLibraryManager>;
 
   MpsLibraryManager() = default;
@@ -83,52 +86,26 @@ public:
   MpsLibraryManager &operator=(MpsLibraryManager &&) = default;
   ~MpsLibraryManager() = default;
 
-  void initialize(::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t device,
-                  SlowOps *slow_ops, std::size_t capacity);
-
+  void initialize(DeviceType device, SlowOps *ops, std::size_t capacity);
   void shutdown();
 
   LibraryLease acquire(const LibraryKey &key);
-  LibraryLease acquire(const PipelineManagerLease &pipeline_lease);
-  PipelineManagerLease acquirePipelineManager(const LibraryLease &lease);
-  PipelineManagerLease acquirePipelineManager(const LibraryKey &key);
+  LibraryLease acquire(LibraryHandle handle);
 
   void release(LibraryLease &lease) noexcept;
-  void release(PipelineManagerLease &lease) noexcept;
 
-#if ORTEAF_ENABLE_TEST
-  struct DebugState {
-    bool alive{false};
-    bool handle_allocated{false};
-    LibraryKeyKind kind{LibraryKeyKind::kNamed};
-    std::string identifier{};
-    std::size_t growth_chunk_size{0};
-  };
-
-  DebugState debugState(::orteaf::internal::base::LibraryHandle handle) const;
-#endif
+  // Direct access to PipelineManager (no Lease pattern)
+  PipelineManager *pipelineManager(const LibraryLease &lease);
+  PipelineManager *pipelineManager(const LibraryKey &key);
 
 private:
   void validateKey(const LibraryKey &key) const;
-
-  State &ensureAliveState(::orteaf::internal::base::LibraryHandle handle);
-
-  const State &
-  ensureAliveState(::orteaf::internal::base::LibraryHandle handle) const {
-    return const_cast<MpsLibraryManager *>(this)->ensureAliveState(handle);
-  }
-
-  ::orteaf::internal::base::LibraryHandle encodeHandle(std::size_t index) const;
-
-  void releaseHandle(::orteaf::internal::base::LibraryHandle handle) noexcept;
-
-  LibraryLease
-  acquireLibraryFromHandle(::orteaf::internal::base::LibraryHandle handle);
 
   ::orteaf::internal::runtime::mps::platform::wrapper::MPSLibrary_t
   createLibrary(const LibraryKey &key);
 
   std::unordered_map<LibraryKey, std::size_t, LibraryKeyHasher> key_to_index_{};
+  DeviceType device_{nullptr};
 };
 
 } // namespace orteaf::internal::runtime::mps::manager

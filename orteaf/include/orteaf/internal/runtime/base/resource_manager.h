@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <limits>
+#include <memory>
 
 #include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/base/shared_lease.h"
@@ -60,7 +61,6 @@ public:
   using Ops = typename Traits::OpsType;
 
   // Use Base members
-  using Base::device_;
   using Base::ensureInitialized;
   using Base::growth_chunk_size_;
   using Base::initialized_;
@@ -215,26 +215,27 @@ public:
   }
 
 #if ORTEAF_ENABLE_TEST
-  struct DebugState {
-    bool alive{false};
-    std::uint32_t generation{0};
-    std::size_t growth_chunk_size{0};
-  };
+  Device deviceForTest() const noexcept { return device_; }
 
-  DebugState debugState(ResourceHandle handle) const {
-    DebugState snapshot{};
-    snapshot.growth_chunk_size = growth_chunk_size_;
+  bool isAliveForTest(ResourceHandle handle) const {
     const std::size_t index = static_cast<std::size_t>(handle.index);
-    if (index < states_.size()) {
-      const State &state = states_[index];
-      snapshot.alive = state.alive;
-      snapshot.generation = static_cast<std::uint32_t>(state.generation);
-    } else {
-      snapshot.generation = std::numeric_limits<std::uint32_t>::max();
+    if (index >= states_.size()) {
+      return false;
     }
-    return snapshot;
+    return states_[index].alive;
+  }
+
+  std::uint32_t generationForTest(ResourceHandle handle) const {
+    const std::size_t index = static_cast<std::size_t>(handle.index);
+    if (index >= states_.size()) {
+      return std::numeric_limits<std::uint32_t>::max();
+    }
+    return static_cast<std::uint32_t>(states_[index].generation);
   }
 #endif
+
+protected:
+  Device device_{nullptr};
 };
 
 } // namespace orteaf::internal::runtime::base

@@ -4,21 +4,21 @@
 #include <gtest/gtest.h>
 
 #include "orteaf/internal/backend/backend.h"
-#include "orteaf/internal/runtime/allocator/memory_block.h"
+#include "orteaf/internal/runtime/allocator/buffer_resource.h"
 #include "orteaf/internal/runtime/allocator/policies/chunk_locator/direct_chunk_locator.h"
 #include "orteaf/internal/runtime/allocator/policies/fast_free/fast_free_policies.h"
 #include "orteaf/internal/runtime/allocator/policies/freelist/host_stack_freelist_policy.h"
 #include "orteaf/internal/runtime/allocator/policies/large_alloc/direct_resource_large_alloc.h"
 #include "orteaf/internal/runtime/allocator/policies/reuse/deferred_reuse_policy.h"
 #include "orteaf/internal/runtime/allocator/policies/threading/threading_policies.h"
-#include "orteaf/internal/runtime/base/backend_traits.h"
 #include "orteaf/internal/runtime/cpu/resource/cpu_buffer_view.h"
 #include "tests/internal/runtime/allocator/testing/mock_resource.h"
 
 namespace {
 
 using ::orteaf::internal::backend::Backend;
-using ::orteaf::internal::runtime::allocator::MemoryBlock;
+using ::orteaf::internal::runtime::allocator::BufferBlock;
+using ::orteaf::internal::runtime::allocator::BufferResource;
 using ::orteaf::internal::runtime::allocator::testing::MockCpuResource;
 using ::orteaf::internal::runtime::allocator::testing::MockCpuResourceImpl;
 namespace policies = ::orteaf::internal::runtime::allocator::policies;
@@ -31,10 +31,31 @@ using ::testing::Return;
 // ---------------------------------------------------------------------------
 struct MockResource {
   using BufferView = CpuBufferView;
-  using MemoryBlock =
-      ::orteaf::internal::runtime::allocator::MemoryBlock<Backend::Cpu>;
-  using ReuseToken = ::orteaf::internal::runtime::base::BackendTraits<
-      Backend::Cpu>::ReuseToken;
+  using BufferResource =
+      ::orteaf::internal::runtime::allocator::BufferResource<Backend::Cpu>;
+  using BufferBlock =
+      ::orteaf::internal::runtime::allocator::BufferBlock<Backend::Cpu>;
+  using FenceToken = typename BufferResource::FenceToken;
+  struct ReuseToken {
+    ReuseToken() = default;
+    explicit ReuseToken(FenceToken &&) {}
+  };
+  struct LaunchParams {};
+
+  static constexpr Backend backend_type_static() noexcept {
+    return Backend::Cpu;
+  }
+  constexpr Backend backend_type() const noexcept {
+    return backend_type_static();
+  }
+
+  struct Config {
+    // Empty config for mock resource
+  };
+
+  void initialize(const Config &) {
+    // No-op for mock resource
+  }
 
   static void set(MockCpuResourceImpl *impl) { MockCpuResource::set(impl); }
   static void reset() { MockCpuResource::reset(); }
@@ -53,7 +74,7 @@ struct MockResource {
     return MockCpuResource::makeView(base, offset, size);
   }
 
-  static bool isCompleted(const ReuseToken &) { return true; }
+  static bool isCompleted(ReuseToken &) { return true; }
 };
 
 struct MockResourceGuard {
@@ -65,29 +86,28 @@ struct MockResourceGuard {
 
 using Pool = ::orteaf::internal::runtime::allocator::pool::SegregatePool<
     MockResource, policies::FastFreePolicy, policies::NoLockThreadingPolicy,
-    policies::DirectResourceLargeAllocPolicy<MockResource, Backend::Cpu>,
-    policies::DirectChunkLocatorPolicy<MockResource, Backend::Cpu>,
-    policies::DeferredReusePolicy<MockResource, Backend::Cpu>,
-    policies::HostStackFreelistPolicy<MockResource, Backend::Cpu>,
-    Backend::Cpu>;
+    policies::DirectResourceLargeAllocPolicy<MockResource>,
+    policies::DirectChunkLocatorPolicy<MockResource>,
+    policies::DeferredReusePolicy<MockResource>,
+    policies::HostStackFreelistPolicy<MockResource>>;
+
+using BufferResourceType = BufferResource<Backend::Cpu>;
 
 TEST(SegregatePool, InitializePropagatesToAllPolicies) {
-  Pool pool;
-  Pool::Config cfg{};
-  MockResource resource{};
   NiceMock<MockCpuResourceImpl> impl;
   MockResourceGuard guard(&impl);
 
-  cfg.fast_free.resource = &resource;
-  cfg.threading.resource = &resource;
-  cfg.large_alloc.resource = &resource;
-  cfg.chunk_locator.resource = &resource;
-  cfg.reuse.resource = &resource;
-  cfg.freelist.resource = &resource;
+  Pool pool(MockResource{});
+  Pool::Config cfg{};
+
+  cfg.fast_free.resource = pool.resource();
+  cfg.threading.resource = pool.resource();
+  cfg.large_alloc.resource = pool.resource();
+  cfg.chunk_locator.resource = pool.resource();
+  cfg.reuse.resource = pool.resource();
+  cfg.freelist.resource = pool.resource();
   cfg.min_block_size = 64;
   cfg.max_block_size = 256;
-  cfg.freelist.min_block_size = cfg.min_block_size;
-  cfg.freelist.max_block_size = cfg.max_block_size;
 
   EXPECT_CALL(impl, allocate).Times(0);
 
@@ -98,9 +118,6 @@ TEST(SegregatePool, InitializePropagatesToAllPolicies) {
 }
 
 TEST(SegregatePool, AllocatesFromChunkWhenBelowMaxSize) {
-  Pool pool;
-  Pool::Config cfg{};
-  MockResource resource{};
   NiceMock<MockCpuResourceImpl> impl;
   MockResourceGuard guard(&impl);
   ON_CALL(impl, makeView)
@@ -109,17 +126,18 @@ TEST(SegregatePool, AllocatesFromChunkWhenBelowMaxSize) {
             return CpuBufferView{base.raw(), offset, size};
           });
 
-  cfg.fast_free.resource = &resource;
-  cfg.threading.resource = &resource;
-  cfg.large_alloc.resource = &resource;
-  cfg.chunk_locator.resource = &resource;
-  cfg.reuse.resource = &resource;
-  cfg.freelist.resource = &resource;
+  Pool pool(MockResource{});
+  Pool::Config cfg{};
+
+  cfg.fast_free.resource = pool.resource();
+  cfg.threading.resource = pool.resource();
+  cfg.large_alloc.resource = pool.resource();
+  cfg.chunk_locator.resource = pool.resource();
+  cfg.reuse.resource = pool.resource();
+  cfg.freelist.resource = pool.resource();
   cfg.chunk_size = 256;
   cfg.min_block_size = 64;
   cfg.max_block_size = 256;
-  cfg.freelist.min_block_size = cfg.min_block_size;
-  cfg.freelist.max_block_size = cfg.max_block_size;
   pool.initialize(cfg);
 
   // One chunk allocation; freelist should hand back a block view aligned to
@@ -130,7 +148,7 @@ TEST(SegregatePool, AllocatesFromChunkWhenBelowMaxSize) {
       .WillOnce(Return(CpuBufferView{base, 0, 256}));
 
   Pool::LaunchParams params{};
-  MemoryBlock block = pool.allocate(80, 64, params);
+  BufferResourceType block = pool.allocate(80, 64, params);
 
   EXPECT_TRUE(block.valid());
   EXPECT_EQ(block.view.size(), block_size);
@@ -138,9 +156,6 @@ TEST(SegregatePool, AllocatesFromChunkWhenBelowMaxSize) {
 }
 
 TEST(SegregatePool, UsesLargeAllocWhenOverMaxSize) {
-  Pool pool;
-  Pool::Config cfg{};
-  MockResource resource{};
   NiceMock<MockCpuResourceImpl> impl;
   MockResourceGuard guard(&impl);
   ON_CALL(impl, makeView)
@@ -149,17 +164,18 @@ TEST(SegregatePool, UsesLargeAllocWhenOverMaxSize) {
             return CpuBufferView{base.raw(), offset, size};
           });
 
-  cfg.fast_free.resource = &resource;
-  cfg.threading.resource = &resource;
-  cfg.large_alloc.resource = &resource;
-  cfg.chunk_locator.resource = &resource;
-  cfg.reuse.resource = &resource;
-  cfg.freelist.resource = &resource;
+  Pool pool(MockResource{});
+  Pool::Config cfg{};
+
+  cfg.fast_free.resource = pool.resource();
+  cfg.threading.resource = pool.resource();
+  cfg.large_alloc.resource = pool.resource();
+  cfg.chunk_locator.resource = pool.resource();
+  cfg.reuse.resource = pool.resource();
+  cfg.freelist.resource = pool.resource();
   cfg.chunk_size = 256;
   cfg.min_block_size = 64;
   cfg.max_block_size = 128;
-  cfg.freelist.min_block_size = cfg.min_block_size;
-  cfg.freelist.max_block_size = cfg.max_block_size;
   pool.initialize(cfg);
 
   void *base = reinterpret_cast<void *>(0x2000);
@@ -167,7 +183,7 @@ TEST(SegregatePool, UsesLargeAllocWhenOverMaxSize) {
       .WillOnce(Return(CpuBufferView{base, 0, 300}));
 
   Pool::LaunchParams params{};
-  MemoryBlock block = pool.allocate(300, 16, params);
+  BufferResourceType block = pool.allocate(300, 16, params);
 
   EXPECT_TRUE(block.valid());
   EXPECT_EQ(block.view.size(), 300u);
@@ -175,9 +191,6 @@ TEST(SegregatePool, UsesLargeAllocWhenOverMaxSize) {
 }
 
 TEST(SegregatePool, DeallocateReturnsBlockToFreelist) {
-  Pool pool;
-  Pool::Config cfg{};
-  MockResource resource{};
   NiceMock<MockCpuResourceImpl> impl;
   MockResourceGuard guard(&impl);
   ON_CALL(impl, makeView)
@@ -186,17 +199,18 @@ TEST(SegregatePool, DeallocateReturnsBlockToFreelist) {
             return CpuBufferView{base.raw(), offset, size};
           });
 
-  cfg.fast_free.resource = &resource;
-  cfg.threading.resource = &resource;
-  cfg.large_alloc.resource = &resource;
-  cfg.chunk_locator.resource = &resource;
-  cfg.reuse.resource = &resource;
-  cfg.freelist.resource = &resource;
+  Pool pool(MockResource{});
+  Pool::Config cfg{};
+
+  cfg.fast_free.resource = pool.resource();
+  cfg.threading.resource = pool.resource();
+  cfg.large_alloc.resource = pool.resource();
+  cfg.chunk_locator.resource = pool.resource();
+  cfg.reuse.resource = pool.resource();
+  cfg.freelist.resource = pool.resource();
   cfg.chunk_size = 256;
   cfg.min_block_size = 64;
   cfg.max_block_size = 256;
-  cfg.freelist.min_block_size = cfg.min_block_size;
-  cfg.freelist.max_block_size = cfg.max_block_size;
   pool.initialize(cfg);
 
   void *base = reinterpret_cast<void *>(0x3000);
@@ -204,36 +218,34 @@ TEST(SegregatePool, DeallocateReturnsBlockToFreelist) {
       .WillOnce(Return(CpuBufferView{base, 0, 256}));
 
   Pool::LaunchParams params{};
-  MemoryBlock block = pool.allocate(80, 64, params);
+  BufferResourceType block = pool.allocate(80, 64, params);
   ASSERT_TRUE(block.valid());
   testing::Mock::VerifyAndClearExpectations(&impl);
 
   pool.deallocate(block, 80, 64, params);
 
   EXPECT_CALL(impl, allocate).Times(0);
-  MemoryBlock reused = pool.allocate(80, 64, params);
+  BufferResourceType reused = pool.allocate(80, 64, params);
   EXPECT_TRUE(reused.valid());
   EXPECT_EQ(reused.view.size(), block.view.size());
 }
 
 TEST(SegregatePool, DeallocateLargeAllocUsesLargePolicy) {
-  Pool pool;
-  Pool::Config cfg{};
-  MockResource resource{};
   NiceMock<MockCpuResourceImpl> impl;
   MockResourceGuard guard(&impl);
 
-  cfg.fast_free.resource = &resource;
-  cfg.threading.resource = &resource;
-  cfg.large_alloc.resource = &resource;
-  cfg.chunk_locator.resource = &resource;
-  cfg.reuse.resource = &resource;
-  cfg.freelist.resource = &resource;
+  Pool pool(MockResource{});
+  Pool::Config cfg{};
+
+  cfg.fast_free.resource = pool.resource();
+  cfg.threading.resource = pool.resource();
+  cfg.large_alloc.resource = pool.resource();
+  cfg.chunk_locator.resource = pool.resource();
+  cfg.reuse.resource = pool.resource();
+  cfg.freelist.resource = pool.resource();
   cfg.chunk_size = 256;
   cfg.min_block_size = 64;
   cfg.max_block_size = 128;
-  cfg.freelist.min_block_size = cfg.min_block_size;
-  cfg.freelist.max_block_size = cfg.max_block_size;
   pool.initialize(cfg);
 
   void *base = reinterpret_cast<void *>(0x4000);
@@ -242,16 +254,13 @@ TEST(SegregatePool, DeallocateLargeAllocUsesLargePolicy) {
   EXPECT_CALL(impl, deallocate(testing::_, 300, 16)).Times(1);
 
   Pool::LaunchParams params{};
-  MemoryBlock block = pool.allocate(300, 16, params);
+  BufferResourceType block = pool.allocate(300, 16, params);
   ASSERT_TRUE(block.valid());
 
   pool.deallocate(block, 300, 16, params);
 }
 
 TEST(SegregatePool, ReleaseChunkFreesBackingAndForcesNewChunkOnNextAlloc) {
-  Pool pool;
-  Pool::Config cfg{};
-  MockResource resource{};
   NiceMock<MockCpuResourceImpl> impl;
   MockResourceGuard guard(&impl);
   ON_CALL(impl, makeView)
@@ -260,17 +269,18 @@ TEST(SegregatePool, ReleaseChunkFreesBackingAndForcesNewChunkOnNextAlloc) {
             return CpuBufferView{base.raw(), offset, size};
           });
 
-  cfg.fast_free.resource = &resource;
-  cfg.threading.resource = &resource;
-  cfg.large_alloc.resource = &resource;
-  cfg.chunk_locator.resource = &resource;
-  cfg.reuse.resource = &resource;
-  cfg.freelist.resource = &resource;
+  Pool pool(MockResource{});
+  Pool::Config cfg{};
+
+  cfg.fast_free.resource = pool.resource();
+  cfg.threading.resource = pool.resource();
+  cfg.large_alloc.resource = pool.resource();
+  cfg.chunk_locator.resource = pool.resource();
+  cfg.reuse.resource = pool.resource();
+  cfg.freelist.resource = pool.resource();
   cfg.chunk_size = 256;
   cfg.min_block_size = 64;
   cfg.max_block_size = 256;
-  cfg.freelist.min_block_size = cfg.min_block_size;
-  cfg.freelist.max_block_size = cfg.max_block_size;
   pool.initialize(cfg);
 
   void *base = reinterpret_cast<void *>(0x5000);
@@ -281,21 +291,18 @@ TEST(SegregatePool, ReleaseChunkFreesBackingAndForcesNewChunkOnNextAlloc) {
   EXPECT_CALL(impl, deallocate(testing::_, 256, 0)).Times(1);
 
   Pool::LaunchParams params{};
-  MemoryBlock block = pool.allocate(80, 64, params);
+  BufferResourceType block = pool.allocate(80, 64, params);
   ASSERT_TRUE(block.valid());
 
   pool.deallocate(block, 80, 64, params);
   pool.releaseChunk(params);
 
-  MemoryBlock new_block = pool.allocate(80, 64, params);
+  BufferResourceType new_block = pool.allocate(80, 64, params);
   EXPECT_TRUE(new_block.valid());
   EXPECT_EQ(new_block.view.raw(), base2);
 }
 
 TEST(SegregatePool, StatsTracking) {
-  Pool pool;
-  Pool::Config cfg{};
-  MockResource resource{};
   NiceMock<MockCpuResourceImpl> impl;
   MockResourceGuard guard(&impl);
   ON_CALL(impl, makeView)
@@ -304,17 +311,18 @@ TEST(SegregatePool, StatsTracking) {
             return CpuBufferView{base.raw(), offset, size};
           });
 
-  cfg.fast_free.resource = &resource;
-  cfg.threading.resource = &resource;
-  cfg.large_alloc.resource = &resource;
-  cfg.chunk_locator.resource = &resource;
-  cfg.reuse.resource = &resource;
-  cfg.freelist.resource = &resource;
+  Pool pool(MockResource{});
+  Pool::Config cfg{};
+
+  cfg.fast_free.resource = pool.resource();
+  cfg.threading.resource = pool.resource();
+  cfg.large_alloc.resource = pool.resource();
+  cfg.chunk_locator.resource = pool.resource();
+  cfg.reuse.resource = pool.resource();
+  cfg.freelist.resource = pool.resource();
   cfg.chunk_size = 256;
   cfg.min_block_size = 64;
   cfg.max_block_size = 256;
-  cfg.freelist.min_block_size = cfg.min_block_size;
-  cfg.freelist.max_block_size = cfg.max_block_size;
   pool.initialize(cfg);
 
   const auto &stats = pool.stats();
@@ -330,7 +338,7 @@ TEST(SegregatePool, StatsTracking) {
 
   Pool::LaunchParams params{};
   // Allocation triggers expansion
-  MemoryBlock block = pool.allocate(64, 64, params);
+  BufferResourceType block = pool.allocate(64, 64, params);
   ASSERT_TRUE(block.valid());
 
   std::string stats_str = stats.toString();

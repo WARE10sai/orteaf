@@ -39,15 +39,14 @@ public:
                                        const LibraryKey &library_key,
                                        const FunctionKey &function_key) {
     Runtime &rt = runtime();
-    auto lib_mgr_lease = rt.deviceManager().acquireLibraryManager(device);
-    auto library = lib_mgr_lease->acquire(library_key);
-    auto pipeline_mgr = lib_mgr_lease->acquirePipelineManager(library);
+    auto *lib_mgr = rt.deviceManager().libraryManager(device);
+    auto *pipeline_mgr = lib_mgr->pipelineManager(library_key);
     return pipeline_mgr->acquire(function_key);
   }
 
   static FenceLease acquireFence(DeviceHandle device) {
     Runtime &rt = runtime();
-    auto fence_pool = rt.deviceManager().acquireFencePool(device);
+    auto *fence_pool = rt.deviceManager().fencePool(device);
     return fence_pool->acquire();
   }
 
