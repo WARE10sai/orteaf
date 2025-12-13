@@ -114,6 +114,10 @@ public:
   HeapLease acquire(const HeapDescriptorKey &key);
   void release(HeapLease &lease) noexcept;
 
+  // Direct access to BufferManager for a given heap
+  BufferManager *bufferManager(const HeapLease &lease);
+  BufferManager *bufferManager(const HeapDescriptorKey &key);
+
 private:
   void validateKey(const HeapDescriptorKey &key) const;
 

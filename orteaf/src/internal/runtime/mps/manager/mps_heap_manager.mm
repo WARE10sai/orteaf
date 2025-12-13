@@ -104,6 +104,37 @@ void MpsHeapManager::release(HeapLease &lease) noexcept {
   lease.invalidate();
 }
 
+MpsHeapManager::BufferManager *
+MpsHeapManager::bufferManager(const HeapLease &lease) {
+  State &state = validateAndGetState(lease.handle());
+  return state.resource.buffer_manager.get();
+}
+
+MpsHeapManager::BufferManager *
+MpsHeapManager::bufferManager(const HeapDescriptorKey &key) {
+  ensureInitialized();
+  validateKey(key);
+
+  std::size_t index = 0;
+
+  if (auto it = key_to_index_.find(key); it != key_to_index_.end()) {
+    index = it->second;
+  } else {
+    index = allocateSlot();
+    State &state = states_[index];
+    state.resource.heap = createHeap(key);
+    state.resource.buffer_manager = std::make_unique<BufferManager>();
+    BufferManager::Config buf_cfg{}; // Use defaults
+    state.resource.buffer_manager->initialize(device_, device_handle_,
+                                              state.resource.heap,
+                                              library_manager_, buf_cfg, 0);
+    markSlotAlive(index);
+    key_to_index_.emplace(key, index);
+  }
+
+  return states_[index].resource.buffer_manager.get();
+}
+
 void MpsHeapManager::validateKey(const HeapDescriptorKey &key) const {
   if (key.size_bytes == 0) {
     ::orteaf::internal::diagnostics::error::throwError(

@@ -297,3 +297,70 @@ TYPED_TEST(MpsHeapManagerTypedTest, ShutdownDestroysRemainingHeaps) {
   (void)manager.acquire(key);
   manager.shutdown();
 }
+
+TYPED_TEST(MpsHeapManagerTypedTest, BufferManagerAccessFromLease) {
+  if constexpr (!TypeParam::is_mock) {
+    GTEST_SKIP() << "Mock-only test";
+    return;
+  }
+  auto &manager = this->manager();
+  const auto device = this->adapter().device();
+  manager.initialize(device, base::DeviceHandle{0}, nullptr, this->getOps(), 1);
+  const auto key = this->defaultKey(0x2000);
+  const auto descriptor = makeHeapDescriptor(0x2100);
+  this->expectDescriptorConfiguration(key, descriptor);
+  this->adapter().expectCreateHeapsInOrder({{descriptor, makeHeap(0xD00)}});
+  this->adapter().expectDestroyHeaps({makeHeap(0xD00)});
+
+  auto lease = manager.acquire(key);
+  auto *buffer_manager = manager.bufferManager(lease);
+  EXPECT_NE(buffer_manager, nullptr);
+  EXPECT_TRUE(buffer_manager->isInitializedForTest());
+  lease.release();
+  manager.shutdown();
+}
+
+TYPED_TEST(MpsHeapManagerTypedTest, BufferManagerAccessFromKey) {
+  if constexpr (!TypeParam::is_mock) {
+    GTEST_SKIP() << "Mock-only test";
+    return;
+  }
+  auto &manager = this->manager();
+  const auto device = this->adapter().device();
+  manager.initialize(device, base::DeviceHandle{0}, nullptr, this->getOps(), 1);
+  const auto key = this->defaultKey(0x3000);
+  const auto descriptor = makeHeapDescriptor(0x3100);
+  this->expectDescriptorConfiguration(key, descriptor);
+  this->adapter().expectCreateHeapsInOrder({{descriptor, makeHeap(0xE00)}});
+  this->adapter().expectDestroyHeaps({makeHeap(0xE00)});
+
+  // Access buffer manager directly by key (creates heap if needed)
+  auto *buffer_manager = manager.bufferManager(key);
+  EXPECT_NE(buffer_manager, nullptr);
+  EXPECT_TRUE(buffer_manager->isInitializedForTest());
+
+  // Same key returns same buffer manager
+  auto *buffer_manager2 = manager.bufferManager(key);
+  EXPECT_EQ(buffer_manager, buffer_manager2);
+
+  manager.shutdown();
+}
+
+TYPED_TEST(MpsHeapManagerTypedTest,
+           BufferManagerAccessBeforeInitializationThrows) {
+  auto &manager = this->manager();
+  const auto key = this->defaultKey(0x4000);
+  ExpectError(diag_error::OrteafErrc::InvalidState,
+              [&] { (void)manager.bufferManager(key); });
+}
+
+TYPED_TEST(MpsHeapManagerTypedTest, BufferManagerAccessWithInvalidKeyThrows) {
+  auto &manager = this->manager();
+  const auto device = this->adapter().device();
+  manager.initialize(device, base::DeviceHandle{0}, nullptr, this->getOps(), 1);
+  mps_rt::HeapDescriptorKey key{};
+  key.size_bytes = 0; // Invalid: size must be > 0
+  ExpectError(diag_error::OrteafErrc::InvalidArgument,
+              [&] { (void)manager.bufferManager(key); });
+  manager.shutdown();
+}
