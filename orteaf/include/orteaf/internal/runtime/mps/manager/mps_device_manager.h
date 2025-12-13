@@ -9,7 +9,6 @@
 #include "orteaf/internal/architecture/architecture.h"
 #include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/base/heap_vector.h"
-#include "orteaf/internal/base/lease.h"
 #include "orteaf/internal/diagnostics/error/error.h"
 #include "orteaf/internal/runtime/base/base_manager.h"
 #include "orteaf/internal/runtime/mps/manager/mps_buffer_manager.h"
@@ -75,27 +74,6 @@ class MpsDeviceManager
     : public base::BaseManager<MpsDeviceManager, MpsDeviceManagerTraits> {
 public:
   using SlowOps = ::orteaf::internal::runtime::mps::platform::MpsSlowOps;
-  using DeviceLease = ::orteaf::internal::base::Lease<
-      void, ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t,
-      MpsDeviceManager>;
-  using CommandQueueManagerLease = ::orteaf::internal::base::Lease<
-      void, ::orteaf::internal::runtime::mps::manager::MpsCommandQueueManager *,
-      MpsDeviceManager>;
-  using HeapManagerLease = ::orteaf::internal::base::Lease<
-      void, ::orteaf::internal::runtime::mps::manager::MpsHeapManager *,
-      MpsDeviceManager>;
-  using LibraryManagerLease = ::orteaf::internal::base::Lease<
-      void, ::orteaf::internal::runtime::mps::manager::MpsLibraryManager *,
-      MpsDeviceManager>;
-  using GraphManagerLease = ::orteaf::internal::base::Lease<
-      void, ::orteaf::internal::runtime::mps::manager::MpsGraphManager *,
-      MpsDeviceManager>;
-  using EventPoolLease = ::orteaf::internal::base::Lease<
-      void, ::orteaf::internal::runtime::mps::manager::MpsEventManager *,
-      MpsDeviceManager>;
-  using FencePoolLease = ::orteaf::internal::base::Lease<
-      void, ::orteaf::internal::runtime::mps::manager::MpsFenceManager *,
-      MpsDeviceManager>;
 
   MpsDeviceManager() = default;
   MpsDeviceManager(const MpsDeviceManager &) = delete;
@@ -104,10 +82,12 @@ public:
   MpsDeviceManager &operator=(MpsDeviceManager &&) = default;
   ~MpsDeviceManager() = default;
 
+  // =========================================================================
+  // Configuration (call before initialize)
+  // =========================================================================
   void setCommandQueueInitialCapacity(std::size_t capacity) {
     command_queue_initial_capacity_ = capacity;
   }
-
   std::size_t commandQueueInitialCapacity() const noexcept {
     return command_queue_initial_capacity_;
   }
@@ -115,7 +95,6 @@ public:
   void setHeapInitialCapacity(std::size_t capacity) {
     heap_initial_capacity_ = capacity;
   }
-
   std::size_t heapInitialCapacity() const noexcept {
     return heap_initial_capacity_;
   }
@@ -123,7 +102,6 @@ public:
   void setLibraryInitialCapacity(std::size_t capacity) {
     library_initial_capacity_ = capacity;
   }
-
   std::size_t libraryInitialCapacity() const noexcept {
     return library_initial_capacity_;
   }
@@ -131,48 +109,45 @@ public:
   void setGraphInitialCapacity(std::size_t capacity) {
     graph_initial_capacity_ = capacity;
   }
-
   std::size_t graphInitialCapacity() const noexcept {
     return graph_initial_capacity_;
   }
 
+  // =========================================================================
+  // Lifecycle
+  // =========================================================================
   void initialize(SlowOps *slow_ops);
-
   void shutdown();
 
+  // =========================================================================
+  // Device info
+  // =========================================================================
   std::size_t getDeviceCount() const { return states_.size(); }
 
-  DeviceLease acquire(::orteaf::internal::base::DeviceHandle handle);
-  void release(DeviceLease &lease) noexcept;
-
-  CommandQueueManagerLease
-  acquireCommandQueueManager(::orteaf::internal::base::DeviceHandle handle);
-  void release(CommandQueueManagerLease &lease) noexcept;
-
-  HeapManagerLease
-  acquireHeapManager(::orteaf::internal::base::DeviceHandle handle);
-  void release(HeapManagerLease &lease) noexcept;
-
-  LibraryManagerLease
-  acquireLibraryManager(::orteaf::internal::base::DeviceHandle handle);
-  void release(LibraryManagerLease &lease) noexcept;
-
-  GraphManagerLease
-  acquireGraphManager(::orteaf::internal::base::DeviceHandle handle);
-  void release(GraphManagerLease &lease) noexcept;
-
-  EventPoolLease
-  acquireEventPool(::orteaf::internal::base::DeviceHandle handle);
-  void release(EventPoolLease &lease) noexcept;
-
-  FencePoolLease
-  acquireFencePool(::orteaf::internal::base::DeviceHandle handle);
-  void release(FencePoolLease &lease) noexcept;
+  ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t
+  device(::orteaf::internal::base::DeviceHandle handle) const;
 
   ::orteaf::internal::architecture::Architecture
   getArch(::orteaf::internal::base::DeviceHandle handle) const;
 
   bool isAlive(::orteaf::internal::base::DeviceHandle handle) const;
+
+  // =========================================================================
+  // Direct access to child managers (no Lease pattern)
+  // =========================================================================
+  MpsCommandQueueManager *
+  commandQueueManager(::orteaf::internal::base::DeviceHandle handle);
+
+  MpsHeapManager *heapManager(::orteaf::internal::base::DeviceHandle handle);
+
+  MpsLibraryManager *
+  libraryManager(::orteaf::internal::base::DeviceHandle handle);
+
+  MpsGraphManager *graphManager(::orteaf::internal::base::DeviceHandle handle);
+
+  MpsEventManager *eventPool(::orteaf::internal::base::DeviceHandle handle);
+
+  MpsFenceManager *fencePool(::orteaf::internal::base::DeviceHandle handle);
 
 private:
   const State &ensureValid(::orteaf::internal::base::DeviceHandle handle) const;

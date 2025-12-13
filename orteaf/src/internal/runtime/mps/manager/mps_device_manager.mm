@@ -42,8 +42,9 @@ void MpsDeviceManager::initialize(SlowOps *slow_ops) {
       state.command_queue_manager.initialize(device, ops_,
                                              command_queue_initial_capacity_);
       state.library_manager.initialize(device, ops_, library_initial_capacity_);
-      state.heap_manager.initialize(device, device_handle, &state.library_manager,
-                                    ops_, heap_initial_capacity_);
+      state.heap_manager.initialize(device, device_handle,
+                                    &state.library_manager, ops_,
+                                    heap_initial_capacity_);
       state.graph_manager.initialize(device, ops_, graph_initial_capacity_);
       state.event_pool.initialize(device, ops_, 0);
       state.fence_pool.initialize(device, ops_, 0);
@@ -71,75 +72,9 @@ void MpsDeviceManager::shutdown() {
   initialized_ = false;
 }
 
-MpsDeviceManager::DeviceLease
-MpsDeviceManager::acquire(::orteaf::internal::base::DeviceHandle handle) {
-  const State &state = ensureValid(handle);
-  return DeviceLease{this, state.device};
-}
-
-void MpsDeviceManager::release(DeviceLease &lease) noexcept {
-  lease.invalidate();
-}
-
-MpsDeviceManager::CommandQueueManagerLease
-MpsDeviceManager::acquireCommandQueueManager(
-    ::orteaf::internal::base::DeviceHandle handle) {
-  State &state = ensureValidState(handle);
-  return CommandQueueManagerLease{this, &state.command_queue_manager};
-}
-
-void MpsDeviceManager::release(CommandQueueManagerLease &lease) noexcept {
-  lease.invalidate();
-}
-
-MpsDeviceManager::HeapManagerLease MpsDeviceManager::acquireHeapManager(
-    ::orteaf::internal::base::DeviceHandle handle) {
-  State &state = ensureValidState(handle);
-  return HeapManagerLease{this, &state.heap_manager};
-}
-
-void MpsDeviceManager::release(HeapManagerLease &lease) noexcept {
-  lease.invalidate();
-}
-
-MpsDeviceManager::LibraryManagerLease MpsDeviceManager::acquireLibraryManager(
-    ::orteaf::internal::base::DeviceHandle handle) {
-  State &state = ensureValidState(handle);
-  return LibraryManagerLease{this, &state.library_manager};
-}
-
-void MpsDeviceManager::release(LibraryManagerLease &lease) noexcept {
-  lease.invalidate();
-}
-
-MpsDeviceManager::GraphManagerLease MpsDeviceManager::acquireGraphManager(
-    ::orteaf::internal::base::DeviceHandle handle) {
-  State &state = ensureValidState(handle);
-  return GraphManagerLease{this, &state.graph_manager};
-}
-
-void MpsDeviceManager::release(GraphManagerLease &lease) noexcept {
-  lease.invalidate();
-}
-
-MpsDeviceManager::EventPoolLease MpsDeviceManager::acquireEventPool(
-    ::orteaf::internal::base::DeviceHandle handle) {
-  State &state = ensureValidState(handle);
-  return EventPoolLease{this, &state.event_pool};
-}
-
-void MpsDeviceManager::release(EventPoolLease &lease) noexcept {
-  lease.invalidate();
-}
-
-MpsDeviceManager::FencePoolLease MpsDeviceManager::acquireFencePool(
-    ::orteaf::internal::base::DeviceHandle handle) {
-  State &state = ensureValidState(handle);
-  return FencePoolLease{this, &state.fence_pool};
-}
-
-void MpsDeviceManager::release(FencePoolLease &lease) noexcept {
-  lease.invalidate();
+::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t
+MpsDeviceManager::device(::orteaf::internal::base::DeviceHandle handle) const {
+  return ensureValid(handle).device;
 }
 
 ::orteaf::internal::architecture::Architecture
@@ -158,6 +93,36 @@ bool MpsDeviceManager::isAlive(
     return false;
   }
   return states_[index].is_alive;
+}
+
+MpsCommandQueueManager *MpsDeviceManager::commandQueueManager(
+    ::orteaf::internal::base::DeviceHandle handle) {
+  return &ensureValidState(handle).command_queue_manager;
+}
+
+MpsHeapManager *
+MpsDeviceManager::heapManager(::orteaf::internal::base::DeviceHandle handle) {
+  return &ensureValidState(handle).heap_manager;
+}
+
+MpsLibraryManager *MpsDeviceManager::libraryManager(
+    ::orteaf::internal::base::DeviceHandle handle) {
+  return &ensureValidState(handle).library_manager;
+}
+
+MpsGraphManager *
+MpsDeviceManager::graphManager(::orteaf::internal::base::DeviceHandle handle) {
+  return &ensureValidState(handle).graph_manager;
+}
+
+MpsEventManager *
+MpsDeviceManager::eventPool(::orteaf::internal::base::DeviceHandle handle) {
+  return &ensureValidState(handle).event_pool;
+}
+
+MpsFenceManager *
+MpsDeviceManager::fencePool(::orteaf::internal::base::DeviceHandle handle) {
+  return &ensureValidState(handle).fence_pool;
 }
 
 void MpsDeviceManagerState::reset(SlowOps *slow_ops) noexcept {

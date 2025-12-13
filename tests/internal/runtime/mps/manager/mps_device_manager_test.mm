@@ -14,7 +14,6 @@
 #include <tests/internal/testing/error_assert.h>
 
 namespace architecture = orteaf::internal::architecture;
-namespace backend = orteaf::internal::backend;
 namespace base = orteaf::internal::base;
 namespace diag_error = orteaf::internal::diagnostics::error;
 namespace mps_rt = orteaf::internal::runtime::mps::manager;
@@ -36,15 +35,6 @@ mps_wrapper::MPSCommandQueue_t makeQueue(std::uintptr_t value) {
   return reinterpret_cast<mps_wrapper::MPSCommandQueue_t>(value);
 }
 
-mps_wrapper::MPSEvent_t makeEvent(std::uintptr_t value) {
-  return reinterpret_cast<mps_wrapper::MPSEvent_t>(value);
-}
-
-bool shouldRunHardwareTests() {
-  const char *expected_env = std::getenv(ORTEAF_MPS_ENV_COUNT);
-  return expected_env != nullptr && std::stoi(expected_env) > 0;
-}
-
 template <class Provider>
 class MpsDeviceManagerTypedTest
     : public testing_mps::RuntimeManagerFixture<Provider,
@@ -54,29 +44,7 @@ protected:
       testing_mps::RuntimeManagerFixture<Provider, mps_rt::MpsDeviceManager>;
 
   mps_rt::MpsDeviceManager &manager() { return Base::manager(); }
-
   auto &adapter() { return Base::adapter(); }
-
-  // Override to inject ops
-  void onPreManagerSetUp() override {
-    // Assuming MpsDeviceManager now takes a reference/pointer to ops in
-    // constructor or init. Since I haven't seen MpsDeviceManager code yet, I'll
-    // assume it needs to be updated or the fixture needs to handle it. Wait, I
-    // need to check MpsDeviceManager first to see how it accepts ops. But the
-    // user said "manager本体の修正をしたい" later. So currently
-    // MpsDeviceManager probably uses the template param as a static class? If
-    // so, I can't inject instance yet. BUT, I deleted the static class
-    // MpsBackendOps. So MpsDeviceManager compilation will fail if I don't
-    // update it. The user said "managerたちよりも先にいじりたいのがある...
-    // その後にmanagerの本体の修正をしたい". This implies I should fix the tests
-    // first, but the tests depend on the manager. If the manager is broken
-    // (because I deleted the file it uses), I must fix the manager at least
-    // minimally.
-
-    // Let's assume for this step I just update the test code to *try* to use
-    // the new provider. I will likely need to update MpsDeviceManager in the
-    // next step to accept the ops instance.
-  }
 
   void onPreManagerTearDown() override { manager().shutdown(); }
 };
@@ -95,27 +63,21 @@ TYPED_TEST_SUITE(MpsDeviceManagerTypedTest, ProviderTypes);
 TYPED_TEST(MpsDeviceManagerTypedTest, AccessBeforeInitializationThrows) {
   auto &manager = this->manager();
   ExpectError(diag_error::OrteafErrc::InvalidState,
-              [&] { (void)manager.acquire(base::DeviceHandle{0}); });
+              [&] { (void)manager.device(base::DeviceHandle{0}); });
   ExpectError(diag_error::OrteafErrc::InvalidState,
               [&] { (void)manager.getArch(base::DeviceHandle{0}); });
   EXPECT_FALSE(manager.isAlive(base::DeviceHandle{0}));
   ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
-    static_cast<void>(
-        manager.acquireCommandQueueManager(base::DeviceHandle{0}));
+    (void)manager.commandQueueManager(base::DeviceHandle{0});
   });
-  ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
-    static_cast<void>(manager.acquireHeapManager(base::DeviceHandle{0}));
-  });
-  ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
-    static_cast<void>(manager.acquireLibraryManager(base::DeviceHandle{0}));
-  });
-  ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
-    static_cast<void>(manager.acquireEventPool(base::DeviceHandle{0}));
-  });
-  ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
-    static_cast<void>(manager.acquireFencePool(base::DeviceHandle{0}));
-  });
-  // Device 0 is out of range before initialization
+  ExpectError(diag_error::OrteafErrc::InvalidState,
+              [&] { (void)manager.heapManager(base::DeviceHandle{0}); });
+  ExpectError(diag_error::OrteafErrc::InvalidState,
+              [&] { (void)manager.libraryManager(base::DeviceHandle{0}); });
+  ExpectError(diag_error::OrteafErrc::InvalidState,
+              [&] { (void)manager.eventPool(base::DeviceHandle{0}); });
+  ExpectError(diag_error::OrteafErrc::InvalidState,
+              [&] { (void)manager.fencePool(base::DeviceHandle{0}); });
   EXPECT_FALSE(manager.isAlive(base::DeviceHandle{0}));
 }
 
@@ -188,8 +150,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, GetDeviceReturnsRegisteredHandle) {
   }
 
   for (std::uint32_t idx = 0; idx < count; ++idx) {
-    auto device_lease = manager.acquire(base::DeviceHandle{idx});
-    const auto device = device_lease.with_resource([](auto &r) { return r; });
+    const auto device = manager.device(base::DeviceHandle{idx});
     const auto &snapshot = manager.stateForTest(idx);
     EXPECT_EQ(snapshot.device != nullptr, device != nullptr);
     EXPECT_EQ(snapshot.is_alive, device != nullptr);
@@ -271,13 +232,11 @@ TYPED_TEST(MpsDeviceManagerTypedTest, InvalidDeviceIdRejectsAccess) {
       static_cast<std::uint32_t>(manager.getDeviceCount() + 1)};
 
   ExpectError(diag_error::OrteafErrc::InvalidArgument,
-              [&] { (void)manager.acquire(invalid); });
+              [&] { (void)manager.device(invalid); });
   ExpectError(diag_error::OrteafErrc::InvalidArgument,
               [&] { (void)manager.getArch(invalid); });
-  ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] {
-    static_cast<void>(manager.acquireCommandQueueManager(invalid));
-  });
-  EXPECT_FALSE(manager.isAlive(invalid));
+  ExpectError(diag_error::OrteafErrc::InvalidArgument,
+              [&] { (void)manager.commandQueueManager(invalid); });
   EXPECT_FALSE(manager.isAlive(invalid));
 
   manager.shutdown();
@@ -324,7 +283,6 @@ TYPED_TEST(MpsDeviceManagerTypedTest, IsAliveReflectsReportedDeviceCount) {
     const auto id = base::DeviceHandle{index};
     EXPECT_FALSE(manager.isAlive(id))
         << "Device " << index << " should be inactive after shutdown";
-    EXPECT_FALSE(manager.isAlive(id));
   }
 }
 
@@ -351,8 +309,8 @@ TYPED_TEST(MpsDeviceManagerTypedTest, ReinitializeReleasesPreviousDevices) {
   }
 
   if constexpr (TypeParam::is_mock) {
-    auto lease = manager.acquire(base::DeviceHandle{0});
-    EXPECT_EQ(lease.with_resource([](auto &r) { return r; }), first0);
+    const auto device = manager.device(base::DeviceHandle{0});
+    EXPECT_EQ(device, first0);
   }
 
   this->adapter().expectReleaseDevices({first0, first1});
@@ -367,8 +325,8 @@ TYPED_TEST(MpsDeviceManagerTypedTest, ReinitializeReleasesPreviousDevices) {
   const auto reinit_count = manager.getDeviceCount();
   EXPECT_EQ(reinit_count, initial_count);
   if constexpr (TypeParam::is_mock) {
-    auto lease = manager.acquire(base::DeviceHandle{0});
-    EXPECT_EQ(lease.with_resource([](auto &r) { return r; }), second0);
+    const auto device = manager.device(base::DeviceHandle{0});
+    EXPECT_EQ(device, second0);
     EXPECT_NE(second0, first0);
   }
 
@@ -404,9 +362,8 @@ TYPED_TEST(MpsDeviceManagerTypedTest, ShutdownClearsDeviceState) {
   for (std::uint32_t i = 0; i < static_cast<std::uint32_t>(count); ++i) {
     const auto id = base::DeviceHandle{i};
     EXPECT_FALSE(manager.isAlive(id));
-    ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
-      static_cast<void>(manager.acquireCommandQueueManager(id));
-    });
+    ExpectError(diag_error::OrteafErrc::InvalidState,
+                [&] { (void)manager.commandQueueManager(id); });
   }
 }
 
@@ -441,38 +398,9 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
   for (std::uint32_t index = 0; index < static_cast<std::uint32_t>(count);
        ++index) {
     const auto id = base::DeviceHandle{index};
-    auto queue_manager_lease = manager.acquireCommandQueueManager(id);
-    EXPECT_EQ(queue_manager_lease->capacity(), kCapacity);
-    if constexpr (TypeParam::is_mock) {
-      std::vector<mps_wrapper::MPSCommandQueue_t> expected_handles =
-          (index == 0)
-              ? std::vector<mps_wrapper::MPSCommandQueue_t>{makeQueue(0x900),
-                                                            makeQueue(0x901)}
-              : std::vector<mps_wrapper::MPSCommandQueue_t>{makeQueue(0x902),
-                                                            makeQueue(0x903)};
-      std::vector<mps_rt::MpsCommandQueueManager::CommandQueueLease>
-          acquired_leases;
-      const std::size_t expected_count = expected_handles.size();
-      acquired_leases.reserve(expected_count);
-
-      for (std::size_t i = 0; i < expected_count; ++i) {
-        auto acquired = queue_manager_lease->acquire();
-        const auto queue_handle =
-            acquired.with_resource([](auto &r) { return r; });
-        auto it = std::find(expected_handles.begin(), expected_handles.end(),
-                            queue_handle);
-        EXPECT_NE(it, expected_handles.end())
-            << "Unexpected handle " << queue_handle;
-        if (it != expected_handles.end()) {
-          expected_handles.erase(it);
-        }
-        acquired_leases.push_back(std::move(acquired));
-      }
-      EXPECT_TRUE(expected_handles.empty());
-      for (auto &lease : acquired_leases) {
-        queue_manager_lease->release(lease);
-      }
-    }
+    auto *queue_manager = manager.commandQueueManager(id);
+    EXPECT_NE(queue_manager, nullptr);
+    EXPECT_EQ(queue_manager->capacity(), kCapacity);
   }
 
   manager.shutdown();
@@ -501,9 +429,10 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
   for (std::uint32_t index = 0; index < static_cast<std::uint32_t>(count);
        ++index) {
     const auto id = base::DeviceHandle{index};
-    auto heap_manager_lease = manager.acquireHeapManager(id);
+    auto *heap_manager = manager.heapManager(id);
+    EXPECT_NE(heap_manager, nullptr);
     // Cache pattern: capacity is 0 after init, grows on demand
-    EXPECT_EQ(heap_manager_lease->capacity(), 0u);
+    EXPECT_EQ(heap_manager->capacity(), 0u);
   }
 
   manager.shutdown();
@@ -531,9 +460,10 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
   for (std::uint32_t index = 0; index < static_cast<std::uint32_t>(count);
        ++index) {
     const auto id = base::DeviceHandle{index};
-    auto library_manager_lease = manager.acquireLibraryManager(id);
+    auto *library_manager = manager.libraryManager(id);
+    EXPECT_NE(library_manager, nullptr);
     // Cache pattern: capacity is 0 after init, grows on demand
-    EXPECT_EQ(library_manager_lease->capacity(), 0u);
+    EXPECT_EQ(library_manager->capacity(), 0u);
   }
   manager.shutdown();
 }
@@ -560,12 +490,12 @@ TYPED_TEST(MpsDeviceManagerTypedTest, InitializeWithZeroDevicesSucceeds) {
   EXPECT_EQ(manager.getDeviceCount(), 0u);
 
   ExpectError(diag_error::OrteafErrc::InvalidArgument,
-              [&] { (void)manager.acquire(base::DeviceHandle{0}); });
+              [&] { (void)manager.device(base::DeviceHandle{0}); });
 
   manager.shutdown();
 }
 
-TYPED_TEST(MpsDeviceManagerTypedTest, EventPoolAcquireSucceeds) {
+TYPED_TEST(MpsDeviceManagerTypedTest, EventPoolAccessSucceeds) {
   auto &manager = this->manager();
 
   const auto device0 = makeDevice(0x800);
@@ -582,13 +512,13 @@ TYPED_TEST(MpsDeviceManagerTypedTest, EventPoolAcquireSucceeds) {
     GTEST_SKIP() << "No MPS devices available";
   }
 
-  auto event_pool_lease = manager.acquireEventPool(base::DeviceHandle{0});
-  EXPECT_TRUE(event_pool_lease);
+  auto *event_pool = manager.eventPool(base::DeviceHandle{0});
+  EXPECT_NE(event_pool, nullptr);
 
   manager.shutdown();
 }
 
-TYPED_TEST(MpsDeviceManagerTypedTest, FencePoolAcquireSucceeds) {
+TYPED_TEST(MpsDeviceManagerTypedTest, FencePoolAccessSucceeds) {
   auto &manager = this->manager();
 
   const auto device0 = makeDevice(0x810);
@@ -605,13 +535,13 @@ TYPED_TEST(MpsDeviceManagerTypedTest, FencePoolAcquireSucceeds) {
     GTEST_SKIP() << "No MPS devices available";
   }
 
-  auto fence_pool_lease = manager.acquireFencePool(base::DeviceHandle{0});
-  EXPECT_TRUE(fence_pool_lease);
+  auto *fence_pool = manager.fencePool(base::DeviceHandle{0});
+  EXPECT_NE(fence_pool, nullptr);
 
   manager.shutdown();
 }
 
-TYPED_TEST(MpsDeviceManagerTypedTest, InvalidDeviceIdRejectsManagerAcquire) {
+TYPED_TEST(MpsDeviceManagerTypedTest, InvalidDeviceIdRejectsManagerAccess) {
   auto &manager = this->manager();
 
   const auto device0 = makeDevice(0x820);
@@ -627,14 +557,13 @@ TYPED_TEST(MpsDeviceManagerTypedTest, InvalidDeviceIdRejectsManagerAcquire) {
       static_cast<std::uint32_t>(manager.getDeviceCount() + 1)};
 
   ExpectError(diag_error::OrteafErrc::InvalidArgument,
-              [&] { static_cast<void>(manager.acquireHeapManager(invalid)); });
-  ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] {
-    static_cast<void>(manager.acquireLibraryManager(invalid));
-  });
+              [&] { (void)manager.heapManager(invalid); });
   ExpectError(diag_error::OrteafErrc::InvalidArgument,
-              [&] { static_cast<void>(manager.acquireEventPool(invalid)); });
+              [&] { (void)manager.libraryManager(invalid); });
   ExpectError(diag_error::OrteafErrc::InvalidArgument,
-              [&] { static_cast<void>(manager.acquireFencePool(invalid)); });
+              [&] { (void)manager.eventPool(invalid); });
+  ExpectError(diag_error::OrteafErrc::InvalidArgument,
+              [&] { (void)manager.fencePool(invalid); });
 
   manager.shutdown();
 }
@@ -655,7 +584,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, CapacityGettersReturnConfiguredValues) {
   EXPECT_EQ(manager.libraryInitialCapacity(), 15u);
 }
 
-TYPED_TEST(MpsDeviceManagerTypedTest, DeviceNotAliveThrowsOnAcquire) {
+TYPED_TEST(MpsDeviceManagerTypedTest, DeviceNotAliveThrowsOnAccess) {
   if constexpr (!TypeParam::is_mock) {
     GTEST_SKIP() << "Mock-only test";
   }
@@ -672,25 +601,20 @@ TYPED_TEST(MpsDeviceManagerTypedTest, DeviceNotAliveThrowsOnAcquire) {
   EXPECT_FALSE(manager.isAlive(base::DeviceHandle{0}));
 
   ExpectError(diag_error::OrteafErrc::InvalidState,
-              [&] { (void)manager.acquire(base::DeviceHandle{0}); });
+              [&] { (void)manager.device(base::DeviceHandle{0}); });
   ExpectError(diag_error::OrteafErrc::InvalidState,
               [&] { (void)manager.getArch(base::DeviceHandle{0}); });
   ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
-    static_cast<void>(
-        manager.acquireCommandQueueManager(base::DeviceHandle{0}));
+    (void)manager.commandQueueManager(base::DeviceHandle{0});
   });
-  ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
-    static_cast<void>(manager.acquireHeapManager(base::DeviceHandle{0}));
-  });
-  ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
-    static_cast<void>(manager.acquireLibraryManager(base::DeviceHandle{0}));
-  });
-  ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
-    static_cast<void>(manager.acquireEventPool(base::DeviceHandle{0}));
-  });
-  ExpectError(diag_error::OrteafErrc::InvalidState, [&] {
-    static_cast<void>(manager.acquireFencePool(base::DeviceHandle{0}));
-  });
+  ExpectError(diag_error::OrteafErrc::InvalidState,
+              [&] { (void)manager.heapManager(base::DeviceHandle{0}); });
+  ExpectError(diag_error::OrteafErrc::InvalidState,
+              [&] { (void)manager.libraryManager(base::DeviceHandle{0}); });
+  ExpectError(diag_error::OrteafErrc::InvalidState,
+              [&] { (void)manager.eventPool(base::DeviceHandle{0}); });
+  ExpectError(diag_error::OrteafErrc::InvalidState,
+              [&] { (void)manager.fencePool(base::DeviceHandle{0}); });
 
   const auto &snapshot = manager.stateForTest(0);
   EXPECT_FALSE(snapshot.is_alive);
@@ -729,7 +653,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, MultipleShutdownsAreIdempotent) {
   EXPECT_FALSE(manager.isInitializedForTest());
 }
 
-TYPED_TEST(MpsDeviceManagerTypedTest, ReleaseMethodsDoNotThrow) {
+TYPED_TEST(MpsDeviceManagerTypedTest, DirectAccessReturnsValidPointers) {
   auto &manager = this->manager();
 
   const auto device0 = makeDevice(0x840);
@@ -742,25 +666,27 @@ TYPED_TEST(MpsDeviceManagerTypedTest, ReleaseMethodsDoNotThrow) {
 
   manager.initialize(this->getOps());
 
-  auto device_lease = manager.acquire(base::DeviceHandle{0});
-  EXPECT_NO_THROW(manager.release(device_lease));
+  const auto device = manager.device(base::DeviceHandle{0});
+  if constexpr (TypeParam::is_mock) {
+    EXPECT_EQ(device, device0);
+  } else {
+    EXPECT_NE(device, nullptr);
+  }
 
-  auto queue_manager_lease =
-      manager.acquireCommandQueueManager(base::DeviceHandle{0});
-  EXPECT_NO_THROW(manager.release(queue_manager_lease));
+  auto *queue_manager = manager.commandQueueManager(base::DeviceHandle{0});
+  EXPECT_NE(queue_manager, nullptr);
 
-  auto heap_manager_lease = manager.acquireHeapManager(base::DeviceHandle{0});
-  EXPECT_NO_THROW(manager.release(heap_manager_lease));
+  auto *heap_manager = manager.heapManager(base::DeviceHandle{0});
+  EXPECT_NE(heap_manager, nullptr);
 
-  auto library_manager_lease =
-      manager.acquireLibraryManager(base::DeviceHandle{0});
-  EXPECT_NO_THROW(manager.release(library_manager_lease));
+  auto *library_manager = manager.libraryManager(base::DeviceHandle{0});
+  EXPECT_NE(library_manager, nullptr);
 
-  auto event_pool_lease = manager.acquireEventPool(base::DeviceHandle{0});
-  EXPECT_NO_THROW(manager.release(event_pool_lease));
+  auto *event_pool = manager.eventPool(base::DeviceHandle{0});
+  EXPECT_NE(event_pool, nullptr);
 
-  auto fence_pool_lease = manager.acquireFencePool(base::DeviceHandle{0});
-  EXPECT_NO_THROW(manager.release(fence_pool_lease));
+  auto *fence_pool = manager.fencePool(base::DeviceHandle{0});
+  EXPECT_NE(fence_pool, nullptr);
 
   manager.shutdown();
 }
