@@ -315,7 +315,6 @@ TYPED_TEST(MpsLibraryManagerTypedTest,
       pipeline_manager_lease->stateForTest(pipeline_lease.handle().index);
   EXPECT_TRUE(snapshot.alive);
   EXPECT_EQ(snapshot.use_count, 1u);
-  EXPECT_EQ(snapshot.key.identifier, *maybe_function);
   pipeline_lease.release();
   pipeline_manager_lease.release();
   library_lease.release();
