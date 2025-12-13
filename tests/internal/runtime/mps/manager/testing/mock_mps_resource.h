@@ -41,6 +41,9 @@ public:
     void *device{nullptr};
     void *heap{nullptr};
     std::size_t chunk_table_capacity{16};
+    // For compatibility with MpsBufferManager
+    int usage{0};                   // Stub - MpsResource has MPSBufferUsage_t
+    void *library_manager{nullptr}; // Stub - MpsResource has MpsLibraryManager*
   };
 
   static constexpr ::orteaf::internal::backend::Backend
