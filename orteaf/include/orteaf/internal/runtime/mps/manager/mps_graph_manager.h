@@ -8,14 +8,11 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
-#include <utility>
 #include <vector>
 
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/base/heap_vector.h"
 #include "orteaf/internal/base/lease.h"
-#include "orteaf/internal/diagnostics/error/error.h"
-#include "orteaf/internal/runtime/base/base_manager.h"
+#include "orteaf/internal/runtime/base/shared_cache_manager.h"
 #include "orteaf/internal/runtime/mps/platform/mps_slow_ops.h"
 #include "orteaf/internal/runtime/mps/platform/wrapper/mps_graph.h"
 
@@ -67,40 +64,42 @@ struct GraphKeyHasher {
   }
 };
 
-struct MpsGraphManagerState;
-
-struct MpsGraphManagerTraits {
-  using DeviceType =
-      ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t;
-  using OpsType = ::orteaf::internal::runtime::mps::platform::MpsSlowOps;
-  using StateType = struct MpsGraphManagerState;
-  static constexpr const char *Name = "MPS graph manager";
-};
-
-struct MpsGraphManagerState {
-  GraphKey key{};
+// Resource struct: holds graph + executable
+struct MpsGraphResource {
   ::orteaf::internal::runtime::mps::platform::wrapper::MPSGraph_t graph{
       nullptr};
   ::orteaf::internal::runtime::mps::platform::wrapper::MPSGraphExecutable_t
       executable{nullptr};
-  std::uint32_t generation{0};
-  bool alive{false};
+};
+
+// Use SharedCacheState template
+using MpsGraphManagerState =
+    ::orteaf::internal::runtime::base::SharedCacheState<MpsGraphResource>;
+
+struct MpsGraphManagerTraits {
+  using OpsType = ::orteaf::internal::runtime::mps::platform::MpsSlowOps;
+  using StateType = MpsGraphManagerState;
+  static constexpr const char *Name = "MPS graph manager";
 };
 
 class MpsGraphManager
-    : public base::BaseManager<MpsGraphManager, MpsGraphManagerTraits> {
+    : public ::orteaf::internal::runtime::base::SharedCacheManager<
+          MpsGraphManager, MpsGraphManagerTraits> {
 public:
+  using Base = ::orteaf::internal::runtime::base::SharedCacheManager<
+      MpsGraphManager, MpsGraphManagerTraits>;
   using SlowOps = ::orteaf::internal::runtime::mps::platform::MpsSlowOps;
+  using DeviceType =
+      ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t;
+  using GraphHandle = ::orteaf::internal::base::GraphHandle;
   using GraphLease = ::orteaf::internal::base::Lease<
-      ::orteaf::internal::base::GraphHandle,
+      GraphHandle,
       ::orteaf::internal::runtime::mps::platform::wrapper::MPSGraphExecutable_t,
       MpsGraphManager>;
   using CompileFn = std::function<
       ::orteaf::internal::runtime::mps::platform::wrapper::MPSGraphExecutable_t(
           ::orteaf::internal::runtime::mps::platform::wrapper::MPSGraph_t graph,
-          ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t
-              device,
-          SlowOps *slow_ops)>;
+          DeviceType device, SlowOps *slow_ops)>;
 
   MpsGraphManager() = default;
   MpsGraphManager(const MpsGraphManager &) = delete;
@@ -109,35 +108,18 @@ public:
   MpsGraphManager &operator=(MpsGraphManager &&) = default;
   ~MpsGraphManager() = default;
 
-  void initialize(
-      ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t device,
-      SlowOps *slow_ops, std::size_t capacity);
-
+  void initialize(DeviceType device, SlowOps *ops, std::size_t capacity);
   void shutdown();
 
   GraphLease acquire(const GraphKey &key, const CompileFn &compile_fn);
-
   void release(GraphLease &lease) noexcept;
 
 private:
   void validateKey(const GraphKey &key) const;
-
-  ::orteaf::internal::base::GraphHandle
-  encodeHandle(std::size_t index, std::uint32_t generation) const;
-
-  void destroyState(MpsGraphManagerState &state);
-
-  MpsGraphManagerState &
-  ensureAliveState(::orteaf::internal::base::GraphHandle handle);
-
-  const MpsGraphManagerState &
-  ensureAliveState(::orteaf::internal::base::GraphHandle handle) const {
-    return const_cast<MpsGraphManager *>(this)->ensureAliveState(handle);
-  }
+  void destroyResource(MpsGraphResource &resource);
 
   std::unordered_map<GraphKey, std::size_t, GraphKeyHasher> key_to_index_{};
-  ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t device_{
-      nullptr};
+  DeviceType device_{nullptr};
 };
 
 } // namespace orteaf::internal::runtime::mps::manager

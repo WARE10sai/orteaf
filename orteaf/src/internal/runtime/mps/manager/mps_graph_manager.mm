@@ -2,37 +2,35 @@
 
 #if ORTEAF_ENABLE_MPS
 
+#include "orteaf/internal/diagnostics/error/error.h"
+
 namespace orteaf::internal::runtime::mps::manager {
 
-void MpsGraphManager::initialize(
-    ::orteaf::internal::runtime::mps::platform::wrapper::MPSDevice_t device,
-    SlowOps *slow_ops, std::size_t capacity) {
+void MpsGraphManager::initialize(DeviceType device, SlowOps *ops,
+                                 std::size_t capacity) {
   shutdown();
   if (device == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "MPS graph manager requires a valid device");
   }
-  if (slow_ops == nullptr) {
+  if (ops == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "MPS graph manager requires valid ops");
   }
-  if (capacity > ::orteaf::internal::base::GraphHandle::invalid_index()) {
+  if (capacity > static_cast<std::size_t>(GraphHandle::invalid_index())) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-        "Requested MPS graph capacity exceeds supported limit");
+        "MPS graph manager capacity exceeds maximum handle range");
   }
-
   device_ = device;
-  ops_ = slow_ops;
-  states_.clear();
-  free_list_.clear();
+  ops_ = ops;
+  clearCacheStates();
   key_to_index_.clear();
-
   growth_chunk_size_ = capacity > 0 ? capacity : 1;
   if (capacity > 0) {
-    growPool(capacity);
+    states_.reserve(capacity);
   }
   initialized_ = true;
 }
@@ -42,10 +40,13 @@ void MpsGraphManager::shutdown() {
     return;
   }
   for (std::size_t i = 0; i < states_.size(); ++i) {
-    destroyState(states_[i]);
+    State &state = states_[i];
+    if (state.alive) {
+      destroyResource(state.resource);
+      state.alive = false;
+    }
   }
-  states_.clear();
-  free_list_.clear();
+  clearCacheStates();
   key_to_index_.clear();
   device_ = nullptr;
   ops_ = nullptr;
@@ -62,36 +63,31 @@ MpsGraphManager::acquire(const GraphKey &key, const CompileFn &compile_fn) {
         "MPS graph compile function cannot be empty");
   }
 
+  // Check if already cached
   if (auto it = key_to_index_.find(key); it != key_to_index_.end()) {
-    const std::size_t index = it->second;
-    MpsGraphManagerState &state =
-        ensureAliveState(encodeHandle(index, states_[index].generation));
-    return GraphLease{this, encodeHandle(index, state.generation),
-                      state.executable};
+    incrementUseCount(it->second);
+    return GraphLease{this, createHandle<GraphHandle>(it->second),
+                      states_[it->second].resource.executable};
   }
 
+  // Create new entry
   const std::size_t index = allocateSlot();
-  MpsGraphManagerState &state = states_[index];
+  State &state = states_[index];
+
   try {
-    state.graph = ops_->createGraph();
-    state.executable = compile_fn(state.graph, device_, ops_);
-    if (state.executable == nullptr) {
+    state.resource.graph = ops_->createGraph();
+    state.resource.executable = compile_fn(state.resource.graph, device_, ops_);
+    if (state.resource.executable == nullptr) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
           "MPS graph compile function returned null executable");
     }
-    state.key = key;
-    state.alive = true;
-    state.generation = 0;
-    key_to_index_.emplace(state.key, index);
-    return GraphLease{this, encodeHandle(index, state.generation),
-                      state.executable};
+    markSlotAlive(index);
+    key_to_index_.emplace(key, index);
+    return GraphLease{this, createHandle<GraphHandle>(index),
+                      state.resource.executable};
   } catch (...) {
-    destroyState(state);
-    if (auto it = key_to_index_.find(key); it != key_to_index_.end()) {
-      key_to_index_.erase(it);
-    }
-    free_list_.pushBack(index);
+    destroyResource(state.resource);
     throw;
   }
 }
@@ -100,6 +96,7 @@ void MpsGraphManager::release(GraphLease &lease) noexcept {
   if (!lease) {
     return;
   }
+  decrementUseCount(static_cast<std::size_t>(lease.handle().index));
   lease.invalidate();
 }
 
@@ -122,46 +119,15 @@ void MpsGraphManager::validateKey(const GraphKey &key) const {
   }
 }
 
-::orteaf::internal::base::GraphHandle
-MpsGraphManager::encodeHandle(std::size_t index,
-                              std::uint32_t generation) const {
-  return ::orteaf::internal::base::GraphHandle{
-      static_cast<std::uint32_t>(index),
-      static_cast<::orteaf::internal::base::GraphHandle::generation_type>(
-          generation)};
-}
-
-void MpsGraphManager::destroyState(MpsGraphManagerState &state) {
-  if (state.executable != nullptr) {
-    ops_->destroyGraphExecutable(state.executable);
+void MpsGraphManager::destroyResource(MpsGraphResource &resource) {
+  if (resource.executable != nullptr) {
+    ops_->destroyGraphExecutable(resource.executable);
+    resource.executable = nullptr;
   }
-  if (state.graph != nullptr) {
-    ops_->destroyGraph(state.graph);
+  if (resource.graph != nullptr) {
+    ops_->destroyGraph(resource.graph);
+    resource.graph = nullptr;
   }
-  state.graph = nullptr;
-  state.executable = nullptr;
-  state.alive = false;
-  ++state.generation;
-}
-
-MpsGraphManagerState &MpsGraphManager::ensureAliveState(
-    ::orteaf::internal::base::GraphHandle handle) {
-  ensureInitialized();
-  const std::size_t index = static_cast<std::size_t>(handle.index);
-  if (index >= states_.size()) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-        "MPS graph handle out of range");
-  }
-  MpsGraphManagerState &state = states_[index];
-  if (!state.alive ||
-      static_cast<::orteaf::internal::base::GraphHandle::generation_type>(
-          state.generation) != handle.generation) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS graph handle is inactive");
-  }
-  return state;
 }
 
 } // namespace orteaf::internal::runtime::mps::manager
