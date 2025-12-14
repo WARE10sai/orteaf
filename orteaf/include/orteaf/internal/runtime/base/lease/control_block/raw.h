@@ -20,6 +20,10 @@ struct RawControlBlock {
   /// @brief Always succeeds (no actual acquire needed)
   constexpr bool tryAcquire() noexcept { return true; }
 
+  /// @brief Always succeeds (no tracking)
+  /// @return always true for raw resources
+  constexpr bool acquire() noexcept { return true; }
+
   /// @brief No-op release
   constexpr void release() noexcept {}
 

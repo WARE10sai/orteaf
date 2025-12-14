@@ -48,8 +48,10 @@ struct SharedControlBlock {
   }
 
   /// @brief Acquire a shared reference (increment count)
-  void acquire() noexcept {
+  /// @return always true for shared resources
+  bool acquire() noexcept {
     strong_count.fetch_add(1, std::memory_order_relaxed);
+    return true;
   }
 
   /// @brief Release a shared reference

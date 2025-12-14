@@ -38,13 +38,18 @@ struct UniqueControlBlock {
     return *this;
   }
 
-  /// @brief Try to acquire exclusive ownership
+  /// @brief Try to acquire exclusive ownership (first acquisition)
   /// @return true if successfully acquired, false if already in use
   bool tryAcquire() noexcept {
     bool expected = false;
     return in_use.compare_exchange_strong(
         expected, true, std::memory_order_acquire, std::memory_order_relaxed);
   }
+
+  /// @brief Acquire exclusive ownership
+  /// @return true if successfully acquired, false if already in use
+  /// @note For Unique, this is the same as tryAcquire()
+  bool acquire() noexcept { return tryAcquire(); }
 
   /// @brief Release ownership
   void release() noexcept { in_use.store(false, std::memory_order_release); }

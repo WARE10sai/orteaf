@@ -54,12 +54,14 @@ struct WeakSharedControlBlock {
   }
 
   /// @brief Acquire a strong reference (increment count)
-  void acquire() noexcept {
+  /// @return always true for shared resources
+  bool acquire() noexcept {
     strong_count.fetch_add(1, std::memory_order_relaxed);
+    return true;
   }
 
   /// @brief Acquire a strong reference (alias for acquire)
-  void acquireStrong() noexcept { acquire(); }
+  bool acquireStrong() noexcept { return acquire(); }
 
   /// @brief Release a strong reference
   /// @return true if this was the last strong reference

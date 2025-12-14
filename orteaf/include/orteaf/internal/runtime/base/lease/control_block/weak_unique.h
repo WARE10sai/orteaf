@@ -60,6 +60,11 @@ struct WeakUniqueControlBlock {
         expected, true, std::memory_order_acquire, std::memory_order_relaxed);
   }
 
+  /// @brief Acquire exclusive ownership
+  /// @return true if successfully acquired, false if already in use
+  /// @note For WeakUnique, this is the same as tryAcquire()
+  bool acquire() noexcept { return tryAcquire(); }
+
   /// @brief Release strong ownership
   void release() noexcept { in_use.store(false, std::memory_order_release); }
 
