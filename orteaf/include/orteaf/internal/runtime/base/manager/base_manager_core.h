@@ -223,16 +223,16 @@ protected:
   // =========================================================================
 
   ControlBlock &getControlBlock(Handle h) noexcept {
-    return control_blocks_[static_cast<std::size_t>(h)];
+    return control_blocks_[static_cast<std::size_t>(h.index)];
   }
 
   const ControlBlock &getControlBlock(Handle h) const noexcept {
-    return control_blocks_[static_cast<std::size_t>(h)];
+    return control_blocks_[static_cast<std::size_t>(h.index)];
   }
 
   ControlBlock &getControlBlockChecked(Handle h) {
     ensureInitialized();
-    auto idx = static_cast<std::size_t>(h);
+    auto idx = static_cast<std::size_t>(h.index);
     if (idx >= control_blocks_.size()) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
@@ -243,7 +243,7 @@ protected:
 
   const ControlBlock &getControlBlockChecked(Handle h) const {
     ensureInitialized();
-    auto idx = static_cast<std::size_t>(h);
+    auto idx = static_cast<std::size_t>(h.index);
     if (idx >= control_blocks_.size()) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
@@ -265,8 +265,38 @@ protected:
   }
 
   bool isValidHandle(Handle h) const noexcept {
-    return static_cast<std::size_t>(h) < control_blocks_.size();
+    return static_cast<std::size_t>(h.index) < control_blocks_.size();
   }
+
+  // =========================================================================
+  // Test Support
+  // =========================================================================
+
+#if ORTEAF_ENABLE_TEST
+  bool isInitializedForTest() const noexcept { return isInitialized(); }
+
+  std::size_t capacityForTest() const noexcept { return capacity(); }
+
+  std::size_t availableForTest() const noexcept { return available(); }
+
+  std::size_t freeListSizeForTest() const noexcept { return freelist_.size(); }
+
+  const ControlBlock &controlBlockForTest(Handle h) const {
+    return control_blocks_[static_cast<std::size_t>(h.index)];
+  }
+
+  ControlBlock &controlBlockForTest(Handle h) {
+    return control_blocks_[static_cast<std::size_t>(h.index)];
+  }
+
+  const ControlBlock &controlBlockForTest(std::size_t index) const {
+    return control_blocks_[index];
+  }
+
+  ControlBlock &controlBlockForTest(std::size_t index) {
+    return control_blocks_[index];
+  }
+#endif
 
 private:
   bool initialized_{false};
