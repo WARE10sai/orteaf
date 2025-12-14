@@ -5,17 +5,17 @@
 
 namespace orteaf::internal::runtime::base {
 
-/// @brief Raw control block - no reference counting, only payload
+/// @brief Raw control block - no reference counting, only slot
 /// @details Used for resources that don't need lifecycle management.
 /// All operations are no-op. This control block is optimized away in most
 /// cases due to empty base optimization.
-template <typename PayloadT>
-  requires PayloadConcept<PayloadT>
+template <typename SlotT>
+  requires SlotConcept<SlotT>
 struct RawControlBlock {
   using Category = lease_category::Raw;
-  using Payload = PayloadT;
+  using Slot = SlotT;
 
-  PayloadT payload{};
+  SlotT slot{};
 
   /// @brief Always succeeds (no actual acquire needed)
   constexpr bool tryAcquire() noexcept { return true; }

@@ -12,15 +12,15 @@ namespace orteaf::internal::runtime::base {
 /// support
 /// @details Like std::shared_ptr with std::weak_ptr support. Reference counted
 /// with separate strong and weak counts.
-template <typename PayloadT>
-  requires PayloadConcept<PayloadT>
+template <typename SlotT>
+  requires SlotConcept<SlotT>
 struct WeakSharedControlBlock {
   using Category = lease_category::WeakShared;
-  using Payload = PayloadT;
+  using Slot = SlotT;
 
   std::atomic<std::uint32_t> strong_count{0};
   std::atomic<std::uint32_t> weak_count{0};
-  PayloadT payload{};
+  SlotT slot{};
 
   /// @brief Try to acquire first strong reference
   /// @return true if this is the first acquisition

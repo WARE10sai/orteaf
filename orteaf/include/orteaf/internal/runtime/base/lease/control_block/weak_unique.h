@@ -13,15 +13,15 @@ namespace orteaf::internal::runtime::base {
 /// @details Allows weak references to observe the resource without owning it.
 /// The resource is destroyed when the strong owner releases, but control block
 /// persists until all weak references are gone.
-template <typename PayloadT>
-  requires PayloadConcept<PayloadT>
+template <typename SlotT>
+  requires SlotConcept<SlotT>
 struct WeakUniqueControlBlock {
   using Category = lease_category::WeakUnique;
-  using Payload = PayloadT;
+  using Slot = SlotT;
 
   std::atomic<bool> in_use{false};
   std::atomic<std::uint32_t> weak_count{0};
-  PayloadT payload{};
+  SlotT slot{};
 
   /// @brief Try to acquire exclusive (strong) ownership
   /// @return true if successfully acquired

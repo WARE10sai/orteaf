@@ -10,14 +10,14 @@ namespace orteaf::internal::runtime::base {
 /// @brief Unique control block - single ownership with in_use flag
 /// @details Only one lease can hold this resource at a time.
 /// Uses atomic CAS for thread-safe acquisition.
-template <typename PayloadT>
-  requires PayloadConcept<PayloadT>
+template <typename SlotT>
+  requires SlotConcept<SlotT>
 struct UniqueControlBlock {
   using Category = lease_category::Unique;
-  using Payload = PayloadT;
+  using Slot = SlotT;
 
   std::atomic<bool> in_use{false};
-  PayloadT payload{};
+  SlotT slot{};
 
   /// @brief Try to acquire exclusive ownership
   /// @return true if successfully acquired, false if already in use

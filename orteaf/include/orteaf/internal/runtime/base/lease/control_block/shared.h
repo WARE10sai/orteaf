@@ -11,14 +11,14 @@ namespace orteaf::internal::runtime::base {
 /// @brief Shared control block - shared ownership with reference counting
 /// @details Multiple leases can share this resource. Uses atomic reference
 /// count for thread-safe sharing.
-template <typename PayloadT>
-  requires PayloadConcept<PayloadT>
+template <typename SlotT>
+  requires SlotConcept<SlotT>
 struct SharedControlBlock {
   using Category = lease_category::Shared;
-  using Payload = PayloadT;
+  using Slot = SlotT;
 
   std::atomic<std::uint32_t> strong_count{0};
-  PayloadT payload{};
+  SlotT slot{};
 
   /// @brief Try to acquire (first acquisition)
   /// @return true if this is the first acquisition (count goes 0->1)

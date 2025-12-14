@@ -1,8 +1,10 @@
 #pragma once
 
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include <orteaf/internal/diagnostics/error/error.h>
@@ -10,16 +12,36 @@
 
 namespace orteaf::internal::runtime::base {
 
+// =============================================================================
+// Manager Traits Concept
+// =============================================================================
+
+/// @brief Concept for validating Manager Traits
+/// Required members:
+///   using ControlBlock = ...;  // Must satisfy ControlBlockConcept
+///   using Handle = ...;        // Handle type with .index member
+///   static constexpr const char* Name = "...";  // Manager name for errors
+template <typename Traits>
+concept ManagerTraitsConcept = requires {
+  typename Traits::ControlBlock;
+  typename Traits::Handle;
+  { Traits::Name } -> std::convertible_to<const char *>;
+} && ControlBlockConcept<typename Traits::ControlBlock>;
+
+// =============================================================================
+// BaseManagerCore
+// =============================================================================
+
 /// @brief Base manager providing common infrastructure for resource management
-/// @tparam ControlBlockT The control block type (e.g.,
-/// SharedControlBlock<Slot<T>>)
-/// @tparam HandleT The handle type used to identify resources
-template <typename ControlBlockT, typename HandleT>
-  requires ControlBlockConcept<ControlBlockT>
+/// @tparam Traits A traits struct satisfying ManagerTraitsConcept
+template <typename Traits>
+  requires ManagerTraitsConcept<Traits>
 class BaseManagerCore {
 protected:
-  using ControlBlock = ControlBlockT;
-  using Handle = HandleT;
+  using ControlBlock = typename Traits::ControlBlock;
+  using Handle = typename Traits::Handle;
+
+  static constexpr const char *managerName() { return Traits::Name; }
 
   // =========================================================================
   // Initialization State
@@ -33,7 +55,7 @@ protected:
     if (!initialized_) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          "Manager has not been initialized");
+          std::string(managerName()) + " has not been initialized");
     }
   }
 
@@ -42,18 +64,18 @@ protected:
     if (initialized_) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          "Manager already initialized");
+          std::string(managerName()) + " already initialized");
     }
   }
 
   // =========================================================================
-  // Initialize
+  // Setup / Teardown
   // =========================================================================
 
-  /// @brief Initialize slots with capacity, calling createFn for each
+  /// @brief Setup pool with capacity, calling createFn for each control block
   /// @tparam CreateFn Callable: void(ControlBlock&, size_t index)
   template <typename CreateFn>
-  void initializeSlots(std::size_t capacity, CreateFn &&createFn) {
+  void setupPool(std::size_t capacity, CreateFn &&createFn) {
     ensureNotInitialized();
     control_blocks_.resize(capacity);
     for (std::size_t i = 0; i < capacity; ++i) {
@@ -63,37 +85,36 @@ protected:
     initialized_ = true;
   }
 
-  /// @brief Reserve capacity without initializing slots
-  void reserveSlots(std::size_t capacity) {
+  /// @brief Setup empty pool (for lazy/cache pattern - grows on demand)
+  /// @param reserveCapacity Optional initial capacity to reserve (default: 0)
+  void setupPoolEmpty(std::size_t reserveCapacity = 0) {
     ensureNotInitialized();
-    control_blocks_.resize(capacity);
-    for (std::size_t i = 0; i < capacity; ++i) {
-      freelist_.push_back(static_cast<Handle>(i));
+    if (reserveCapacity > 0) {
+      control_blocks_.reserve(reserveCapacity);
     }
     initialized_ = true;
   }
 
-  /// @brief Expand capacity by adding more slots (does not add to freelist)
-  /// @return The starting index of new slots
-  std::size_t expandCapacity(std::size_t additionalCount) {
+  /// @brief Expand pool by adding more control blocks
+  /// @param additionalCount Number of control blocks to add
+  /// @param addToFreelist If true, add new handles to freelist
+  /// @return The starting index of new control blocks
+  std::size_t expandPool(std::size_t additionalCount,
+                         bool addToFreelist = false) {
     ensureInitialized();
     std::size_t oldSize = control_blocks_.size();
     control_blocks_.resize(oldSize + additionalCount);
+    if (addToFreelist) {
+      for (std::size_t i = oldSize; i < oldSize + additionalCount; ++i) {
+        freelist_.push_back(static_cast<Handle>(i));
+      }
+    }
     return oldSize;
   }
 
-  /// @brief Add a single slot to freelist
-  void addToFreelist(Handle h) {
-    freelist_.push_back(h); // LIFO: push to back
-  }
-
-  // =========================================================================
-  // Shutdown
-  // =========================================================================
-
-  /// @brief Shutdown all slots, calling destroyFn for each slot
+  /// @brief Teardown pool, calling destroyFn for each control block
   /// @tparam DestroyFn Callable: void(ControlBlock&, Handle)
-  template <typename DestroyFn> void shutdownSlots(DestroyFn &&destroyFn) {
+  template <typename DestroyFn> void teardownPool(DestroyFn &&destroyFn) {
     for (std::size_t i = 0; i < control_blocks_.size(); ++i) {
       destroyFn(control_blocks_[i], static_cast<Handle>(i));
     }
@@ -102,11 +123,16 @@ protected:
     initialized_ = false;
   }
 
-  /// @brief Shutdown all slots without custom destroy logic
-  void shutdownSlots() {
+  /// @brief Teardown pool without custom destroy logic
+  void teardownPool() {
     control_blocks_.clear();
     freelist_.clear();
     initialized_ = false;
+  }
+
+  /// @brief Add a handle to freelist
+  void addToFreelist(Handle h) {
+    freelist_.push_back(h); // LIFO: push to back
   }
 
   // =========================================================================
@@ -122,7 +148,7 @@ protected:
     if (freelist_.empty()) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
-          "Freelist is empty");
+          std::string(managerName()) + " freelist is empty");
     }
     Handle h = freelist_.back(); // LIFO: pop from back
     freelist_.pop_back();
@@ -145,6 +171,19 @@ protected:
     freelist_.push_back(h); // LIFO: push to back
   }
 
+  /// @brief Allocate a handle from pool, expanding if needed
+  /// @param growthSize Number of control blocks to add if pool is empty
+  /// @return Handle to an available control block
+  Handle allocate(std::size_t growthSize = 1) {
+    ensureInitialized();
+    if (freelist_.empty()) {
+      expandPool(growthSize, /*addToFreelist=*/true);
+    }
+    Handle h = freelist_.back();
+    freelist_.pop_back();
+    return h;
+  }
+
   // =========================================================================
   // Acquire Helpers
   // =========================================================================
@@ -158,7 +197,7 @@ protected:
     }
     Handle h = freelist_.back(); // LIFO
     freelist_.pop_back();
-    control_blocks_[static_cast<std::size_t>(h)].tryAcquire();
+    control_blocks_[static_cast<std::size_t>(h.index)].tryAcquire();
     return h;
   }
 
@@ -172,13 +211,13 @@ protected:
     }
     Handle h = freelist_.back(); // LIFO
     freelist_.pop_back();
-    auto &cb = control_blocks_[static_cast<std::size_t>(h)];
+    auto &cb = control_blocks_[static_cast<std::size_t>(h.index)];
 
     // Create if not initialized (for Slot<T> with initialized flag)
-    if constexpr (requires { cb.payload.isInitialized(); }) {
-      if (!cb.payload.isInitialized()) {
+    if constexpr (requires { cb.slot.isInitialized(); }) {
+      if (!cb.slot.isInitialized()) {
         createFn(cb, h);
-        cb.payload.markInitialized();
+        cb.slot.markInitialized();
       }
     }
 
@@ -192,7 +231,7 @@ protected:
 
   /// @brief Release to freelist (reusable)
   void releaseToFreelist(Handle h) {
-    auto idx = static_cast<std::size_t>(h);
+    auto idx = static_cast<std::size_t>(h.index);
     if (idx < control_blocks_.size()) {
       control_blocks_[idx].release();
       freelist_.push_back(h); // LIFO
@@ -203,15 +242,15 @@ protected:
   /// @tparam DestroyFn Callable: void(ControlBlock&, Handle)
   template <typename DestroyFn>
   void releaseAndDestroy(Handle h, DestroyFn &&destroyFn) {
-    auto idx = static_cast<std::size_t>(h);
+    auto idx = static_cast<std::size_t>(h.index);
     if (idx < control_blocks_.size()) {
       auto &cb = control_blocks_[idx];
       cb.release();
       destroyFn(cb, h);
 
       // Mark as uninitialized for Slot<T>
-      if constexpr (requires { cb.payload.markUninitialized(); }) {
-        cb.payload.markUninitialized();
+      if constexpr (requires { cb.slot.markUninitialized(); }) {
+        cb.slot.markUninitialized();
       }
 
       freelist_.push_back(h); // LIFO
@@ -236,7 +275,7 @@ protected:
     if (idx >= control_blocks_.size()) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
-          "Invalid handle index");
+          std::string(managerName()) + " invalid handle index");
     }
     return control_blocks_[idx];
   }
@@ -247,7 +286,7 @@ protected:
     if (idx >= control_blocks_.size()) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
-          "Invalid handle index");
+          std::string(managerName()) + " invalid handle index");
     }
     return control_blocks_[idx];
   }
