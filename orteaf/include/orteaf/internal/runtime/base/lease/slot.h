@@ -123,7 +123,7 @@ struct GenerationalSlot {
 // =============================================================================
 
 template <typename S>
-concept SlotConcept = requires(S s, const S cs) {
+concept SlotWrapperConcept = requires(S s, const S cs) {
   typename S::Payload;
   { cs.isInitialized() } -> std::same_as<bool>;
   { s.markInitialized() };
@@ -134,8 +134,9 @@ concept SlotConcept = requires(S s, const S cs) {
 };
 
 template <typename S>
-concept GenerationalSlotConcept = SlotConcept<S> && requires(const S cs) {
-  { cs.generation() } -> std::same_as<std::uint32_t>;
-};
+concept GenerationalSlotWrapperConcept =
+    SlotWrapperConcept<S> && requires(const S cs) {
+      { cs.generation() } -> std::same_as<std::uint32_t>;
+    };
 
 } // namespace orteaf::internal::runtime::base
