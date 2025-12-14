@@ -58,6 +58,16 @@ public:
   void release(EventLease &lease) noexcept;
   void release(EventHandle handle) noexcept;
 
+  // Expose capacity
+  using Base::capacity;
+  using Base::isInitialized;
+
+#if ORTEAF_ENABLE_TEST
+  using Base::controlBlockForTest;
+  using Base::freeListSizeForTest;
+  using Base::isInitializedForTest;
+#endif
+
 private:
   void destroyResource(EventType &resource);
 

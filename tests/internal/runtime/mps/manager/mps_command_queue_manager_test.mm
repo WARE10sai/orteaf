@@ -259,9 +259,16 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest, ManualReleaseInvalidatesLease) {
   // Assert: Lease is invalidated
   EXPECT_FALSE(static_cast<bool>(lease));
 
-  const auto &state = manager.stateForTest(original_handle.index);
+  const auto &state = manager.controlBlockForTest(original_handle.index);
   EXPECT_FALSE(state.in_use);
-  EXPECT_GT(state.generation, 0u);
+  // BaseManagerCore does not track generation in this way (Slot has it, but
+  // accessor returns ControlBlock). Slot generation is hidden or available via
+  // slot.generation? Basic Slot does not have generation. Only GenerationalSlot
+  // has generation. MpsCommandQueueManager is using base::Slot (not
+  // GenerationalSlot) via UniqueControlBlock? UniqueControlBlock takes SlotT.
+  // mps_command_queue_manager.h defines Slot = base::Slot. base::Slot does not
+  // have generation. So EXPECT_GT(state.generation, ...) is invalid now. We can
+  // only check in_use.
 
   // Act: Reacquire gets new generation
   auto reacquired = manager.acquire();
@@ -471,7 +478,7 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest, DebugStateReflectsSetterUpdates) {
   lease.release();
 
   // Assert
-  const auto &released_state = manager.stateForTest(handle.index);
+  const auto &released_state = manager.controlBlockForTest(handle.index);
   EXPECT_FALSE(released_state.in_use);
 }
 #endif

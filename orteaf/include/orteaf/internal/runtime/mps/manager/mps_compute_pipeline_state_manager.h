@@ -59,7 +59,7 @@ struct MpsPipelineResource {
 
 // Slot type with initialization flag (lazy creation)
 using PipelineSlot =
-    ::orteaf::internal::runtime::base::Slot<MpsPipelineResource>;
+    ::orteaf::internal::runtime::base::GenerationalSlot<MpsPipelineResource>;
 
 // Control block type (Raw - no ref counting needed)
 using PipelineControlBlock =
@@ -130,7 +130,6 @@ public:
   std::size_t growthChunkSizeForTest() const noexcept {
     return growth_chunk_size_;
   }
-
 #endif
 
 private:
