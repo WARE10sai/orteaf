@@ -12,11 +12,10 @@ namespace orteaf::internal::runtime::base {
 
 /// @brief Base concept for all control blocks
 /// @details Minimal interface - essential lifecycle operations:
-/// - acquire: take ownership, returns bool (true if succeeded)
-/// - release: release ownership, returns bool (true if fully released)
-/// - isAlive: check if currently owned/active
-/// - validate: mark resource as initialized/valid
-/// - invalidate: mark resource as uninitialized/invalid
+/// - acquire: take ownership, returns bool (true if succeeded), marks as alive
+/// - release: release ownership, returns bool (true if fully released), marks
+/// as not alive
+/// - isAlive: check if currently acquired/active
 template <typename CB>
 concept ControlBlockConcept = requires(CB cb, const CB ccb) {
   typename CB::Category;
@@ -24,8 +23,6 @@ concept ControlBlockConcept = requires(CB cb, const CB ccb) {
   { cb.acquire() } -> std::same_as<bool>;
   { cb.release() } -> std::same_as<bool>;
   { ccb.isAlive() } -> std::same_as<bool>;
-  { cb.validate() };
-  { cb.invalidate() };
 };
 
 // =============================================================================

@@ -2,9 +2,9 @@
 
 #include <atomic>
 #include <cstdint>
+#include <utility>
 
 #include <orteaf/internal/runtime/base/lease/category.h>
-#include <orteaf/internal/runtime/base/lease/concepts.h>
 #include <orteaf/internal/runtime/base/lease/slot.h>
 
 namespace orteaf::internal::runtime::base {
@@ -14,7 +14,8 @@ namespace orteaf::internal::runtime::base {
 /// @details Allows weak references to observe the resource without owning it.
 /// The resource is destroyed when the strong owner releases, but control block
 /// persists until all weak references are gone.
-/// Initialization state is tracked by the ControlBlock itself.
+/// is_alive_ is automatically managed: true after acquire(), false after
+/// release().
 template <typename SlotT>
   requires SlotConcept<SlotT>
 class WeakUniqueControlBlock {
@@ -33,7 +34,7 @@ public:
   WeakUniqueControlBlock &operator=(const WeakUniqueControlBlock &) = delete;
 
   WeakUniqueControlBlock(WeakUniqueControlBlock &&other) noexcept
-      : initialized_(other.initialized_), slot_(std::move(other.slot_)) {
+      : is_alive_(other.is_alive_), slot_(std::move(other.slot_)) {
     in_use_.store(other.in_use_.load(std::memory_order_relaxed),
                   std::memory_order_relaxed);
     weak_count_.store(other.weak_count_.load(std::memory_order_relaxed),
@@ -42,7 +43,7 @@ public:
 
   WeakUniqueControlBlock &operator=(WeakUniqueControlBlock &&other) noexcept {
     if (this != &other) {
-      initialized_ = other.initialized_;
+      is_alive_ = other.is_alive_;
       in_use_.store(other.in_use_.load(std::memory_order_relaxed),
                     std::memory_order_relaxed);
       weak_count_.store(other.weak_count_.load(std::memory_order_relaxed),
@@ -56,39 +57,34 @@ public:
   // Lifecycle API
   // =========================================================================
 
-  /// @brief Acquire exclusive ownership
+  /// @brief Acquire exclusive ownership, marks as alive
   /// @return true if successfully acquired, false if already in use
   bool acquire() noexcept {
     bool expected = false;
-    return in_use_.compare_exchange_strong(
-        expected, true, std::memory_order_acquire, std::memory_order_relaxed);
+    if (in_use_.compare_exchange_strong(expected, true,
+                                        std::memory_order_acquire,
+                                        std::memory_order_relaxed)) {
+      is_alive_ = true;
+      return true;
+    }
+    return false;
   }
 
-  /// @brief Release strong ownership
+  /// @brief Release strong ownership, marks as not alive
   /// @return true if was in use and now released, false if wasn't in use
   bool release() noexcept {
     bool expected = true;
-    return in_use_.compare_exchange_strong(
-        expected, false, std::memory_order_release, std::memory_order_relaxed);
+    if (in_use_.compare_exchange_strong(expected, false,
+                                        std::memory_order_release,
+                                        std::memory_order_relaxed)) {
+      is_alive_ = false;
+      return true;
+    }
+    return false;
   }
 
-  /// @brief Check if strong owner exists
-  bool isAlive() const noexcept {
-    return in_use_.load(std::memory_order_acquire);
-  }
-
-  // =========================================================================
-  // Initialization State (managed by ControlBlock)
-  // =========================================================================
-
-  /// @brief Check if resource is initialized
-  bool isInitialized() const noexcept { return initialized_; }
-
-  /// @brief Mark resource as initialized/valid
-  void validate() noexcept { initialized_ = true; }
-
-  /// @brief Mark resource as uninitialized/invalid
-  void invalidate() noexcept { initialized_ = false; }
+  /// @brief Check if resource is currently acquired/alive
+  bool isAlive() const noexcept { return is_alive_; }
 
   // =========================================================================
   // Weak Reference API (WeakableControlBlockConcept)
@@ -129,17 +125,10 @@ public:
   }
 
 private:
-  bool initialized_{false};
+  bool is_alive_{false};
   std::atomic<bool> in_use_{false};
   std::atomic<std::uint32_t> weak_count_{0};
   SlotT slot_{};
 };
-
-// Verify concept satisfaction
-static_assert(ControlBlockConcept<WeakUniqueControlBlock<RawSlot<int>>>);
-static_assert(
-    WeakableControlBlockConcept<WeakUniqueControlBlock<RawSlot<int>>>);
-static_assert(
-    PromotableControlBlockConcept<WeakUniqueControlBlock<RawSlot<int>>>);
 
 } // namespace orteaf::internal::runtime::base

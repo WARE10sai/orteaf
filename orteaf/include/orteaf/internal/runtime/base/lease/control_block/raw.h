@@ -1,14 +1,14 @@
 #pragma once
 
 #include <orteaf/internal/runtime/base/lease/category.h>
-#include <orteaf/internal/runtime/base/lease/concepts.h>
 #include <orteaf/internal/runtime/base/lease/slot.h>
 
 namespace orteaf::internal::runtime::base {
 
 /// @brief Raw control block - no reference counting
 /// @details Used for resources that don't need lifecycle management.
-/// Initialization state is tracked by the ControlBlock itself.
+/// is_alive_ is automatically managed: true after acquire(), false after
+/// release().
 template <typename SlotT>
   requires SlotConcept<SlotT>
 class RawControlBlock {
@@ -27,33 +27,25 @@ public:
   // Lifecycle API
   // =========================================================================
 
-  /// @brief Always succeeds (no ref counting)
-  constexpr bool acquire() noexcept { return true; }
+  /// @brief Acquire the resource, marks as alive
+  /// @return always true for raw resources
+  bool acquire() noexcept {
+    is_alive_ = true;
+    return true;
+  }
 
-  /// @brief Release and prepare for reuse
+  /// @brief Release and prepare for reuse, marks as not alive
   /// @return always true for raw resources
   bool release() noexcept {
+    is_alive_ = false;
     if constexpr (SlotT::has_generation) {
       slot_.incrementGeneration();
     }
     return true;
   }
 
-  /// @brief Always alive (no ref counting)
-  constexpr bool isAlive() const noexcept { return true; }
-
-  // =========================================================================
-  // Initialization State (managed by ControlBlock)
-  // =========================================================================
-
-  /// @brief Check if resource is initialized
-  bool isInitialized() const noexcept { return initialized_; }
-
-  /// @brief Mark resource as initialized/valid
-  void validate() noexcept { initialized_ = true; }
-
-  /// @brief Mark resource as uninitialized/invalid
-  void invalidate() noexcept { initialized_ = false; }
+  /// @brief Check if resource is currently acquired/alive
+  bool isAlive() const noexcept { return is_alive_; }
 
   // =========================================================================
   // Payload Access
@@ -71,11 +63,8 @@ public:
   auto generation() const noexcept { return slot_.generation(); }
 
 private:
-  bool initialized_{false};
+  bool is_alive_{false};
   SlotT slot_{};
 };
-
-// Verify concept satisfaction
-static_assert(ControlBlockConcept<RawControlBlock<RawSlot<int>>>);
 
 } // namespace orteaf::internal::runtime::base

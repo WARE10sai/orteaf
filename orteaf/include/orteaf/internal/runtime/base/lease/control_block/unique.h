@@ -1,9 +1,9 @@
 #pragma once
 
 #include <atomic>
+#include <utility>
 
 #include <orteaf/internal/runtime/base/lease/category.h>
-#include <orteaf/internal/runtime/base/lease/concepts.h>
 #include <orteaf/internal/runtime/base/lease/slot.h>
 
 namespace orteaf::internal::runtime::base {
@@ -11,7 +11,8 @@ namespace orteaf::internal::runtime::base {
 /// @brief Unique control block - single ownership with in_use flag
 /// @details Only one lease can hold this resource at a time.
 /// Uses atomic CAS for thread-safe acquisition.
-/// Initialization state is tracked by the ControlBlock itself.
+/// is_alive_ is automatically managed: true after acquire(), false after
+/// release().
 template <typename SlotT>
   requires SlotConcept<SlotT>
 class UniqueControlBlock {
@@ -25,14 +26,14 @@ public:
   UniqueControlBlock &operator=(const UniqueControlBlock &) = delete;
 
   UniqueControlBlock(UniqueControlBlock &&other) noexcept
-      : initialized_(other.initialized_), slot_(std::move(other.slot_)) {
+      : is_alive_(other.is_alive_), slot_(std::move(other.slot_)) {
     in_use_.store(other.in_use_.load(std::memory_order_relaxed),
                   std::memory_order_relaxed);
   }
 
   UniqueControlBlock &operator=(UniqueControlBlock &&other) noexcept {
     if (this != &other) {
-      initialized_ = other.initialized_;
+      is_alive_ = other.is_alive_;
       in_use_.store(other.in_use_.load(std::memory_order_relaxed),
                     std::memory_order_relaxed);
       slot_ = std::move(other.slot_);
@@ -44,22 +45,27 @@ public:
   // Lifecycle API
   // =========================================================================
 
-  /// @brief Acquire exclusive ownership
+  /// @brief Acquire exclusive ownership, marks as alive
   /// @return true if successfully acquired, false if already in use
   bool acquire() noexcept {
     bool expected = false;
-    return in_use_.compare_exchange_strong(
-        expected, true, std::memory_order_acquire, std::memory_order_relaxed);
+    if (in_use_.compare_exchange_strong(expected, true,
+                                        std::memory_order_acquire,
+                                        std::memory_order_relaxed)) {
+      is_alive_ = true;
+      return true;
+    }
+    return false;
   }
 
-  /// @brief Release ownership
+  /// @brief Release ownership, marks as not alive
   /// @return true if was in use and now released, false if wasn't in use
-  /// @note Automatically increments generation if supported
   bool release() noexcept {
     bool expected = true;
     if (in_use_.compare_exchange_strong(expected, false,
                                         std::memory_order_release,
                                         std::memory_order_relaxed)) {
+      is_alive_ = false;
       if constexpr (SlotT::has_generation) {
         slot_.incrementGeneration();
       }
@@ -68,23 +74,8 @@ public:
     return false;
   }
 
-  /// @brief Check if currently in use
-  bool isAlive() const noexcept {
-    return in_use_.load(std::memory_order_acquire);
-  }
-
-  // =========================================================================
-  // Initialization State (managed by ControlBlock)
-  // =========================================================================
-
-  /// @brief Check if resource is initialized
-  bool isInitialized() const noexcept { return initialized_; }
-
-  /// @brief Mark resource as initialized/valid
-  void validate() noexcept { initialized_ = true; }
-
-  /// @brief Mark resource as uninitialized/invalid
-  void invalidate() noexcept { initialized_ = false; }
+  /// @brief Check if resource is currently acquired/alive
+  bool isAlive() const noexcept { return is_alive_; }
 
   // =========================================================================
   // Payload Access
@@ -102,12 +93,9 @@ public:
   auto generation() const noexcept { return slot_.generation(); }
 
 private:
-  bool initialized_{false};
+  bool is_alive_{false};
   std::atomic<bool> in_use_{false};
   SlotT slot_{};
 };
-
-// Verify concept satisfaction
-static_assert(ControlBlockConcept<UniqueControlBlock<RawSlot<int>>>);
 
 } // namespace orteaf::internal::runtime::base

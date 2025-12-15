@@ -2,9 +2,9 @@
 
 #include <atomic>
 #include <cstdint>
+#include <utility>
 
 #include <orteaf/internal/runtime/base/lease/category.h>
-#include <orteaf/internal/runtime/base/lease/concepts.h>
 #include <orteaf/internal/runtime/base/lease/slot.h>
 
 namespace orteaf::internal::runtime::base {
@@ -13,7 +13,7 @@ namespace orteaf::internal::runtime::base {
 /// support
 /// @details Like std::shared_ptr with std::weak_ptr support. Reference counted
 /// with separate strong and weak counts.
-/// Initialization state is tracked by the ControlBlock itself.
+/// is_alive_ is automatically managed: true when count > 0.
 template <typename SlotT>
   requires SlotConcept<SlotT>
 class WeakSharedControlBlock {
@@ -27,7 +27,7 @@ public:
   WeakSharedControlBlock &operator=(const WeakSharedControlBlock &) = delete;
 
   WeakSharedControlBlock(WeakSharedControlBlock &&other) noexcept
-      : initialized_(other.initialized_), slot_(std::move(other.slot_)) {
+      : is_alive_(other.is_alive_), slot_(std::move(other.slot_)) {
     strong_count_.store(other.strong_count_.load(std::memory_order_relaxed),
                         std::memory_order_relaxed);
     weak_count_.store(other.weak_count_.load(std::memory_order_relaxed),
@@ -36,7 +36,7 @@ public:
 
   WeakSharedControlBlock &operator=(WeakSharedControlBlock &&other) noexcept {
     if (this != &other) {
-      initialized_ = other.initialized_;
+      is_alive_ = other.is_alive_;
       strong_count_.store(other.strong_count_.load(std::memory_order_relaxed),
                           std::memory_order_relaxed);
       weak_count_.store(other.weak_count_.load(std::memory_order_relaxed),
@@ -50,18 +50,19 @@ public:
   // Lifecycle API
   // =========================================================================
 
-  /// @brief Acquire a strong reference (increment count)
+  /// @brief Acquire a strong reference, marks as alive
   /// @return always true for shared resources
   bool acquire() noexcept {
     strong_count_.fetch_add(1, std::memory_order_relaxed);
+    is_alive_ = true;
     return true;
   }
 
   /// @brief Release a strong reference
   /// @return true if this was the last strong reference
-  /// @note Automatically increments generation if this was the last reference
   bool release() noexcept {
     if (strong_count_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+      is_alive_ = false;
       if constexpr (SlotT::has_generation) {
         slot_.incrementGeneration();
       }
@@ -70,21 +71,8 @@ public:
     return false;
   }
 
-  /// @brief Check if any strong references exist
-  bool isAlive() const noexcept { return count() > 0; }
-
-  // =========================================================================
-  // Initialization State (managed by ControlBlock)
-  // =========================================================================
-
-  /// @brief Check if resource is initialized
-  bool isInitialized() const noexcept { return initialized_; }
-
-  /// @brief Mark resource as initialized/valid
-  void validate() noexcept { initialized_ = true; }
-
-  /// @brief Mark resource as uninitialized/invalid
-  void invalidate() noexcept { initialized_ = false; }
+  /// @brief Check if resource is currently acquired/alive
+  bool isAlive() const noexcept { return is_alive_; }
 
   // =========================================================================
   // Shared-specific API (SharedControlBlockConcept)
@@ -119,6 +107,7 @@ public:
       if (strong_count_.compare_exchange_weak(current, current + 1,
                                               std::memory_order_acquire,
                                               std::memory_order_relaxed)) {
+        is_alive_ = true;
         return true;
       }
     }
@@ -146,18 +135,10 @@ public:
   }
 
 private:
-  bool initialized_{false};
+  bool is_alive_{false};
   std::atomic<std::uint32_t> strong_count_{0};
   std::atomic<std::uint32_t> weak_count_{0};
   SlotT slot_{};
 };
-
-// Verify concept satisfaction
-static_assert(ControlBlockConcept<WeakSharedControlBlock<RawSlot<int>>>);
-static_assert(SharedControlBlockConcept<WeakSharedControlBlock<RawSlot<int>>>);
-static_assert(
-    WeakableControlBlockConcept<WeakSharedControlBlock<RawSlot<int>>>);
-static_assert(
-    PromotableControlBlockConcept<WeakSharedControlBlock<RawSlot<int>>>);
 
 } // namespace orteaf::internal::runtime::base

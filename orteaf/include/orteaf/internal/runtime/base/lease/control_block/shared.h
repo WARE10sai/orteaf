@@ -2,9 +2,9 @@
 
 #include <atomic>
 #include <cstdint>
+#include <utility>
 
 #include <orteaf/internal/runtime/base/lease/category.h>
-#include <orteaf/internal/runtime/base/lease/concepts.h>
 #include <orteaf/internal/runtime/base/lease/slot.h>
 
 namespace orteaf::internal::runtime::base {
@@ -12,7 +12,7 @@ namespace orteaf::internal::runtime::base {
 /// @brief Shared control block - shared ownership with reference counting
 /// @details Multiple leases can share this resource. Uses atomic reference
 /// count for thread-safe sharing.
-/// Initialization state is tracked by the ControlBlock itself.
+/// is_alive_ is automatically managed: true when count > 0.
 template <typename SlotT>
   requires SlotConcept<SlotT>
 class SharedControlBlock {
@@ -26,14 +26,14 @@ public:
   SharedControlBlock &operator=(const SharedControlBlock &) = delete;
 
   SharedControlBlock(SharedControlBlock &&other) noexcept
-      : initialized_(other.initialized_), slot_(std::move(other.slot_)) {
+      : is_alive_(other.is_alive_), slot_(std::move(other.slot_)) {
     strong_count_.store(other.strong_count_.load(std::memory_order_relaxed),
                         std::memory_order_relaxed);
   }
 
   SharedControlBlock &operator=(SharedControlBlock &&other) noexcept {
     if (this != &other) {
-      initialized_ = other.initialized_;
+      is_alive_ = other.is_alive_;
       strong_count_.store(other.strong_count_.load(std::memory_order_relaxed),
                           std::memory_order_relaxed);
       slot_ = std::move(other.slot_);
@@ -45,18 +45,19 @@ public:
   // Lifecycle API
   // =========================================================================
 
-  /// @brief Acquire a shared reference (increment count)
+  /// @brief Acquire a shared reference, marks as alive
   /// @return always true for shared resources
   bool acquire() noexcept {
     strong_count_.fetch_add(1, std::memory_order_relaxed);
+    is_alive_ = true;
     return true;
   }
 
   /// @brief Release a shared reference
   /// @return true if this was the last reference (count goes 1->0)
-  /// @note Automatically increments generation if this was the last reference
   bool release() noexcept {
     if (strong_count_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+      is_alive_ = false;
       if constexpr (SlotT::has_generation) {
         slot_.incrementGeneration();
       }
@@ -65,21 +66,8 @@ public:
     return false;
   }
 
-  /// @brief Check if any references exist
-  bool isAlive() const noexcept { return count() > 0; }
-
-  // =========================================================================
-  // Initialization State (managed by ControlBlock)
-  // =========================================================================
-
-  /// @brief Check if resource is initialized
-  bool isInitialized() const noexcept { return initialized_; }
-
-  /// @brief Mark resource as initialized/valid
-  void validate() noexcept { initialized_ = true; }
-
-  /// @brief Mark resource as uninitialized/invalid
-  void invalidate() noexcept { initialized_ = false; }
+  /// @brief Check if resource is currently acquired/alive
+  bool isAlive() const noexcept { return is_alive_; }
 
   // =========================================================================
   // Shared-specific API (SharedControlBlockConcept)
@@ -106,13 +94,9 @@ public:
   auto generation() const noexcept { return slot_.generation(); }
 
 private:
-  bool initialized_{false};
+  bool is_alive_{false};
   std::atomic<std::uint32_t> strong_count_{0};
   SlotT slot_{};
 };
-
-// Verify concept satisfaction
-static_assert(ControlBlockConcept<SharedControlBlock<RawSlot<int>>>);
-static_assert(SharedControlBlockConcept<SharedControlBlock<RawSlot<int>>>);
 
 } // namespace orteaf::internal::runtime::base
