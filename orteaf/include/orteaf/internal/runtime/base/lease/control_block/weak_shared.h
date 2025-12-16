@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <concepts>
 #include <cstdint>
 #include <utility>
 
@@ -13,7 +14,7 @@ namespace orteaf::internal::runtime::base {
 /// support
 /// @details Like std::shared_ptr with std::weak_ptr support. Reference counted
 /// with separate strong and weak counts.
-/// is_alive_ is automatically managed: true when count > 0.
+/// isAlive() returns true when count > 0.
 template <typename SlotT>
   requires SlotConcept<SlotT>
 class WeakSharedControlBlock {
@@ -27,7 +28,7 @@ public:
   WeakSharedControlBlock &operator=(const WeakSharedControlBlock &) = delete;
 
   WeakSharedControlBlock(WeakSharedControlBlock &&other) noexcept
-      : is_alive_(other.is_alive_), slot_(std::move(other.slot_)) {
+      : slot_(std::move(other.slot_)) {
     strong_count_.store(other.strong_count_.load(std::memory_order_relaxed),
                         std::memory_order_relaxed);
     weak_count_.store(other.weak_count_.load(std::memory_order_relaxed),
@@ -36,7 +37,6 @@ public:
 
   WeakSharedControlBlock &operator=(WeakSharedControlBlock &&other) noexcept {
     if (this != &other) {
-      is_alive_ = other.is_alive_;
       strong_count_.store(other.strong_count_.load(std::memory_order_relaxed),
                           std::memory_order_relaxed);
       weak_count_.store(other.weak_count_.load(std::memory_order_relaxed),
@@ -50,19 +50,28 @@ public:
   // Lifecycle API
   // =========================================================================
 
-  /// @brief Acquire a strong reference, marks as alive
-  /// @return always true for shared resources
-  bool acquire() noexcept {
+  /// @brief Acquire a strong reference, creating resource if needed
+  /// @tparam CreateFn Callable that takes Payload& and returns bool
+  /// @return true if acquired and created, false if creation failed
+  template <typename CreateFn>
+    requires std::invocable<CreateFn, Payload &> &&
+             std::convertible_to<std::invoke_result_t<CreateFn, Payload &>,
+                                 bool>
+  bool acquire(CreateFn &&createFn) noexcept {
+    // Try to create the resource
+    if (!slot_.create(std::forward<CreateFn>(createFn))) {
+      return false; // Creation failed
+    }
+
+    // Increment reference count
     strong_count_.fetch_add(1, std::memory_order_relaxed);
-    is_alive_ = true;
     return true;
   }
 
-  /// @brief Release a strong reference
+  /// @brief Release a strong reference (for reuse)
   /// @return true if this was the last strong reference
   bool release() noexcept {
     if (strong_count_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-      is_alive_ = false;
       if constexpr (SlotT::has_generation) {
         slot_.incrementGeneration();
       }
@@ -71,8 +80,21 @@ public:
     return false;
   }
 
-  /// @brief Check if resource is currently acquired/alive
-  bool isAlive() const noexcept { return is_alive_; }
+  /// @brief Release and destroy the resource (non-reusable)
+  /// @tparam DestroyFn Callable that takes Payload&
+  template <typename DestroyFn>
+    requires std::invocable<DestroyFn, Payload &>
+  void releaseAndDestroy(DestroyFn &&destroyFn) {
+    if (strong_count_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+      slot_.destroy(std::forward<DestroyFn>(destroyFn));
+      if constexpr (SlotT::has_generation) {
+        slot_.incrementGeneration();
+      }
+    }
+  }
+
+  /// @brief Check if resource is currently acquired
+  bool isAlive() const noexcept { return count() > 0; }
 
   // =========================================================================
   // Shared-specific API (SharedControlBlockConcept)
@@ -107,7 +129,6 @@ public:
       if (strong_count_.compare_exchange_weak(current, current + 1,
                                               std::memory_order_acquire,
                                               std::memory_order_relaxed)) {
-        is_alive_ = true;
         return true;
       }
     }
@@ -134,8 +155,28 @@ public:
     return weak_count_.load(std::memory_order_acquire);
   }
 
+  // =========================================================================
+  // Creation State (delegated to Slot)
+  // =========================================================================
+
+  /// @brief Check if resource has been created
+  bool isCreated() const noexcept { return slot_.isCreated(); }
+
+  /// @brief Create the resource by executing the factory
+  template <typename Factory>
+    requires std::invocable<Factory, Payload &>
+  auto create(Factory &&factory) -> decltype(auto) {
+    return slot_.create(std::forward<Factory>(factory));
+  }
+
+  /// @brief Destroy the resource by executing the destructor
+  template <typename Destructor>
+    requires std::invocable<Destructor, Payload &>
+  void destroy(Destructor &&destructor) {
+    slot_.destroy(std::forward<Destructor>(destructor));
+  }
+
 private:
-  bool is_alive_{false};
   std::atomic<std::uint32_t> strong_count_{0};
   std::atomic<std::uint32_t> weak_count_{0};
   SlotT slot_{};

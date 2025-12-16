@@ -1,5 +1,8 @@
 #pragma once
 
+#include <concepts>
+#include <utility>
+
 #include <orteaf/internal/runtime/base/lease/category.h>
 #include <orteaf/internal/runtime/base/lease/slot.h>
 
@@ -7,8 +10,8 @@ namespace orteaf::internal::runtime::base {
 
 /// @brief Raw control block - no reference counting
 /// @details Used for resources that don't need lifecycle management.
-/// is_alive_ is automatically managed: true after acquire(), false after
-/// release().
+/// isAlive() simply returns isCreated() since Raw resources have no
+/// acquisition semantics.
 template <typename SlotT>
   requires SlotConcept<SlotT>
 class RawControlBlock {
@@ -27,25 +30,39 @@ public:
   // Lifecycle API
   // =========================================================================
 
-  /// @brief Acquire the resource, marks as alive
-  /// @return always true for raw resources
-  bool acquire() noexcept {
-    is_alive_ = true;
-    return true;
+  /// @brief Acquire the resource, creating if needed
+  /// @tparam CreateFn Callable that takes Payload& and returns bool
+  /// @return true if acquired (and created if needed), false if creation failed
+  template <typename CreateFn>
+    requires std::invocable<CreateFn, Payload &> &&
+             std::convertible_to<std::invoke_result_t<CreateFn, Payload &>,
+                                 bool>
+  bool acquire(CreateFn &&createFn) noexcept {
+    return slot_.create(std::forward<CreateFn>(createFn));
   }
 
-  /// @brief Release and prepare for reuse, marks as not alive
+  /// @brief Release and prepare for reuse (no-op for raw)
   /// @return always true for raw resources
   bool release() noexcept {
-    is_alive_ = false;
     if constexpr (SlotT::has_generation) {
       slot_.incrementGeneration();
     }
     return true;
   }
 
-  /// @brief Check if resource is currently acquired/alive
-  bool isAlive() const noexcept { return is_alive_; }
+  /// @brief Release and destroy the resource
+  /// @tparam DestroyFn Callable that takes Payload&
+  template <typename DestroyFn>
+    requires std::invocable<DestroyFn, Payload &>
+  void releaseAndDestroy(DestroyFn &&destroyFn) {
+    slot_.destroy(std::forward<DestroyFn>(destroyFn));
+    if constexpr (SlotT::has_generation) {
+      slot_.incrementGeneration();
+    }
+  }
+
+  /// @brief Check if resource is alive (for Raw, this means created)
+  bool isAlive() const noexcept { return slot_.isCreated(); }
 
   // =========================================================================
   // Payload Access
@@ -62,8 +79,28 @@ public:
   /// @brief Get current generation (0 if not supported)
   auto generation() const noexcept { return slot_.generation(); }
 
+  // =========================================================================
+  // Creation State (delegated to Slot)
+  // =========================================================================
+
+  /// @brief Check if resource has been created
+  bool isCreated() const noexcept { return slot_.isCreated(); }
+
+  /// @brief Create the resource by executing the factory
+  template <typename Factory>
+    requires std::invocable<Factory, Payload &>
+  auto create(Factory &&factory) -> decltype(auto) {
+    return slot_.create(std::forward<Factory>(factory));
+  }
+
+  /// @brief Destroy the resource by executing the destructor
+  template <typename Destructor>
+    requires std::invocable<Destructor, Payload &>
+  void destroy(Destructor &&destructor) {
+    slot_.destroy(std::forward<Destructor>(destructor));
+  }
+
 private:
-  bool is_alive_{false};
   SlotT slot_{};
 };
 

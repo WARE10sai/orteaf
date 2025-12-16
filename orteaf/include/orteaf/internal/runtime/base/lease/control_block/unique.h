@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <concepts>
 #include <utility>
 
 #include <orteaf/internal/runtime/base/lease/category.h>
@@ -11,8 +12,7 @@ namespace orteaf::internal::runtime::base {
 /// @brief Unique control block - single ownership with in_use flag
 /// @details Only one lease can hold this resource at a time.
 /// Uses atomic CAS for thread-safe acquisition.
-/// is_alive_ is automatically managed: true after acquire(), false after
-/// release().
+/// isAlive() returns the in_use state.
 template <typename SlotT>
   requires SlotConcept<SlotT>
 class UniqueControlBlock {
@@ -26,14 +26,13 @@ public:
   UniqueControlBlock &operator=(const UniqueControlBlock &) = delete;
 
   UniqueControlBlock(UniqueControlBlock &&other) noexcept
-      : is_alive_(other.is_alive_), slot_(std::move(other.slot_)) {
+      : slot_(std::move(other.slot_)) {
     in_use_.store(other.in_use_.load(std::memory_order_relaxed),
                   std::memory_order_relaxed);
   }
 
   UniqueControlBlock &operator=(UniqueControlBlock &&other) noexcept {
     if (this != &other) {
-      is_alive_ = other.is_alive_;
       in_use_.store(other.in_use_.load(std::memory_order_relaxed),
                     std::memory_order_relaxed);
       slot_ = std::move(other.slot_);
@@ -45,27 +44,39 @@ public:
   // Lifecycle API
   // =========================================================================
 
-  /// @brief Acquire exclusive ownership, marks as alive
-  /// @return true if successfully acquired, false if already in use
-  bool acquire() noexcept {
+  /// @brief Acquire exclusive ownership, creating resource if needed
+  /// @tparam CreateFn Callable that takes Payload& and returns bool
+  /// @return true if acquired and created, false if already in use or creation
+  /// failed
+  template <typename CreateFn>
+    requires std::invocable<CreateFn, Payload &> &&
+             std::convertible_to<std::invoke_result_t<CreateFn, Payload &>,
+                                 bool>
+  bool acquire(CreateFn &&createFn) noexcept {
     bool expected = false;
-    if (in_use_.compare_exchange_strong(expected, true,
-                                        std::memory_order_acquire,
-                                        std::memory_order_relaxed)) {
-      is_alive_ = true;
-      return true;
+    if (!in_use_.compare_exchange_strong(expected, true,
+                                         std::memory_order_acquire,
+                                         std::memory_order_relaxed)) {
+      return false; // Already in use
     }
-    return false;
+
+    // Try to create the resource
+    if (!slot_.create(std::forward<CreateFn>(createFn))) {
+      // Creation failed, release ownership
+      in_use_.store(false, std::memory_order_release);
+      return false;
+    }
+
+    return true;
   }
 
-  /// @brief Release ownership, marks as not alive
+  /// @brief Release ownership (for reuse)
   /// @return true if was in use and now released, false if wasn't in use
   bool release() noexcept {
     bool expected = true;
     if (in_use_.compare_exchange_strong(expected, false,
                                         std::memory_order_release,
                                         std::memory_order_relaxed)) {
-      is_alive_ = false;
       if constexpr (SlotT::has_generation) {
         slot_.incrementGeneration();
       }
@@ -74,8 +85,26 @@ public:
     return false;
   }
 
-  /// @brief Check if resource is currently acquired/alive
-  bool isAlive() const noexcept { return is_alive_; }
+  /// @brief Release and destroy the resource (non-reusable)
+  /// @tparam DestroyFn Callable that takes Payload&
+  template <typename DestroyFn>
+    requires std::invocable<DestroyFn, Payload &>
+  void releaseAndDestroy(DestroyFn &&destroyFn) {
+    bool expected = true;
+    if (in_use_.compare_exchange_strong(expected, false,
+                                        std::memory_order_release,
+                                        std::memory_order_relaxed)) {
+      slot_.destroy(std::forward<DestroyFn>(destroyFn));
+      if constexpr (SlotT::has_generation) {
+        slot_.incrementGeneration();
+      }
+    }
+  }
+
+  /// @brief Check if resource is currently acquired
+  bool isAlive() const noexcept {
+    return in_use_.load(std::memory_order_acquire);
+  }
 
   // =========================================================================
   // Payload Access
@@ -92,8 +121,28 @@ public:
   /// @brief Get current generation (0 if not supported)
   auto generation() const noexcept { return slot_.generation(); }
 
+  // =========================================================================
+  // Creation State (delegated to Slot)
+  // =========================================================================
+
+  /// @brief Check if resource has been created
+  bool isCreated() const noexcept { return slot_.isCreated(); }
+
+  /// @brief Create the resource by executing the factory
+  template <typename Factory>
+    requires std::invocable<Factory, Payload &>
+  auto create(Factory &&factory) -> decltype(auto) {
+    return slot_.create(std::forward<Factory>(factory));
+  }
+
+  /// @brief Destroy the resource by executing the destructor
+  template <typename Destructor>
+    requires std::invocable<Destructor, Payload &>
+  void destroy(Destructor &&destructor) {
+    slot_.destroy(std::forward<Destructor>(destructor));
+  }
+
 private:
-  bool is_alive_{false};
   std::atomic<bool> in_use_{false};
   SlotT slot_{};
 };
