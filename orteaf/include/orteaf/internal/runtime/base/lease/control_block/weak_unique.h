@@ -16,14 +16,11 @@ namespace orteaf::internal::runtime::base {
 /// The resource is destroyed when the strong owner releases, but control block
 /// persists until all weak references are gone.
 /// isAlive() returns the in_use state.
+/// Generation is incremented only when both strong (in_use) and weak references
+/// are all released.
 template <typename SlotT>
   requires SlotConcept<SlotT>
 class WeakUniqueControlBlock {
-  // WeakUnique does not support generation tracking.
-  static_assert(!SlotT::has_generation,
-                "WeakUniqueControlBlock does not support generation tracking. "
-                "Use RawSlot<T> instead.");
-
 public:
   using Category = lease_category::WeakUnique;
   using Slot = SlotT;
@@ -83,12 +80,23 @@ public:
   }
 
   /// @brief Release strong ownership (for reuse)
-  /// @return true if was in use and now released, false if wasn't in use
+  /// @return true if both strong (in_use) and all weak references are released,
+  ///         making the control block fully available for reuse.
+  ///         false otherwise.
   bool release() noexcept {
     bool expected = true;
-    if (in_use_.compare_exchange_strong(expected, false,
-                                        std::memory_order_release,
-                                        std::memory_order_relaxed)) {
+    if (!in_use_.compare_exchange_strong(expected, false,
+                                         std::memory_order_release,
+                                         std::memory_order_relaxed)) {
+      return false; // Was not in use
+    }
+
+    // Check if all weak references are also released
+    if (weak_count_.load(std::memory_order_acquire) == 0) {
+      // Both strong and weak are released - increment generation
+      if constexpr (SlotT::has_generation) {
+        slot_.incrementGeneration();
+      }
       return true;
     }
     return false;
@@ -96,15 +104,29 @@ public:
 
   /// @brief Release and destroy the resource (non-reusable)
   /// @tparam DestroyFn Callable that takes Payload&
-  /// @return true if released and destroyed, false otherwise
+  /// @return true if both strong and weak references are released and resource
+  ///         is destroyed. false if in_use was false, or weak references
+  ///         remain.
   template <typename DestroyFn>
     requires std::invocable<DestroyFn, Payload &>
   bool releaseAndDestroy(DestroyFn &&destroyFn) {
     bool expected = true;
-    if (in_use_.compare_exchange_strong(expected, false,
-                                        std::memory_order_release,
-                                        std::memory_order_relaxed)) {
-      return slot_.destroy(std::forward<DestroyFn>(destroyFn));
+    if (!in_use_.compare_exchange_strong(expected, false,
+                                         std::memory_order_release,
+                                         std::memory_order_relaxed)) {
+      return false; // Was not in use
+    }
+
+    // Always destroy the resource when strong owner releases
+    slot_.destroy(std::forward<DestroyFn>(destroyFn));
+
+    // Check if all weak references are also released
+    if (weak_count_.load(std::memory_order_acquire) == 0) {
+      // Both strong and weak are released - increment generation
+      if constexpr (SlotT::has_generation) {
+        slot_.incrementGeneration();
+      }
+      return true;
     }
     return false;
   }
@@ -124,11 +146,18 @@ public:
   }
 
   /// @brief Release a weak reference
-  /// @return true if this was the last weak reference and resource is not in
-  /// use
+  /// @return true if this was the last weak reference AND strong is not in use,
+  ///         meaning the control block is now fully available for reuse.
   bool releaseWeak() noexcept {
     const auto prev = weak_count_.fetch_sub(1, std::memory_order_acq_rel);
-    return prev == 1 && !in_use_.load(std::memory_order_acquire);
+    if (prev == 1 && !in_use_.load(std::memory_order_acquire)) {
+      // Last weak reference and strong is not in use - increment generation
+      if constexpr (SlotT::has_generation) {
+        slot_.incrementGeneration();
+      }
+      return true;
+    }
+    return false;
   }
 
   /// @brief Try to promote weak reference to strong
@@ -146,6 +175,13 @@ public:
   /// @brief Access the payload
   Payload &payload() noexcept { return slot_.get(); }
   const Payload &payload() const noexcept { return slot_.get(); }
+
+  // =========================================================================
+  // Generation (delegated to Slot)
+  // =========================================================================
+
+  /// @brief Get current generation (0 if not supported)
+  auto generation() const noexcept { return slot_.generation(); }
 
   // =========================================================================
   // Additional Queries
