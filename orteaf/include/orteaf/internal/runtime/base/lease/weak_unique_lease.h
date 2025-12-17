@@ -20,7 +20,7 @@ public:
   using ResourceType = ResourceT;
   using ManagerType = ManagerT;
   using CompatibleCategory =
-      ::orteaf::internal::base::lease_category::WeakUnique;
+      ::orteaf::internal::runtime::base::lease_category::WeakUnique;
 
   WeakUniqueLease() noexcept = default;
 
@@ -69,7 +69,7 @@ public:
 
   void release() noexcept {
     if (manager_) {
-      manager_->releaseWeak(*this);
+      manager_->dropWeakRef(*this);
       manager_ = nullptr;
     }
   }
@@ -82,7 +82,7 @@ private:
     if (other.manager_) {
       manager_ = other.manager_;
       handle_ = other.handle_;
-      manager_->acquireWeak(handle_);
+      manager_->addWeakRef(handle_);
     }
   }
 
