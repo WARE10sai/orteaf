@@ -161,8 +161,12 @@ public:
   }
 
   /// @brief Try to promote weak reference to strong
-  /// @return true if successfully promoted
+  /// @return true if successfully promoted (resource is created and not in use)
   bool tryPromote() noexcept {
+    // Can only promote if resource has been created
+    if (!slot_.isCreated()) {
+      return false;
+    }
     bool expected = false;
     return in_use_.compare_exchange_strong(
         expected, true, std::memory_order_acquire, std::memory_order_relaxed);

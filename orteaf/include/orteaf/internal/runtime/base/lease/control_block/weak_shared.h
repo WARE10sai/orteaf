@@ -145,8 +145,13 @@ public:
   }
 
   /// @brief Try to promote weak reference to strong
-  /// @return true if successfully promoted (strong count was > 0)
+  /// @return true if successfully promoted (resource is created and strong
+  /// count > 0)
   bool tryPromote() noexcept {
+    // Can only promote if resource has been created
+    if (!slot_.isCreated()) {
+      return false;
+    }
     std::uint32_t current = strong_count_.load(std::memory_order_acquire);
     while (current > 0) {
       if (strong_count_.compare_exchange_weak(current, current + 1,
