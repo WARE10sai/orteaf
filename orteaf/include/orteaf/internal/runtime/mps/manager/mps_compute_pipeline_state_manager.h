@@ -108,15 +108,8 @@ public:
   void release(PipelineLease &lease) noexcept;
 
   // Growth configuration
-  void setGrowthChunkSize(std::size_t chunk) {
-    if (chunk == 0) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-          "Growth chunk size must be > 0");
-    }
-    growth_chunk_size_ = chunk;
-  }
-  std::size_t growthChunkSize() const noexcept { return growth_chunk_size_; }
+  using Base::growthChunkSize;
+  using Base::setGrowthChunkSize;
 
   // Expose some base methods
   using Base::capacity;
@@ -128,7 +121,7 @@ public:
   using Base::isInitializedForTest;
 
   std::size_t growthChunkSizeForTest() const noexcept {
-    return growth_chunk_size_;
+    return Base::growthChunkSize();
   }
 #endif
 
@@ -143,7 +136,6 @@ private:
   LibraryType library_{nullptr};
   DeviceType device_{nullptr};
   SlowOps *ops_{nullptr};
-  std::size_t growth_chunk_size_{1};
 };
 
 } // namespace orteaf::internal::runtime::mps::manager

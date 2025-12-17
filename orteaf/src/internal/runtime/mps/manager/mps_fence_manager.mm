@@ -34,7 +34,8 @@ void MpsFenceManager::shutdown() {
     return;
   }
   Base::teardownPool([this](FenceControlBlock &cb, FenceHandle) {
-    if (cb.isAlive()) {
+    // Check if resource was created (payload is valid)
+    if (cb.payload() != nullptr) {
       destroyResource(cb.payload());
     }
   });
@@ -43,18 +44,17 @@ void MpsFenceManager::shutdown() {
 }
 
 MpsFenceManager::FenceLease MpsFenceManager::acquire() {
-  auto handle = Base::acquireOrCreate(
-      growth_chunk_size_, [this](FenceControlBlock &cb, FenceHandle) {
-        if (!ops_) {
-          return false;
-        }
-        auto fence = ops_->createFence(device_);
-        if (fence == nullptr) {
-          return false;
-        }
-        cb.payload() = fence;
-        return true;
-      });
+  auto handle = Base::acquireFresh([this](FenceType &payload) {
+    if (!ops_) {
+      return false;
+    }
+    auto fence = ops_->createFence(device_);
+    if (fence == nullptr) {
+      return false;
+    }
+    payload = fence;
+    return true;
+  });
 
   if (!handle.isValid()) {
     ::orteaf::internal::diagnostics::error::throwError(
@@ -62,20 +62,12 @@ MpsFenceManager::FenceLease MpsFenceManager::acquire() {
         "Failed to create MPS fence");
   }
 
-  // Base::acquireOrCreate already calls cb.tryAcquire() for fresh resources
-  // If we reused a resource (not fresh), it does not increment if it was
-  // already alive. Wait, acquireOrCreate logic:
-  // - allocate slot
-  // - if not initialized: createFn -> initialized.
-  // - tryAcquire() -> increments strong_count from 0 to 1.
-  // So handle is owned with count=1.
-
   return FenceLease{this, handle,
                     Base::getControlBlockChecked(handle).payload()};
 }
 
 MpsFenceManager::FenceLease MpsFenceManager::acquire(FenceHandle handle) {
-  auto &cb = Base::acquireShared(handle);
+  auto &cb = Base::acquireExisting(handle);
   return FenceLease{this, handle, cb.payload()};
 }
 
@@ -88,7 +80,7 @@ void MpsFenceManager::release(FenceHandle handle) noexcept {
   if (!Base::isValidHandle(handle)) {
     return;
   }
-  Base::releaseShared(handle);
+  Base::releaseForReuse(handle);
 }
 
 void MpsFenceManager::destroyResource(FenceType &resource) {

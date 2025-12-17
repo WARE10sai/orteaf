@@ -224,20 +224,28 @@ protected:
   }
 
   // =========================================================================
-  // Growth Size Configuration
+  // Growth Chunk Size Configuration
   // =========================================================================
 
-  /// @brief Get the growth size for pool expansion
-  std::size_t growthSize() const noexcept { return growth_size_; }
+  /// @brief Get the growth chunk size for pool expansion
+  std::size_t growthChunkSize() const noexcept { return growth_chunk_size_; }
 
-  /// @brief Set the growth size for pool expansion
-  void setGrowthSize(std::size_t size) {
+  /// @brief Set the growth chunk size for pool expansion
+  void setGrowthChunkSize(std::size_t size) {
     if (size == 0) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-          std::string(managerName()) + " growth size must be > 0");
+          std::string(managerName()) + " growth chunk size must be > 0");
     }
-    growth_size_ = size;
+    constexpr std::size_t max_index =
+        static_cast<std::size_t>(Handle::invalid_index());
+    if (size > max_index) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+          std::string(managerName()) +
+              " growth chunk size exceeds maximum handle range");
+    }
+    growth_chunk_size_ = size;
   }
 
   // =========================================================================
@@ -257,7 +265,7 @@ protected:
                  bool>
   Handle acquireFresh(CreateFn &&createFn) {
     ensureInitialized();
-    Handle h = allocate(growth_size_);
+    Handle h = allocate(growth_chunk_size_);
     auto &cb = getControlBlock(h);
 
     // cb.acquire() handles create internally (idempotent)
@@ -348,13 +356,22 @@ protected:
     return control_blocks_[static_cast<std::size_t>(h.index)];
   }
 
-  ControlBlock &getControlBlockChecked(Handle h) {
+  ControlBlock &getControlBlssockChecked(Handle h) {
     ensureInitialized();
     auto idx = static_cast<std::size_t>(h.index);
     if (idx >= control_blocks_.size()) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
           std::string(managerName()) + " invalid handle index");
+    }
+    // Check generation if Handle supports it
+    if constexpr (Handle::has_generation) {
+      auto &cb = control_blocks_[idx];
+      if (cb.generation() != h.generation) {
+        ::orteaf::internal::diagnostics::error::throwError(
+            ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+            std::string(managerName()) + " stale handle detected");
+      }
     }
     return control_blocks_[idx];
   }
@@ -428,7 +445,7 @@ protected:
 
 private:
   bool initialized_{false};
-  std::size_t growth_size_{1};
+  std::size_t growth_chunk_size_{1};
   std::vector<ControlBlock> control_blocks_;
   std::vector<IndexType> freelist_; // LIFO, stores indices only
 };

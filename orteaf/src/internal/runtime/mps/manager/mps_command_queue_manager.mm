@@ -85,17 +85,15 @@ void MpsCommandQueueManager::growCapacity(std::size_t additional) {
 }
 
 MpsCommandQueueManager::CommandQueueLease MpsCommandQueueManager::acquire() {
-  auto handle = Base::acquireUniqueOrCreate(
-      growth_chunk_size_,
-      [this](CommandQueueControlBlock &cb, CommandQueueHandle) {
-        if (!ops_)
-          return false;
-        auto queue = ops_->createCommandQueue(device_);
-        if (!queue)
-          return false;
-        cb.payload() = queue;
-        return true;
-      });
+  auto handle = Base::acquireFresh([this](CommandQueueType &payload) {
+    if (!ops_)
+      return false;
+    auto queue = ops_->createCommandQueue(device_);
+    if (!queue)
+      return false;
+    payload = queue;
+    return true;
+  });
 
   if (!handle.isValid()) {
     ::orteaf::internal::diagnostics::error::throwError(
@@ -116,7 +114,7 @@ void MpsCommandQueueManager::release(CommandQueueHandle handle) noexcept {
   if (!Base::isValidHandle(handle)) {
     return;
   }
-  Base::releaseUnique(handle);
+  Base::releaseForReuse(handle);
 }
 
 bool MpsCommandQueueManager::isInUse(CommandQueueHandle handle) const {

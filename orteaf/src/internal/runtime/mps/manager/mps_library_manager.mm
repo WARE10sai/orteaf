@@ -41,7 +41,8 @@ void MpsLibraryManager::shutdown() {
 
   // Destroy all created resources
   teardownPool([this](auto &cb, auto) {
-    if (cb.isAlive()) {
+    // Check if resource was created (payload has valid library)
+    if (cb.payload().library != nullptr) {
       destroyResource(cb.payload());
     }
   });
@@ -64,8 +65,7 @@ MpsLibraryManager::acquire(const LibraryKey &key) {
   }
 
   // Acquire new slot and create resource
-  Handle handle = acquireOrCreate(growth_chunk_size_, [&](auto &cb, auto) {
-    auto &resource = cb.payload();
+  Handle handle = acquireFresh([&](MpsLibraryResource &resource) {
     resource.library = createLibrary(key);
     if (!resource.library)
       return false;
@@ -118,8 +118,7 @@ MpsLibraryManager::pipelineManager(const LibraryKey &key) {
   }
 
   // Create new
-  Handle handle = acquireOrCreate(growth_chunk_size_, [&](auto &cb, auto) {
-    auto &resource = cb.payload();
+  Handle handle = acquireFresh([&](MpsLibraryResource &resource) {
     resource.library = createLibrary(key);
     if (!resource.library)
       return false;

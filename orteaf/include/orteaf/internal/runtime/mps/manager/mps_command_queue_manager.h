@@ -64,22 +64,8 @@ public:
   void releaseUnusedQueues();
 
   // Config
-  void setGrowthChunkSize(std::size_t size) {
-    if (size == 0) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-          "Growth chunk size must be non-zero");
-    }
-    constexpr std::size_t max_index =
-        static_cast<std::size_t>(CommandQueueHandle::invalid_index());
-    if (size > max_index) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-          "Growth chunk size exceeds maximum handle range");
-    }
-    growth_chunk_size_ = size;
-  }
-  std::size_t growthChunkSize() const { return growth_chunk_size_; }
+  using Base::growthChunkSize;
+  using Base::setGrowthChunkSize;
 
   // Expose capacity
   using Base::capacity;
@@ -96,7 +82,6 @@ private:
 
   DeviceType device_{nullptr};
   SlowOps *ops_{nullptr};
-  std::size_t growth_chunk_size_{1};
 };
 
 } // namespace orteaf::internal::runtime::mps::manager

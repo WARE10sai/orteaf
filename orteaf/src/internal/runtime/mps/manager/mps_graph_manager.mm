@@ -27,13 +27,14 @@ void MpsGraphManager::initialize(DeviceType device, SlowOps *ops,
   device_ = device;
   ops_ = ops;
   key_to_index_.clear();
-  growth_chunk_size_ = capacity > 0 ? capacity : 1;
   Base::setupPool(capacity);
 }
 
 void MpsGraphManager::shutdown() {
   Base::teardownPool([this](GraphControlBlock &cb, GraphHandle) {
-    if (cb.isAlive()) {
+    // Check if resource was created (payload has valid pointers)
+    // isAlive() indicates acquisition state, not resource validity
+    if (cb.payload().graph != nullptr || cb.payload().executable != nullptr) {
       destroyResource(cb.payload());
     }
   });
@@ -65,26 +66,24 @@ MpsGraphManager::acquire(const GraphKey &key, const CompileFn &compile_fn) {
     // For cache pattern: use direct acquire() instead of acquireShared()
     // acquireShared requires count>0, but cached resources may have count=0
     auto &cb = Base::getControlBlock(cached_handle);
-    cb.acquire();
+    cb.acquire([](auto &) { return true; });
     return GraphLease{this, cached_handle, cb.payload().executable};
   }
 
   // Create new entry
-  auto handle = Base::acquireOrCreate(
-      growth_chunk_size_, [&](GraphControlBlock &cb, GraphHandle) {
-        MpsGraphResource &resource = cb.payload();
-        resource.graph = ops_->createGraph();
-        resource.executable = compile_fn(resource.graph, device_, ops_);
-        if (resource.executable == nullptr) {
-          // Cleanup the graph before throwing
-          ops_->destroyGraph(resource.graph);
-          resource.graph = nullptr;
-          ::orteaf::internal::diagnostics::error::throwError(
-              ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-              "MPS graph compile function returned null executable");
-        }
-        return true;
-      });
+  auto handle = Base::acquireFresh([&](MpsGraphResource &resource) {
+    resource.graph = ops_->createGraph();
+    resource.executable = compile_fn(resource.graph, device_, ops_);
+    if (resource.executable == nullptr) {
+      // Cleanup the graph before throwing
+      ops_->destroyGraph(resource.graph);
+      resource.graph = nullptr;
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+          "MPS graph compile function returned null executable");
+    }
+    return true;
+  });
 
   if (handle == GraphHandle::invalid()) {
     ::orteaf::internal::diagnostics::error::throwError(
@@ -101,7 +100,7 @@ void MpsGraphManager::release(GraphLease &lease) noexcept {
   if (!lease) {
     return;
   }
-  Base::releaseShared(lease.handle());
+  Base::releaseForReuse(lease.handle());
   lease.invalidate();
 }
 

@@ -73,7 +73,6 @@ private:
 
   DeviceType device_{nullptr};
   SlowOps *ops_{nullptr};
-  std::size_t growth_chunk_size_{1};
 };
 
 } // namespace orteaf::internal::runtime::mps::manager

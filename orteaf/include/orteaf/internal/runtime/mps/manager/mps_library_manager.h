@@ -105,15 +105,8 @@ public:
 
   std::size_t capacity() const noexcept { return Base::capacity(); }
 
-  std::size_t growthChunkSize() const noexcept { return growth_chunk_size_; }
-  void setGrowthChunkSize(std::size_t size) {
-    if (size == 0) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-          "Growth chunk size must be greater than 0");
-    }
-    growth_chunk_size_ = size;
-  }
+  using Base::growthChunkSize;
+  using Base::setGrowthChunkSize;
 
 #if ORTEAF_ENABLE_TEST
   using Base::controlBlockForTest;
@@ -132,7 +125,6 @@ private:
   std::unordered_map<LibraryKey, std::size_t, LibraryKeyHasher> key_to_index_{};
   DeviceType device_{nullptr};
   SlowOps *ops_{nullptr};
-  std::size_t growth_chunk_size_{1};
 };
 
 } // namespace orteaf::internal::runtime::mps::manager

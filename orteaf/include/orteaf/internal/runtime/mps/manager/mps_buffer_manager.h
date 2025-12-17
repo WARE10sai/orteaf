@@ -232,10 +232,10 @@ public:
       return {};
     }
 
-    auto handle = Base::acquireOrCreate(
-        1, [this, size, alignment, &params](ControlBlock &cb, BufferHandle) {
-          cb.payload().buffer = allocateBuffer(size, alignment, params);
-          return cb.payload().buffer.valid();
+    auto handle = Base::acquireFresh(
+        [this, size, alignment, &params](MpsBufferResource &resource) {
+          resource.buffer = allocateBuffer(size, alignment, params);
+          return resource.buffer.valid();
         });
 
     if (handle == BufferHandle::invalid()) {
@@ -251,7 +251,7 @@ public:
   // =========================================================================
   BufferLease acquire(BufferHandle handle) {
     Base::ensureInitialized();
-    auto &cb = Base::acquireShared(handle);
+    auto &cb = Base::acquireExisting(handle);
     return BufferLease{this, handle, &cb.payload().buffer};
   }
 
@@ -277,9 +277,9 @@ public:
     }
 
     Base::releaseAndDestroy(handle,
-                            [this, &params](ControlBlock &cb, BufferHandle) {
-                              deallocateBuffer(cb.payload().buffer, params);
-                              cb.payload().buffer = Buffer{};
+                            [this, &params](MpsBufferResource &resource) {
+                              deallocateBuffer(resource.buffer, params);
+                              resource.buffer = Buffer{};
                             });
   }
 
@@ -294,16 +294,8 @@ public:
   // =========================================================================
   // Growth chunk size (for pool expansion)
   // =========================================================================
-  std::size_t growthChunkSize() const noexcept { return growth_chunk_size_; }
-
-  void setGrowthChunkSize(std::size_t size) {
-    if (size == 0) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-          std::string(Traits::Name) + " growth chunk size must be > 0");
-    }
-    growth_chunk_size_ = size;
-  }
+  using Base::growthChunkSize;
+  using Base::setGrowthChunkSize;
 
   // Expose base methods
   using Base::capacity;
@@ -345,7 +337,6 @@ private:
   ::orteaf::internal::base::DeviceHandle device_handle_{};
   HeapType heap_{nullptr};
   LaunchParams default_params_{};
-  std::size_t growth_chunk_size_{1};
 };
 
 } // namespace orteaf::internal::runtime::mps::manager

@@ -52,23 +52,21 @@ MpsHeapManager::acquire(const HeapDescriptorKey &key) {
   if (auto it = key_to_index_.find(key); it != key_to_index_.end()) {
     HeapHandle cached_handle{
         static_cast<typename HeapHandle::index_type>(it->second)};
-    Base::getControlBlock(cached_handle).acquire();
+    Base::getControlBlock(cached_handle).acquire([](auto &) { return true; });
     return HeapLease{this, cached_handle,
                      Base::getControlBlock(cached_handle).payload().heap};
   }
 
   // Create new entry
-  auto handle =
-      Base::acquireOrCreate(1, [this, &key](ControlBlock &cb, HeapHandle) {
-        cb.payload().heap = createHeap(key);
-        // Initialize buffer manager for this heap
-        cb.payload().buffer_manager = std::make_unique<BufferManager>();
-        BufferManager::Config buf_cfg{}; // Use defaults
-        cb.payload().buffer_manager->initialize(device_, device_handle_,
-                                                cb.payload().heap,
-                                                library_manager_, buf_cfg, 0);
-        return true;
-      });
+  auto handle = Base::acquireFresh([this, &key](MpsHeapResource &resource) {
+    resource.heap = createHeap(key);
+    // Initialize buffer manager for this heap
+    resource.buffer_manager = std::make_unique<BufferManager>();
+    BufferManager::Config buf_cfg{}; // Use defaults
+    resource.buffer_manager->initialize(device_, device_handle_, resource.heap,
+                                        library_manager_, buf_cfg, 0);
+    return true;
+  });
 
   if (handle == HeapHandle::invalid()) {
     ::orteaf::internal::diagnostics::error::throwError(
@@ -110,16 +108,14 @@ MpsHeapManager::bufferManager(const HeapDescriptorKey &key) {
   }
 
   // Create new entry (same as acquire but don't return lease)
-  auto handle =
-      Base::acquireOrCreate(1, [this, &key](ControlBlock &cb, HeapHandle) {
-        cb.payload().heap = createHeap(key);
-        cb.payload().buffer_manager = std::make_unique<BufferManager>();
-        BufferManager::Config buf_cfg{};
-        cb.payload().buffer_manager->initialize(device_, device_handle_,
-                                                cb.payload().heap,
-                                                library_manager_, buf_cfg, 0);
-        return true;
-      });
+  auto handle = Base::acquireFresh([this, &key](MpsHeapResource &resource) {
+    resource.heap = createHeap(key);
+    resource.buffer_manager = std::make_unique<BufferManager>();
+    BufferManager::Config buf_cfg{};
+    resource.buffer_manager->initialize(device_, device_handle_, resource.heap,
+                                        library_manager_, buf_cfg, 0);
+    return true;
+  });
 
   if (handle == HeapHandle::invalid()) {
     ::orteaf::internal::diagnostics::error::throwError(
@@ -150,15 +146,6 @@ void MpsHeapManager::destroyResource(MpsHeapResource &resource) {
     ops_->destroyHeap(resource.heap);
     resource.heap = nullptr;
   }
-}
-
-void MpsHeapManager::setGrowthChunkSize(std::size_t size) {
-  if (size == 0) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-        "MPS heap manager growth chunk size must be > 0");
-  }
-  growth_chunk_size_ = size;
 }
 
 ::orteaf::internal::runtime::mps::platform::wrapper::MpsHeap_t

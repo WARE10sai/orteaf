@@ -47,7 +47,8 @@ void MpsComputePipelineStateManager::shutdown() {
 
   // Destroy all created resources
   teardownPool([this](auto &cb, auto handle) {
-    if (cb.isAlive()) {
+    // Check if resource was created (payload has valid pipeline_state)
+    if (cb.payload().pipeline_state != nullptr) {
       destroyResource(cb.payload());
     }
   });
@@ -71,8 +72,7 @@ MpsComputePipelineStateManager::acquire(const FunctionKey &key) {
   }
 
   // Acquire new slot and create resource
-  Handle handle = acquireOrCreate(growth_chunk_size_, [&](auto &cb, auto) {
-    auto &resource = cb.payload();
+  Handle handle = acquireFresh([&](MpsPipelineResource &resource) {
     resource.function = ops_->createFunction(library_, key.identifier);
     if (!resource.function)
       return false;

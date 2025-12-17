@@ -138,8 +138,8 @@ public:
   BufferManager *bufferManager(const HeapDescriptorKey &key);
 
   // Growth chunk size
-  std::size_t growthChunkSize() const noexcept { return growth_chunk_size_; }
-  void setGrowthChunkSize(std::size_t size);
+  using Base::growthChunkSize;
+  using Base::setGrowthChunkSize;
 
   // Expose base methods
   using Base::capacity;
@@ -163,7 +163,6 @@ private:
   ::orteaf::internal::base::DeviceHandle device_handle_{};
   MpsLibraryManager *library_manager_{nullptr};
   SlowOps *ops_{nullptr};
-  std::size_t growth_chunk_size_{1};
 };
 
 } // namespace orteaf::internal::runtime::mps::manager

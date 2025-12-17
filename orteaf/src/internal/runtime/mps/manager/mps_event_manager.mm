@@ -42,9 +42,10 @@ void MpsEventManager::shutdown() {
   if (!Base::isInitialized()) {
     return;
   }
-  // Teardown and destroy all initialized resources
+  // Teardown and destroy all created resources
   Base::teardownPool([this](EventControlBlock &cb, EventHandle h) {
-    if (cb.isAlive()) {
+    // Check if resource was created (payload is valid)
+    if (cb.payload() != nullptr) {
       destroyResource(cb.payload());
     }
   });
@@ -56,17 +57,14 @@ void MpsEventManager::shutdown() {
 MpsEventManager::EventLease MpsEventManager::acquire() {
   ensureInitialized();
 
-  // acquireOrCreate handles finding a free slot (allocating if needed)
-  // and creating the resource if it's not initialized.
-  auto handle = Base::acquireOrCreate(
-      growth_chunk_size_, [this](EventControlBlock &cb, EventHandle) {
-        auto event = ops_->createEvent(device_);
-        if (event == nullptr) {
-          return false;
-        }
-        cb.payload() = event;
-        return true;
-      });
+  auto handle = Base::acquireFresh([this](EventType &payload) {
+    auto event = ops_->createEvent(device_);
+    if (event == nullptr) {
+      return false;
+    }
+    payload = event;
+    return true;
+  });
 
   if (!handle.isValid()) {
     ::orteaf::internal::diagnostics::error::throwError(
@@ -74,15 +72,12 @@ MpsEventManager::EventLease MpsEventManager::acquire() {
         "Failed to create MPS event");
   }
 
-  // Handle acquired -> ref count 0->1 managed by acquireOrCreate (via
-  // tryAcquire)
   auto &cb = Base::getControlBlock(handle);
-
   return EventLease{this, handle, cb.payload()};
 }
 
 MpsEventManager::EventLease MpsEventManager::acquire(EventHandle handle) {
-  auto &cb = Base::acquireShared(handle);
+  auto &cb = Base::acquireExisting(handle);
   return EventLease{this, handle, cb.payload()};
 }
 
@@ -95,7 +90,7 @@ void MpsEventManager::release(EventHandle handle) noexcept {
   if (!Base::isValidHandle(handle)) {
     return;
   }
-  Base::releaseShared(handle);
+  Base::releaseForReuse(handle);
 }
 
 } // namespace orteaf::internal::runtime::mps::manager
