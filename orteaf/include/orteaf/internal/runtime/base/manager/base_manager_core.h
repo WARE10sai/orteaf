@@ -386,8 +386,9 @@ protected:
   /// @brief Acquire an existing resource by handle (no-op create)
   /// @param h Handle to the resource
   /// @return Reference to the control block
+  /// @note If createFn is invoked (resource not created), throws error
   ControlBlock &acquireExisting(Handle h) {
-    return acquireExisting(h, [](auto &) { return true; });
+    return acquireExisting(h, [](auto &) { return false; });
   }
 
   // =========================================================================
