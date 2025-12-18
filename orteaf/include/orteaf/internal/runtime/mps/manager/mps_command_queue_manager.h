@@ -62,17 +62,15 @@ public:
 
   CommandQueueLease acquire();
   void release(CommandQueueLease &lease) noexcept;
+  void release(CommandQueueWeakLease &lease) noexcept;
 
   // Weak reference support
   /// @brief Acquire a weak lease from an existing strong lease
   CommandQueueWeakLease acquireWeak(const CommandQueueLease &lease);
   /// @brief Acquire a weak lease from a handle
   CommandQueueWeakLease acquireWeak(CommandQueueHandle handle);
-
-  // Internal methods required by WeakUniqueLease
-  void addWeakRef(CommandQueueHandle handle) noexcept;
-  void dropWeakRef(CommandQueueWeakLease &lease) noexcept;
-  CommandQueueLease tryPromote(CommandQueueHandle handle);
+  /// @brief Try to promote a weak lease to a strong lease
+  CommandQueueLease tryPromote(const CommandQueueWeakLease &weakLease);
 
   // Config
   using Base::growthChunkSize;

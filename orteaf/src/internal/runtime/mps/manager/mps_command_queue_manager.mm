@@ -116,12 +116,7 @@ MpsCommandQueueManager::acquireWeak(CommandQueueHandle handle) {
   return CommandQueueWeakLease{this, handle};
 }
 
-void MpsCommandQueueManager::addWeakRef(CommandQueueHandle handle) noexcept {
-  Base::acquireWeakRef(handle);
-}
-
-void MpsCommandQueueManager::dropWeakRef(
-    CommandQueueWeakLease &lease) noexcept {
+void MpsCommandQueueManager::release(CommandQueueWeakLease &lease) noexcept {
   if (!lease) {
     return;
   }
@@ -130,8 +125,11 @@ void MpsCommandQueueManager::dropWeakRef(
 }
 
 MpsCommandQueueManager::CommandQueueLease
-MpsCommandQueueManager::tryPromote(CommandQueueHandle handle) {
-  auto promotedHandle = Base::tryPromoteWeak(handle);
+MpsCommandQueueManager::tryPromote(const CommandQueueWeakLease &weakLease) {
+  if (!weakLease) {
+    return CommandQueueLease{};
+  }
+  auto promotedHandle = Base::tryPromoteWeak(weakLease.handle());
   if (!promotedHandle.isValid()) {
     return CommandQueueLease{};
   }

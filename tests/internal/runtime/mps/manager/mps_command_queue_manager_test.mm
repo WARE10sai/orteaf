@@ -500,7 +500,7 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest,
   strong_lease.release();
 
   // Act: Try to promote weak to strong
-  auto promoted = manager.tryPromote(handle);
+  auto promoted = manager.tryPromote(weak_lease);
 
   // Assert: Should succeed because resource still created
   EXPECT_TRUE(static_cast<bool>(promoted));
@@ -603,12 +603,12 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest, TryPromoteFailsForInvalidHandle) {
   this->adapter().expectCreateCommandQueues({makeQueue(0xA80)});
   manager.initialize(device, this->getOps(), 1);
 
-  // Act: Try to promote with out-of-range handle
+  // Act: Try to promote with out-of-range handle via weak lease
   mps_rt::MpsCommandQueueManager::CommandQueueHandle out_of_range_handle{999};
-  auto promoted = manager.tryPromote(out_of_range_handle);
+  auto weak_lease = manager.acquireWeak(out_of_range_handle);
 
-  // Assert
-  EXPECT_FALSE(static_cast<bool>(promoted));
+  // Assert: acquireWeak with invalid handle should return invalid weak lease
+  EXPECT_FALSE(static_cast<bool>(weak_lease));
 
   // Cleanup
   this->adapter().expectDestroyCommandQueues({makeQueue(0xA80)});
@@ -625,11 +625,12 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest, TryPromoteFailsForStaleHandle) {
 
   // Acquire a lease - the slot is now in use
   auto lease = manager.acquire();
-  auto handle = lease.handle();
+  auto weak_lease = manager.acquireWeak(lease);
 
-  // Act: Try to promote while already in use (no generation = no stale concept)
-  // For non-generational handles, tryPromote should fail because slot is in use
-  auto promoted = manager.tryPromote(handle);
+  // Act: Try to promote while strong lease still held (slot is in use)
+  // For exclusive (unique) resources, tryPromote should fail because slot is in
+  // use
+  auto promoted = manager.tryPromote(weak_lease);
 
   // Assert: Should fail because slot is already in use (in_use = true)
   EXPECT_FALSE(static_cast<bool>(promoted));
