@@ -103,7 +103,7 @@ MpsCommandQueueManager::acquireWeak(const CommandQueueLease &lease) {
   if (!lease) {
     return CommandQueueWeakLease{};
   }
-  Base::getControlBlockChecked(lease.handle()).acquireWeak();
+  Base::acquireWeakRef(lease.handle());
   return CommandQueueWeakLease{this, lease.handle()};
 }
 
@@ -112,14 +112,12 @@ MpsCommandQueueManager::acquireWeak(CommandQueueHandle handle) {
   if (!Base::isValidHandle(handle)) {
     return CommandQueueWeakLease{};
   }
-  Base::getControlBlockChecked(handle).acquireWeak();
+  Base::acquireWeakRef(handle);
   return CommandQueueWeakLease{this, handle};
 }
 
 void MpsCommandQueueManager::addWeakRef(CommandQueueHandle handle) noexcept {
-  if (Base::isValidHandle(handle)) {
-    Base::getControlBlockChecked(handle).acquireWeak();
-  }
+  Base::acquireWeakRef(handle);
 }
 
 void MpsCommandQueueManager::dropWeakRef(
@@ -127,23 +125,18 @@ void MpsCommandQueueManager::dropWeakRef(
   if (!lease) {
     return;
   }
-  auto handle = lease.handle();
-  if (Base::isValidHandle(handle)) {
-    Base::getControlBlockChecked(handle).releaseWeak();
-  }
+  Base::releaseWeakRef(lease.handle());
   lease.invalidate();
 }
 
 MpsCommandQueueManager::CommandQueueLease
 MpsCommandQueueManager::tryPromote(CommandQueueHandle handle) {
-  if (!Base::isValidHandle(handle)) {
+  auto promotedHandle = Base::tryPromoteWeak(handle);
+  if (!promotedHandle.isValid()) {
     return CommandQueueLease{};
   }
-  auto &cb = Base::getControlBlockChecked(handle);
-  if (cb.tryPromote()) {
-    return CommandQueueLease{this, handle, cb.payload()};
-  }
-  return CommandQueueLease{};
+  auto &cb = Base::getControlBlock(promotedHandle);
+  return CommandQueueLease{this, promotedHandle, cb.payload()};
 }
 
 void MpsCommandQueueManager::destroyResource(CommandQueueType &resource) {
