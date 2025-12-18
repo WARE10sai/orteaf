@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <concepts>
+#include <iostream>
 #include <utility>
 
 #include <orteaf/internal/runtime/base/lease/category.h>
@@ -65,8 +66,10 @@ public:
   /// @note Does NOT increment generation - resource stays valid in cache
   /// @return always true for raw resources
   bool release() noexcept {
-    weak_count_.fetch_sub(1, std::memory_order_relaxed);
-    return true;
+    if (weak_count_.fetch_sub(1, std::memory_order_relaxed) == 1) {
+      return true;
+    }
+    return false;
   }
 
   /// @brief Release and destroy the resource
@@ -81,9 +84,18 @@ public:
     }
     if (destroyed) {
       weak_count_.fetch_sub(1, std::memory_order_relaxed);
+      if (weak_count_ == 0) {
+        return true;
+      }
     }
-    return destroyed;
+    return false;
   }
+
+  /// @brief Acquire a weak reference to the resource
+  void acquireWeakRef() noexcept { weak_count_.fetch_add(1, std::memory_order_relaxed); }
+
+  /// @brief Release a weak reference to the resource
+  bool releaseWeakRef() noexcept { return weak_count_.fetch_sub(1, std::memory_order_relaxed) == 1; }
 
   /// @brief Check if teardown is allowed
   /// @note Raw resources are "always weak" - teardown is always allowed
@@ -92,7 +104,9 @@ public:
 
   /// @brief Check if shutdown is allowed
   /// @note Returns true only when no references exist (for safety)
-  bool canShutdown() const noexcept { return weak_count_ == 0; }
+  bool canShutdown() const noexcept {
+    std::cout << "weak_count_ = " << weak_count_ << std::endl;
+    return weak_count_ == 0; }
 
   // =========================================================================
   // Payload Access

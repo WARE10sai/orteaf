@@ -431,7 +431,9 @@ protected:
   /// @param h Handle to acquire weak reference for
   /// @note Only valid for ControlBlocks that support weak references
   void acquireWeakRef(Handle h) noexcept {
-    isValidHandle(h);
+    if (!isValidHandle(h)) {
+      return;
+    }
     control_blocks_[static_cast<std::size_t>(h.index)].acquireWeak();
   }
 
