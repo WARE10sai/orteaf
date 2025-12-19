@@ -65,6 +65,14 @@
 - 寿命判断は control block に集約する。
 - 解放の最終判定は pool が行う。
 
+## SlotPool のメソッド案
+- 取得: `acquire(request, context)` または `tryAcquire(request, context)`
+  - index / generation / payload_ptr を返す小さな構造体を返却
+- 返却: `release(handle)` または `tryRelease(handle)`
+  - freelist に戻す（pool が安全チェックを行う）
+- 参照: `get(handle)` / `payload(handle)`
+  - handle から payload ptr を返す
+
 ## 依存関係（概念）
 ```mermaid
 graph TD
