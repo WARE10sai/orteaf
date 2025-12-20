@@ -107,3 +107,26 @@ graph TD
   ControlBlock --> Payload
   ControlBlock --> PayloadPool
 ```
+
+## Control Block 方針（新）
+- ControlBlock は payload へのアクセス情報を保持する:
+  - `payload_handle`
+  - `payload_ptr`
+  - `payload_pool*`（非所有）
+- generation の管理は **pool 側** が唯一の責務。
+  - ControlBlock は generation を検証用途に依存しない。
+- ControlBlock は **CB pool の payload** として配置される。
+- 参照カウントは atomic を使用する。
+
+### 種別ごとの責務
+- WeakControlBlock
+  - weak_count のみを atomic で保持
+  - payload の寿命は外部で管理し、control block の寿命のみ扱う
+  - `payload_handle / payload_ptr / payload_pool*` を保持
+- SharedControlBlock
+  - strong_count を atomic で保持
+  - payload と control block の寿命を共有で扱う
+  - `acquire/release` は atomic
+- WeakSharedControlBlock
+  - strong_count と weak_count を atomic で保持
+  - `tryPromote / releaseWeak` を持つ
