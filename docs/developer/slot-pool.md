@@ -75,6 +75,23 @@
 - 参照: `get(handle)` / `payload(handle)`
   - handle から payload ptr を返す
 
+## 最小 Manager の構成案
+- manager は以下を所有する:
+  - `payload_pool`
+  - `control_block_pool`
+- `acquire` の流れ:
+  1. payload_pool から SlotRef を取得
+  2. control_block_pool から SlotRef を取得
+  3. control block に payload 情報を `tryBindPayload` で設定
+  4. lease を生成して返す（control block ptr + handle + manager ptr）
+- `release` の流れ:
+  1. control block の強参照を減算
+  2. last strong なら control block が payload_pool に `release(handle)` を要求
+  3. control block 自身は control_block_pool に返す
+- 失敗時の後始末:
+  - payload_pool の取得に失敗 → 即失敗
+  - control_block_pool の取得に失敗 → payload を pool に返す
+
 ## 依存関係（概念）
 ```mermaid
 graph TD
