@@ -10,6 +10,27 @@
 
 namespace orteaf::internal::runtime::base::pool {
 
+/**
+ * @brief Slot-based pool with freelist reuse and optional generation tracking.
+ *
+ * SlotPool stores a contiguous array of Payload objects. Acquisition returns a
+ * SlotRef containing a handle and a pointer to the payload storage. Released
+ * slots are pushed back to a freelist and can be reacquired later. If the handle
+ * type supports generation tracking (Handle::has_generation), releases bump the
+ * generation to invalidate stale handles.
+ *
+ * Creation and destruction of payloads is separated from slot acquisition. This
+ * allows the pool to manage storage reuse independently of object lifetime.
+ * - acquire/tryAcquire: reserve a slot for use and return its handle + pointer.
+ * - emplace/destroy: create/destroy the payload for a specific handle.
+ *
+ * The pool does not interpret Request/Context beyond passing them to Traits.
+ * This keeps pool APIs stable while allowing callers to define allocation
+ * policies and initialization behavior in Traits or custom lambdas.
+ *
+ * @tparam Traits Policy type defining Payload/Handle/Request/Context/Config and
+ *         creation/destruction hooks.
+ */
 template <typename Traits> class SlotPool {
 public:
   using Payload = typename Traits::Payload;
@@ -18,10 +39,20 @@ public:
   using Context = typename Traits::Context;
   using Config = typename Traits::Config;
 
+  /**
+   * @brief Lightweight handle+pointer pair returned by acquisition calls.
+   *
+   * SlotRef is a non-owning view. It does not guarantee that the payload is
+   * created; callers should call emplace (or use a manager that does) before
+   * accessing the payload contents.
+   */
   struct SlotRef {
     Handle handle{Handle::invalid()};
     Payload *payload_ptr{nullptr};
 
+    /**
+     * @brief Returns true if the handle is valid and the pointer is non-null.
+     */
     bool valid() const noexcept {
       return handle.isValid() && payload_ptr != nullptr;
     }
@@ -34,6 +65,15 @@ public:
   SlotPool &operator=(SlotPool &&) = default;
   ~SlotPool() = default;
 
+  /**
+   * @brief Initializes storage and freelist using Config capacity.
+   *
+   * This method resets the internal state, resizes payload storage, initializes
+   * generation and created flags, and fills the freelist with all slot indices.
+   *
+   * @param config Configuration containing capacity.
+   * @throws OrteafErrc::InvalidArgument if capacity exceeds handle range.
+   */
   void initialize(const Config &config) {
     const std::size_t capacity = config.capacity;
     if (capacity > static_cast<std::size_t>(Handle::invalid_index())) {
@@ -52,9 +92,27 @@ public:
     }
   }
 
+  /**
+   * @brief Returns the number of slots in the pool.
+   */
   std::size_t capacity() const noexcept { return payloads_.size(); }
+  /**
+   * @brief Returns the number of slots currently available in the freelist.
+   */
   std::size_t available() const noexcept { return freelist_.size(); }
 
+  /**
+   * @brief Acquires a slot or throws if none are available.
+   *
+   * acquire forwards Request/Context to the policy when creating payloads, but
+   * does not create payloads itself. It only reserves a slot and returns a
+   * SlotRef. Use emplace to initialize the payload.
+   *
+   * @param request Allocation/request details passed through for symmetry.
+   * @param context Context information (backend/device, etc.).
+   * @return SlotRef with a valid handle and payload pointer.
+   * @throws OrteafErrc::OutOfRange if the freelist is empty.
+   */
   SlotRef acquire(const Request &request, const Context &context) {
     SlotRef ref = tryAcquire(request, context);
     if (!ref.valid()) {
@@ -65,6 +123,11 @@ public:
     return ref;
   }
 
+  /**
+   * @brief Attempts to acquire a slot without throwing.
+   *
+   * @return SlotRef with invalid handle and null pointer if no slots available.
+   */
   SlotRef tryAcquire(const Request &, const Context &) noexcept {
     if (freelist_.empty()) {
       return SlotRef{Handle::invalid(), nullptr};
@@ -74,6 +137,16 @@ public:
     return SlotRef{makeHandle(idx), &payloads_[idx]};
   }
 
+  /**
+   * @brief Releases a slot back to the freelist.
+   *
+   * If Handle::has_generation is true, generation is incremented to invalidate
+   * previously acquired handles. The pool does not destroy payloads; call
+   * destroy first if needed.
+   *
+   * @param handle Slot handle to release.
+   * @return True if the handle was valid and release occurred.
+   */
   bool release(Handle handle) noexcept {
     if (!isValid(handle)) {
       return false;
@@ -86,6 +159,12 @@ public:
     return true;
   }
 
+  /**
+   * @brief Returns a pointer to the payload storage if the handle is valid.
+   *
+   * This does not check created state; callers may use isCreated() if they
+   * need to distinguish constructed vs. unconstructed payloads.
+   */
   Payload *get(Handle handle) noexcept {
     if (!isValid(handle)) {
       return nullptr;
@@ -93,6 +172,9 @@ public:
     return &payloads_[static_cast<std::size_t>(handle.index)];
   }
 
+  /**
+   * @brief Const overload of get().
+   */
   const Payload *get(Handle handle) const noexcept {
     if (!isValid(handle)) {
       return nullptr;
@@ -100,6 +182,11 @@ public:
     return &payloads_[static_cast<std::size_t>(handle.index)];
   }
 
+  /**
+   * @brief Validates a handle against bounds and generation (if supported).
+   *
+   * @return True if index is in range and generation matches (when enabled).
+   */
   bool isValid(Handle handle) const noexcept {
     const auto idx = static_cast<std::size_t>(handle.index);
     if (idx >= payloads_.size()) {
@@ -111,6 +198,12 @@ public:
     return true;
   }
 
+  /**
+   * @brief Returns whether a payload has been created for the given handle.
+   *
+   * The created flag is orthogonal to handle validity; invalid handles return
+   * false. Creation is controlled by emplace/destroy or explicit setCreated.
+   */
   bool isCreated(Handle handle) const noexcept {
     if (!isValid(handle)) {
       return false;
@@ -118,13 +211,15 @@ public:
     return created_[static_cast<std::size_t>(handle.index)] != 0;
   }
 
-  void setCreated(Handle handle, bool created) noexcept {
-    if (!isValid(handle)) {
-      return;
-    }
-    created_[static_cast<std::size_t>(handle.index)] = created ? 1 : 0;
-  }
 
+  /**
+   * @brief Creates a payload using Traits::create.
+   *
+   * The handle must be valid and not already created. Traits::create must
+   * return a bool indicating success. On success, the created flag is set.
+   *
+   * @return True if creation succeeded.
+   */
   bool emplace(Handle handle, const Request &request, const Context &context) {
     if (!isValid(handle) || isCreated(handle)) {
       return false;
@@ -137,6 +232,15 @@ public:
     return created;
   }
 
+  /**
+   * @brief Creates a payload using a caller-provided factory.
+   *
+   * This overload allows per-call customization without changing Traits.
+   * The provided function must be invocable as
+   *   bool(Payload&, const Request&, const Context&).
+   *
+   * @return True if creation succeeded.
+   */
   template <typename CreateFn>
     requires std::invocable<CreateFn, Payload &, const Request &,
                              const Context &> &&
@@ -158,6 +262,14 @@ public:
     return created;
   }
 
+  /**
+   * @brief Destroys a payload using Traits::destroy.
+   *
+   * The handle must be valid and already created. After destruction, the
+   * created flag is cleared.
+   *
+   * @return True if destruction proceeded.
+   */
   bool destroy(Handle handle, const Request &request, const Context &context) {
     if (!isValid(handle) || !isCreated(handle)) {
       return false;
@@ -168,6 +280,14 @@ public:
     return true;
   }
 
+  /**
+   * @brief Destroys a payload using a caller-provided function.
+   *
+   * The function may return void or bool. If it returns bool and returns false,
+   * destroy is treated as failed and the created flag remains set.
+   *
+   * @return True if destruction proceeded and the created flag was cleared.
+   */
   template <typename DestroyFn>
     requires std::invocable<DestroyFn, Payload &, const Request &,
                              const Context &>
@@ -196,6 +316,13 @@ private:
   using generation_storage_t =
       std::conditional_t<Handle::has_generation, typename Handle::generation_type,
                          std::uint8_t>;
+
+  void setCreated(Handle handle, bool created) noexcept {
+    if (!isValid(handle)) {
+      return;
+    }
+    created_[static_cast<std::size_t>(handle.index)] = created ? 1 : 0;
+  }
 
   Handle makeHandle(index_type idx) const noexcept {
     if constexpr (Handle::has_generation) {

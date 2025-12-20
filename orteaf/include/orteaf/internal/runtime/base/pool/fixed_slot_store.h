@@ -10,7 +10,23 @@
 
 namespace orteaf::internal::runtime::base::pool {
 
-// FixedSlotStore: fixed array storage without freelist reuse.
+/**
+ * @brief Fixed array storage without freelist reuse.
+ *
+ * FixedSlotStore provides a pool-like API but does not reuse slots via a
+ * freelist. Slots are addressed directly by handle index, and acquire/tryAcquire
+ * simply validate that the requested slot is already created.
+ *
+ * This is useful for payloads whose lifetime is tied to external systems
+ * (device objects, global buffers, etc.) where pool reuse is unnecessary or
+ * undesirable, but access through handles should still be validated.
+ *
+ * Generation tracking is supported when Handle::has_generation is true. In
+ * that case, emplace can update the generation value for the handle's index.
+ *
+ * @tparam Traits Policy type defining Payload/Handle/Request/Context/Config and
+ *         creation/destruction hooks.
+ */
 template <typename Traits> class FixedSlotStore {
 public:
   using Payload = typename Traits::Payload;
@@ -19,10 +35,19 @@ public:
   using Context = typename Traits::Context;
   using Config = typename Traits::Config;
 
+  /**
+   * @brief Lightweight handle+pointer pair returned by acquisition calls.
+   *
+   * SlotRef is a non-owning view. It is only valid if the underlying handle is
+   * valid and the payload is created.
+   */
   struct SlotRef {
     Handle handle{Handle::invalid()};
     Payload *payload_ptr{nullptr};
 
+    /**
+     * @brief Returns true if the handle is valid and the pointer is non-null.
+     */
     bool valid() const noexcept {
       return handle.isValid() && payload_ptr != nullptr;
     }
@@ -35,6 +60,15 @@ public:
   FixedSlotStore &operator=(FixedSlotStore &&) = default;
   ~FixedSlotStore() = default;
 
+  /**
+   * @brief Initializes storage using Config capacity.
+   *
+   * This method resets the internal state and resizes payload storage. Unlike
+   * SlotPool, no freelist is created. All slots start in "not created" state.
+   *
+   * @param config Configuration containing capacity.
+   * @throws OrteafErrc::InvalidArgument if capacity exceeds handle range.
+   */
   void initialize(const Config &config) {
     const std::size_t capacity = config.capacity;
     if (capacity > static_cast<std::size_t>(Handle::invalid_index())) {
@@ -48,8 +82,19 @@ public:
     created_.resize(capacity, 0);
   }
 
+  /**
+   * @brief Returns the number of slots in the store.
+   */
   std::size_t capacity() const noexcept { return payloads_.size(); }
 
+  /**
+   * @brief Acquires a slot by handle, or throws if the slot is not created.
+   *
+   * acquire expects the Request to carry the target handle. The returned
+   * SlotRef is valid only if that handle is valid and already created.
+   *
+   * @throws OrteafErrc::OutOfRange if the slot is unavailable.
+   */
   SlotRef acquire(const Request &request, const Context &context) {
     SlotRef ref = tryAcquire(request, context);
     if (!ref.valid()) {
@@ -60,6 +105,11 @@ public:
     return ref;
   }
 
+  /**
+   * @brief Attempts to acquire a slot by handle without throwing.
+   *
+   * @return SlotRef with invalid handle and null pointer if not available.
+   */
   SlotRef tryAcquire(const Request &request, const Context &) noexcept {
     Handle handle = request.handle;
     if (!isValid(handle) || !isCreated(handle)) {
@@ -68,8 +118,17 @@ public:
     return SlotRef{handle, &payloads_[static_cast<std::size_t>(handle.index)]};
   }
 
+  /**
+   * @brief Release is a no-op for FixedSlotStore.
+   *
+   * This method is provided for API symmetry with SlotPool. It only validates
+   * the handle and returns whether it is in range (and generation matches).
+   */
   bool release(Handle handle) noexcept { return isValid(handle); }
 
+  /**
+   * @brief Returns a pointer to the payload if valid and created.
+   */
   Payload *get(Handle handle) noexcept {
     if (!isValid(handle) || !isCreated(handle)) {
       return nullptr;
@@ -77,6 +136,9 @@ public:
     return &payloads_[static_cast<std::size_t>(handle.index)];
   }
 
+  /**
+   * @brief Const overload of get().
+   */
   const Payload *get(Handle handle) const noexcept {
     if (!isValid(handle) || !isCreated(handle)) {
       return nullptr;
@@ -84,6 +146,9 @@ public:
     return &payloads_[static_cast<std::size_t>(handle.index)];
   }
 
+  /**
+   * @brief Validates a handle against bounds and generation (if supported).
+   */
   bool isValid(Handle handle) const noexcept {
     const auto idx = static_cast<std::size_t>(handle.index);
     if (idx >= payloads_.size()) {
@@ -95,6 +160,9 @@ public:
     return true;
   }
 
+  /**
+   * @brief Returns whether a payload has been created for the given handle.
+   */
   bool isCreated(Handle handle) const noexcept {
     if (!isValid(handle)) {
       return false;
@@ -102,13 +170,15 @@ public:
     return created_[static_cast<std::size_t>(handle.index)] != 0;
   }
 
-  void setCreated(Handle handle, bool created) noexcept {
-    if (!isValid(handle)) {
-      return;
-    }
-    created_[static_cast<std::size_t>(handle.index)] = created ? 1 : 0;
-  }
 
+  /**
+   * @brief Creates a payload using Traits::create at a specific handle.
+   *
+   * The handle must be valid and not already created. If generation is used,
+   * this updates the stored generation for the handle's index.
+   *
+   * @return True if creation succeeded.
+   */
   bool emplace(Handle handle, const Request &request, const Context &context) {
     if (!isValid(handle) || isCreated(handle)) {
       return false;
@@ -125,6 +195,15 @@ public:
     return created;
   }
 
+  /**
+   * @brief Creates a payload using a caller-provided factory.
+   *
+   * This overload allows per-call customization without changing Traits.
+   * The provided function must be invocable as
+   *   bool(Payload&, const Request&, const Context&).
+   *
+   * @return True if creation succeeded.
+   */
   template <typename CreateFn>
     requires std::invocable<CreateFn, Payload &, const Request &,
                              const Context &> &&
@@ -150,6 +229,14 @@ public:
     return created;
   }
 
+  /**
+   * @brief Destroys a payload using Traits::destroy.
+   *
+   * The handle must be valid and already created. After destruction, the
+   * created flag is cleared.
+   *
+   * @return True if destruction proceeded.
+   */
   bool destroy(Handle handle, const Request &request, const Context &context) {
     if (!isValid(handle) || !isCreated(handle)) {
       return false;
@@ -160,6 +247,14 @@ public:
     return true;
   }
 
+  /**
+   * @brief Destroys a payload using a caller-provided function.
+   *
+   * The function may return void or bool. If it returns bool and returns false,
+   * destroy is treated as failed and the created flag remains set.
+   *
+   * @return True if destruction proceeded and the created flag was cleared.
+   */
   template <typename DestroyFn>
     requires std::invocable<DestroyFn, Payload &, const Request &,
                              const Context &>
@@ -187,6 +282,13 @@ private:
   using generation_storage_t =
       std::conditional_t<Handle::has_generation, typename Handle::generation_type,
                          std::uint8_t>;
+
+  void setCreated(Handle handle, bool created) noexcept {
+    if (!isValid(handle)) {
+      return;
+    }
+    created_[static_cast<std::size_t>(handle.index)] = created ? 1 : 0;
+  }
 
   ::orteaf::internal::base::HeapVector<Payload> payloads_{};
   ::orteaf::internal::base::HeapVector<generation_storage_t> generations_{};
