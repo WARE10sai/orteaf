@@ -96,7 +96,7 @@ TEST(RuntimeBlockVectorTest, RejectsZeroBlockSize) {
     EXPECT_THROW(RuntimeBlockVector<int> vec(0), std::invalid_argument);
 }
 
-TEST(RuntimeBlockVectorTest, ResetRebuildsStorageAndPreservesElements) {
+TEST(RuntimeBlockVectorTest, ResizeBlocksRebuildsStorageAndPreservesElements) {
     RuntimeBlockVector<CountingPayload> vec(2);
     CountingPayload::Reset();
     vec.emplaceBack(1);
@@ -105,7 +105,7 @@ TEST(RuntimeBlockVectorTest, ResetRebuildsStorageAndPreservesElements) {
     CountingPayload* first_ptr = &vec[0];
     const std::size_t old_capacity = vec.capacity();
 
-    vec.reset(4);
+    vec.resizeBlocks(4);
 
     EXPECT_EQ(vec.size(), 3u);
     EXPECT_EQ(vec.blockSize(), 4u);

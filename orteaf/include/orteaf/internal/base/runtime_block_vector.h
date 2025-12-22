@@ -274,8 +274,8 @@ public:
   bool empty() const noexcept { return size_ == 0; }
   std::size_t blockSize() const noexcept { return block_size_; }
 
-  /// @brief Reset storage and set a new block size.
-  void reset(std::size_t block_size) {
+  /// @brief Resize blocks with a new block size, rebuilding storage.
+  void resizeBlocks(std::size_t block_size) {
     if (block_size == 0) {
       throw std::invalid_argument("RuntimeBlockVector block size must be > 0");
     }
