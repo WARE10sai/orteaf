@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 #include <system_error>
+#include <vector>
 
 #include "orteaf/internal/base/handle.h"
 
@@ -293,6 +294,30 @@ TEST(SlotPool, GrowAndCreateCreatesNewSlots) {
 
   auto ref = pool.acquire(req, ctx);
   EXPECT_TRUE(ref.valid());
+}
+
+TEST(SlotPool, ForEachCreatedVisitsOnlyCreatedSlots) {
+  auto pool = makePool(3);
+  DummyTraits::Request req{};
+  DummyTraits::Context ctx{};
+
+  auto first = pool.reserve(req, ctx);
+  EXPECT_TRUE(pool.emplace(first.handle, req, ctx));
+
+  auto second = pool.reserve(req, ctx);
+  EXPECT_TRUE(pool.emplace(second.handle, req, ctx));
+  EXPECT_TRUE(pool.release(second.handle));
+
+  std::vector<std::size_t> indices{};
+  std::vector<int> values{};
+  pool.forEachCreated([&](std::size_t idx, const DummyPayload &payload) {
+    indices.push_back(idx);
+    values.push_back(payload.value);
+  });
+
+  ASSERT_EQ(indices.size(), 2u);
+  EXPECT_EQ(indices[0], static_cast<std::size_t>(first.handle.index));
+  EXPECT_EQ(values[0], 42);
 }
 
 TEST(SlotPool, InitializeAndCreateCreatesAllSlots) {

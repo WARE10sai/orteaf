@@ -328,6 +328,23 @@ public:
   }
 
   /**
+   * @brief Invoke a callable for each created payload.
+   *
+   * This scans all slots and invokes the callable for slots marked as created.
+   * Intended for pool-wide inspection without exposing raw index accessors.
+   */
+  template <typename Func>
+    requires std::invocable<Func, std::size_t, const Payload &>
+  void forEachCreated(Func &&func) const {
+    const std::size_t count = payloads_.size();
+    for (std::size_t idx = 0; idx < count; ++idx) {
+      if (created_[idx] != 0) {
+        std::forward<Func>(func)(idx, payloads_[idx]);
+      }
+    }
+  }
+
+  /**
    * @brief Validates a handle against bounds and generation (if supported).
    *
    * @return True if index is in range and generation matches (when enabled).
