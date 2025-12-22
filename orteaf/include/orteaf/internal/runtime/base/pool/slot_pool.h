@@ -5,8 +5,8 @@
 #include <type_traits>
 #include <utility>
 
-#include "orteaf/internal/base/block_vector.h"
 #include "orteaf/internal/base/heap_vector.h"
+#include "orteaf/internal/base/runtime_block_vector.h"
 #include "orteaf/internal/diagnostics/error/error.h"
 
 namespace orteaf::internal::runtime::base::pool {
@@ -538,7 +538,7 @@ private:
     return Handle{idx};
   }
 
-  ::orteaf::internal::base::BlockVector<Payload> payloads_{};
+  ::orteaf::internal::base::RuntimeBlockVector<Payload> payloads_{};
   ::orteaf::internal::base::HeapVector<generation_storage_t> generations_{};
   ::orteaf::internal::base::HeapVector<std::uint8_t> created_{};
   ::orteaf::internal::base::HeapVector<index_type> freelist_{};
