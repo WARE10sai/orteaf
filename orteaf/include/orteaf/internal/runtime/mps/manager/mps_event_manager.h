@@ -2,36 +2,98 @@
 
 #if ORTEAF_ENABLE_MPS
 
+#include <cstddef>
+#include <cstdint>
+
 #include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/runtime/base/lease/control_block/shared.h"
-#include "orteaf/internal/runtime/base/lease/shared_lease.h"
-#include "orteaf/internal/runtime/base/lease/slot.h"
-#include "orteaf/internal/runtime/base/manager/base_manager_core.h"
+#include "orteaf/internal/runtime/base/lease/strong_lease.h"
+#include "orteaf/internal/runtime/base/pool/fixed_slot_store.h"
+#include "orteaf/internal/runtime/base/pool/slot_pool.h"
 #include "orteaf/internal/runtime/mps/platform/mps_slow_ops.h"
 #include "orteaf/internal/runtime/mps/platform/wrapper/mps_event.h"
 
 namespace orteaf::internal::runtime::mps::manager {
 
-// Slot type: Standard Slot with initialization tracking
-using EventSlot = ::orteaf::internal::runtime::base::GenerationalSlot<
-    ::orteaf::internal::runtime::mps::platform::wrapper::MpsEvent_t>;
+// =============================================================================
+// Pools (payload + control block)
+// =============================================================================
 
-// Control block: Shared ownership
-using EventControlBlock =
-    ::orteaf::internal::runtime::base::SharedControlBlock<EventSlot>;
-
-struct MpsEventManagerTraits {
-  using ControlBlock = EventControlBlock;
+struct EventPayloadPoolTraits {
+  using Payload = ::orteaf::internal::runtime::mps::platform::wrapper::MpsEvent_t;
   using Handle = ::orteaf::internal::base::EventHandle;
-  static constexpr const char *Name = "MpsEventManager";
+  using DeviceType =
+      ::orteaf::internal::runtime::mps::platform::wrapper::MpsDevice_t;
+  using SlowOps = ::orteaf::internal::runtime::mps::platform::MpsSlowOps;
+
+  struct Request {
+    Handle handle{Handle::invalid()};
+  };
+
+  struct Context {
+    DeviceType device{nullptr};
+    SlowOps *ops{nullptr};
+  };
+
+  struct Config {
+    std::size_t capacity{0};
+  };
+
+  static bool create(Payload &payload, const Request &, const Context &context) {
+    if (context.ops == nullptr || context.device == nullptr) {
+      return false;
+    }
+    auto event = context.ops->createEvent(context.device);
+    if (event == nullptr) {
+      return false;
+    }
+    payload = event;
+    return true;
+  }
+
+  static void destroy(Payload &payload, const Request &,
+                      const Context &context) {
+    if (payload != nullptr && context.ops != nullptr) {
+      context.ops->destroyEvent(payload);
+      payload = nullptr;
+    }
+  }
 };
 
-class MpsEventManager
-    : protected ::orteaf::internal::runtime::base::BaseManagerCore<
-          MpsEventManagerTraits> {
-  using Base =
-      ::orteaf::internal::runtime::base::BaseManagerCore<MpsEventManagerTraits>;
+using EventPayloadPool =
+    ::orteaf::internal::runtime::base::pool::SlotPool<EventPayloadPoolTraits>;
 
+struct EventControlBlockTag {};
+using EventControlBlockHandle =
+    ::orteaf::internal::base::ControlBlockHandle<EventControlBlockTag>;
+
+using EventControlBlock =
+    ::orteaf::internal::runtime::base::SharedControlBlock<
+        ::orteaf::internal::base::EventHandle,
+        ::orteaf::internal::runtime::mps::platform::wrapper::MpsEvent_t,
+        EventPayloadPool>;
+
+struct EventControlBlockPoolTraits {
+  using Payload = EventControlBlock;
+  using Handle = EventControlBlockHandle;
+  struct Request {};
+  struct Context {};
+  struct Config {
+    std::size_t capacity{0};
+  };
+
+  static bool create(Payload &, const Request &, const Context &) {
+    return true;
+  }
+
+  static void destroy(Payload &, const Request &, const Context &) {}
+};
+
+using EventControlBlockPool =
+    ::orteaf::internal::runtime::base::pool::SlotPool<
+        EventControlBlockPoolTraits>;
+
+class MpsEventManager {
 public:
   using SlowOps = ::orteaf::internal::runtime::mps::platform::MpsSlowOps;
   using DeviceType =
@@ -39,9 +101,12 @@ public:
   using EventHandle = ::orteaf::internal::base::EventHandle;
   using EventType =
       ::orteaf::internal::runtime::mps::platform::wrapper::MpsEvent_t;
-  using EventLease =
-      ::orteaf::internal::runtime::base::SharedLease<EventHandle, EventType,
-                                                     MpsEventManager>;
+  using ControlBlock = EventControlBlock;
+  using ControlBlockHandle = EventControlBlockHandle;
+
+  using EventLease = ::orteaf::internal::runtime::base::StrongLease<
+      ControlBlockHandle, ControlBlock, EventControlBlockPool,
+      MpsEventManager>;
 
 private:
   friend EventLease;
@@ -58,28 +123,32 @@ public:
   void shutdown();
 
   EventLease acquire();
-  EventLease acquire(EventHandle handle);
-  void release(EventLease &lease) noexcept;
-  void release(EventHandle handle) noexcept;
+  void release(EventLease &lease) noexcept { lease.release(); }
 
   // Expose capacity
-  using Base::capacity;
-  using Base::isAlive;
-  using Base::isInitialized;
+  std::size_t capacity() const noexcept { return payload_pool_.capacity(); }
+  bool isInitialized() const noexcept { return initialized_; }
+  bool isAlive(EventHandle handle) const noexcept;
 
 #if ORTEAF_ENABLE_TEST
-  using Base::controlBlockForTest;
-  using Base::freeListSizeForTest;
-  using Base::isInitializedForTest;
+  std::size_t controlBlockPoolCapacityForTest() const noexcept {
+    return control_block_pool_.capacity();
+  }
 #endif
 
 private:
-  using Base::acquireExisting;
-
-  void destroyResource(EventType &resource);
+  EventPayloadPoolTraits::Context makePayloadContext() const noexcept;
+  void ensureInitialized() const;
+  void growPools(std::size_t desired_capacity);
+  EventLease buildLease(ControlBlock &cb, EventHandle payload_handle,
+                        ControlBlockHandle cb_handle);
 
   DeviceType device_{nullptr};
   SlowOps *ops_{nullptr};
+  std::size_t growth_chunk_size_{1};
+  bool initialized_{false};
+  EventPayloadPool payload_pool_{};
+  EventControlBlockPool control_block_pool_{};
 };
 
 } // namespace orteaf::internal::runtime::mps::manager
