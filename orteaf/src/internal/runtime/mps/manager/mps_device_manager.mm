@@ -16,131 +16,87 @@ void MpsDeviceManager::initialize(SlowOps *slow_ops) {
 
   const int device_count = ops_->getDeviceCount();
   if (device_count <= 0) {
-    payload_pool_.initialize(DevicePayloadPoolTraits::Config{0});
-    control_block_pool_.initialize(DeviceControlBlockPoolTraits::Config{0});
-    initialized_ = true;
+    core_.payloadPool().initialize(DevicePayloadPoolTraits::Config{0});
+    core_.initializeControlBlockPool(0);
+    core_.setInitialized(true);
     return;
   }
 
   const auto capacity = static_cast<std::size_t>(device_count);
   const auto payload_context = makePayloadContext();
   const DevicePayloadPoolTraits::Request payload_request{};
-  payload_pool_.initializeAndCreate(DevicePayloadPoolTraits::Config{capacity},
-                                    payload_request, payload_context);
+  core_.payloadPool().initializeAndCreate(
+      DevicePayloadPoolTraits::Config{capacity}, payload_request,
+      payload_context);
 
-  control_block_pool_.initialize(
-      DeviceControlBlockPoolTraits::Config{capacity});
-  initialized_ = true;
+  core_.initializeControlBlockPool(capacity);
+  core_.setInitialized(true);
 }
 
 void MpsDeviceManager::shutdown() {
-  if (!initialized_) {
+  if (!core_.isInitialized()) {
     return;
   }
   // Check canShutdown on all created control blocks
-  for (std::size_t idx = 0; idx < control_block_pool_.capacity(); ++idx) {
-    const DeviceControlBlockPoolTraits::Handle handle{
-        static_cast<std::uint32_t>(idx)};
-    if (control_block_pool_.isCreated(handle)) {
-      const auto *cb = control_block_pool_.get(handle);
-      if (cb != nullptr && !cb->canShutdown()) {
-        ::orteaf::internal::diagnostics::error::throwError(
-            ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-            "MPS device manager shutdown aborted due to active leases");
-      }
-    }
-  }
+  core_.checkCanShutdownOrThrow();
 
   const DevicePayloadPoolTraits::Request payload_request{};
   const auto payload_context = makePayloadContext();
-  payload_pool_.shutdown(payload_request, payload_context);
-  control_block_pool_.shutdown();
+  core_.payloadPool().shutdown(payload_request, payload_context);
+  core_.shutdownControlBlockPool();
   ops_ = nullptr;
-  initialized_ = false;
+  core_.setInitialized(false);
 }
 
 MpsDeviceManager::DeviceLease MpsDeviceManager::acquire(DeviceHandle handle) {
-  ensureInitialized();
-  if (!payload_pool_.isValid(handle)) {
+  core_.ensureInitialized();
+  if (!core_.payloadPool().isValid(handle)) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "MPS device handle is invalid");
   }
-  if (!payload_pool_.isCreated(handle)) {
+  if (!core_.payloadPool().isCreated(handle)) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS device is unavailable");
   }
-  auto *payload_ptr = payload_pool_.get(handle);
+  auto *payload_ptr = core_.payloadPool().get(handle);
   if (payload_ptr == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS device payload is unavailable");
   }
 
-  const DeviceControlBlockPoolTraits::Request cb_request{};
-  const DeviceControlBlockPoolTraits::Context cb_context{};
-  auto cb_ref = control_block_pool_.tryAcquire(cb_request, cb_context);
-  if (!cb_ref.valid()) {
-    growControlBlockPool();
-    cb_ref = control_block_pool_.tryAcquire(cb_request, cb_context);
-  }
-  if (!cb_ref.valid()) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
-        "MPS device manager has no available control blocks");
-  }
-
+  auto cb_ref = core_.acquireControlBlock();
   if (!cb_ref.payload_ptr->tryBindPayload(handle, payload_ptr,
-                                          &payload_pool_)) {
-    control_block_pool_.release(cb_ref.handle);
+                                          &core_.payloadPool())) {
+    core_.releaseControlBlock(cb_ref.handle);
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS device control block binding failed");
   }
-  return DeviceLease{cb_ref.payload_ptr, &control_block_pool_, cb_ref.handle};
+  return DeviceLease{cb_ref.payload_ptr, &core_.controlBlockPool(),
+                     cb_ref.handle};
 }
 
 ::orteaf::internal::architecture::Architecture
 MpsDeviceManager::getArch(DeviceHandle handle) const {
-  if (!initialized_) {
+  if (!core_.isInitialized()) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS devices not initialized");
   }
-  if (!payload_pool_.isValid(handle)) {
+  if (!core_.payloadPool().isValid(handle)) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "MPS device handle is invalid");
   }
-  if (!payload_pool_.isCreated(handle)) {
+  if (!core_.payloadPool().isCreated(handle)) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS device is unavailable");
   }
-  return payload_pool_.get(handle)->arch;
-}
-
-bool MpsDeviceManager::isAlive(DeviceHandle handle) const noexcept {
-  return initialized_ && payload_pool_.isValid(handle) &&
-         payload_pool_.isCreated(handle);
-}
-
-void MpsDeviceManager::ensureInitialized() const {
-  if (!initialized_) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS device manager has not been initialized");
-  }
-}
-
-void MpsDeviceManager::growControlBlockPool() {
-  const std::size_t current = control_block_pool_.capacity();
-  const std::size_t desired = current + control_block_growth_chunk_;
-  const DeviceControlBlockPoolTraits::Request cb_request{};
-  const DeviceControlBlockPoolTraits::Context cb_context{};
-  control_block_pool_.growAndCreate(
-      DeviceControlBlockPoolTraits::Config{desired}, cb_request, cb_context);
+  return core_.payloadPool().get(handle)->arch;
 }
 
 DevicePayloadPoolTraits::Context
