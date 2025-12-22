@@ -96,4 +96,24 @@ TEST(RuntimeBlockVectorTest, RejectsZeroBlockSize) {
     EXPECT_THROW(RuntimeBlockVector<int> vec(0), std::invalid_argument);
 }
 
+TEST(RuntimeBlockVectorTest, ResetRebuildsStorageAndPreservesElements) {
+    RuntimeBlockVector<CountingPayload> vec(2);
+    CountingPayload::Reset();
+    vec.emplaceBack(1);
+    vec.emplaceBack(2);
+    vec.emplaceBack(3);
+    CountingPayload* first_ptr = &vec[0];
+    const std::size_t old_capacity = vec.capacity();
+
+    vec.reset(4);
+
+    EXPECT_EQ(vec.size(), 3u);
+    EXPECT_EQ(vec.blockSize(), 4u);
+    EXPECT_EQ(vec[0].value, 1);
+    EXPECT_EQ(vec[1].value, 2);
+    EXPECT_EQ(vec[2].value, 3);
+    EXPECT_NE(&vec[0], first_ptr);
+    EXPECT_EQ(vec.capacity(), old_capacity);
+}
+
 }  // namespace orteaf::internal::base

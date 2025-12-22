@@ -274,6 +274,17 @@ public:
   bool empty() const noexcept { return size_ == 0; }
   std::size_t blockSize() const noexcept { return block_size_; }
 
+  /// @brief Reset storage and set a new block size.
+  void reset(std::size_t block_size) {
+    if (block_size == 0) {
+      throw std::invalid_argument("RuntimeBlockVector block size must be > 0");
+    }
+    if (block_size_ == block_size) {
+      return;
+    }
+    rebuildStorage(block_size);
+  }
+
   T &operator[](std::size_t idx) noexcept { return *ptrAt(idx); }
   const T &operator[](std::size_t idx) const noexcept { return *ptrAt(idx); }
 
@@ -348,6 +359,48 @@ private:
   }
 
   void destroyElements() { destroyRange(0, size_); }
+
+  void rebuildStorage(std::size_t new_block_size) {
+    const std::size_t count = size_;
+    const std::size_t needed_blocks =
+        count == 0 ? 0 : (count + new_block_size - 1) / new_block_size;
+
+    ::orteaf::internal::base::HeapVector<BlockPtr> new_blocks;
+    new_blocks.reserve(needed_blocks);
+    for (std::size_t i = 0; i < needed_blocks; ++i) {
+      new_blocks.pushBack(
+          static_cast<BlockPtr>(::operator new(sizeof(T) * new_block_size)));
+    }
+
+    auto newPtrAt = [&](std::size_t idx) noexcept -> T * {
+      const std::size_t block_index = idx / new_block_size;
+      const std::size_t offset = idx % new_block_size;
+      return new_blocks[block_index] + offset;
+    };
+
+    std::size_t constructed = 0;
+    try {
+      for (; constructed < count; ++constructed) {
+        new (newPtrAt(constructed))
+            T(std::move_if_noexcept(*ptrAt(constructed)));
+      }
+    } catch (...) {
+      for (std::size_t i = 0; i < constructed; ++i) {
+        newPtrAt(i)->~T();
+      }
+      for (std::size_t i = 0; i < new_blocks.size(); ++i) {
+        ::operator delete(new_blocks[i]);
+      }
+      throw;
+    }
+
+    destroyElements();
+    releaseBlocks();
+
+    blocks_ = std::move(new_blocks);
+    block_size_ = new_block_size;
+    capacity_ = blocks_.size() * block_size_;
+  }
 
   ::orteaf::internal::base::HeapVector<BlockPtr> blocks_{};
   std::size_t size_{0};
