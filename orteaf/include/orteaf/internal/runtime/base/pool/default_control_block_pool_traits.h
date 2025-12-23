@@ -48,12 +48,6 @@ struct DefaultControlBlockPoolTraits {
   /// @brief 操作時のコンテキスト（未使用）
   struct Context {};
 
-  /// @brief 初期化時の設定
-  struct Config {
-    std::size_t capacity{0};
-    std::size_t block_size{0};
-  };
-
   /**
    * @brief ControlBlockの作成（何もしない）
    *
