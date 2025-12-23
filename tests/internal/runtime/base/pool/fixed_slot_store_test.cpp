@@ -21,10 +21,6 @@ struct DummyTraits {
     Handle handle{};
   };
   struct Context {};
-  struct Config {
-    std::size_t capacity{0};
-    std::size_t block_size{0};
-  };
 
   static bool create(Payload &payload, const Request &, const Context &) {
     payload.value = 123;
@@ -43,10 +39,6 @@ struct DestroyOnReleaseTraits {
     Handle handle{};
   };
   struct Context {};
-  struct Config {
-    std::size_t capacity{0};
-    std::size_t block_size{0};
-  };
   static constexpr bool destroy_on_release = true;
 
   static bool create(Payload &payload, const Request &, const Context &) {
@@ -65,13 +57,13 @@ using DestroyOnReleaseStore =
 
 Store makeStore(std::size_t capacity) {
   Store store;
-  store.configure(typename DummyTraits::Config{capacity, capacity});
+  store.configure(typename Store::Config{capacity, capacity});
   return store;
 }
 
 DestroyOnReleaseStore makeDestroyOnReleaseStore(std::size_t capacity) {
   DestroyOnReleaseStore store;
-  store.configure(typename DestroyOnReleaseTraits::Config{capacity, capacity});
+  store.configure(typename DestroyOnReleaseStore::Config{capacity, capacity});
   return store;
 }
 
@@ -172,7 +164,7 @@ TEST(FixedSlotStore, GrowAddsUncreatedSlots) {
   DummyTraits::Context ctx{};
   DummyTraits::Request req{StoreHandle{1, 0}};
 
-  store.configure(typename DummyTraits::Config{3, 3});
+  store.configure(typename Store::Config{3, 3});
 
   EXPECT_EQ(store.capacity(), 3u);
   EXPECT_FALSE(store.isCreated(req.handle));
@@ -185,7 +177,7 @@ TEST(FixedSlotStore, GrowAndCreateCreatesNewSlots) {
   DummyTraits::Request req{StoreHandle{0, 0}};
 
   const std::size_t old_capacity =
-      store.configure(typename DummyTraits::Config{2, 2});
+      store.configure(typename Store::Config{2, 2});
   EXPECT_TRUE(store.createRange(old_capacity, store.capacity(), req, ctx));
 
   DummyTraits::Request req_new{StoreHandle{1, 0}};
@@ -199,7 +191,7 @@ TEST(FixedSlotStore, InitializeAndCreateCreatesAllSlots) {
   DestroyOnReleaseTraits::Context ctx{};
   DestroyOnReleaseTraits::Request req{StoreHandle{0, 0}};
 
-  store.configure(typename DestroyOnReleaseTraits::Config{2, 2});
+  store.configure(typename DestroyOnReleaseStore::Config{2, 2});
   EXPECT_TRUE(store.createAll(req, ctx));
   DestroyOnReleaseTraits::Request req_new{StoreHandle{1, 0}};
   auto ref = store.acquire(req_new, ctx);
