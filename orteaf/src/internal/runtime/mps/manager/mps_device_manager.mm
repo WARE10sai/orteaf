@@ -57,6 +57,14 @@ void MpsDeviceManager::configure(const Config &config) {
     fence_config.control_block_block_size =
         fence_config.capacity == 0 ? 1u : fence_config.capacity;
   }
+  auto graph_config = config.graph_config;
+  if (graph_config.capacity != 0 && graph_config.payload_block_size == 0) {
+    graph_config.payload_block_size = graph_config.capacity;
+  }
+  if (graph_config.control_block_block_size == 0) {
+    graph_config.control_block_block_size =
+        graph_config.capacity == 0 ? 1u : graph_config.capacity;
+  }
   if (device_count <= 0) {
     core_.payloadPool().configure(DevicePayloadPool::Config{0, 0});
     core_.configure(MpsDeviceManager::Core::Config{
@@ -71,7 +79,7 @@ void MpsDeviceManager::configure(const Config &config) {
   const auto payload_context = DevicePayloadPoolTraits::Context{
       ops_, command_queue_config, event_config, fence_config,
       config.heap_initial_capacity, config.library_initial_capacity,
-      config.graph_initial_capacity};
+      graph_config};
   const DevicePayloadPoolTraits::Request payload_request{};
   core_.payloadPool().configure(
       DevicePayloadPool::Config{capacity, capacity});
@@ -94,7 +102,7 @@ void MpsDeviceManager::shutdown() {
   const DevicePayloadPoolTraits::Request payload_request{};
   const auto payload_context = DevicePayloadPoolTraits::Context{
       ops_, MpsCommandQueueManager::Config{}, MpsEventManager::Config{},
-      MpsFenceManager::Config{}, 0, 0, 0};
+      MpsFenceManager::Config{}, 0, 0, MpsGraphManager::Config{}};
   core_.payloadPool().shutdown(payload_request, payload_context);
   core_.shutdownControlBlockPool();
   ops_ = nullptr;

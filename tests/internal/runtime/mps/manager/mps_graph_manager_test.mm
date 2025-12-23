@@ -82,7 +82,11 @@ TEST_F(MpsGraphManagerTest, AcquireCachesExecutableForSameKey) {
   EXPECT_CALL(mock_, destroyGraphExecutable(exe)).Times(1);
   EXPECT_CALL(mock_, destroyGraph(graph)).Times(1);
 
-  manager_.initialize(device_, &mock_, /*capacity=*/1);
+  mps_rt::MpsGraphManager::Config config{};
+  config.device = device_;
+  config.ops = &mock_;
+  config.capacity = 1;
+  manager_.configure(config);
   mps_rt::GraphKey key = mps_rt::GraphKey::Named("g-cache");
   key.shape = {1, 2, 3};
   key.data_type = mps_wrapper::MpsGraphDataType::kFloat32;
@@ -96,13 +100,17 @@ TEST_F(MpsGraphManagerTest, AcquireCachesExecutableForSameKey) {
 
   // Act: Acquire twice with same key
   auto lease1 = manager_.acquire(key, compile_fn);
-  auto exe1 = lease1.pointer();
+  auto *payload1 = lease1.payloadPtr();
+  ASSERT_NE(payload1, nullptr);
+  auto exe1 = payload1->executable;
   manager_.release(lease1);
 
   auto lease2 = manager_.acquire(key, compile_fn);
 
   // Assert: Same executable (cached)
-  EXPECT_EQ(exe1, lease2.pointer());
+  auto *payload2 = lease2.payloadPtr();
+  ASSERT_NE(payload2, nullptr);
+  EXPECT_EQ(exe1, payload2->executable);
 
   // Cleanup
   manager_.release(lease2);
@@ -135,7 +143,11 @@ TEST_F(MpsGraphManagerTest, DifferentKeyShapeTriggersNewCompile) {
   EXPECT_CALL(mock_, destroyGraphExecutable(exe2)).Times(1);
   EXPECT_CALL(mock_, destroyGraph(graph2)).Times(1);
 
-  manager_.initialize(device_, &mock_, /*capacity=*/2);
+  mps_rt::MpsGraphManager::Config config{};
+  config.device = device_;
+  config.ops = &mock_;
+  config.capacity = 2;
+  manager_.configure(config);
 
   auto compile_fn = [&](mps_wrapper::MpsGraph_t g, mps_wrapper::MpsDevice_t dev,
                         mps_rt::MpsGraphManager::SlowOps *ops) {
@@ -156,7 +168,11 @@ TEST_F(MpsGraphManagerTest, DifferentKeyShapeTriggersNewCompile) {
   auto lease2 = manager_.acquire(key2, compile_fn);
 
   // Assert: Different executables
-  EXPECT_NE(lease1.pointer(), lease2.pointer());
+  auto *payload1 = lease1.payloadPtr();
+  auto *payload2 = lease2.payloadPtr();
+  ASSERT_NE(payload1, nullptr);
+  ASSERT_NE(payload2, nullptr);
+  EXPECT_NE(payload1->executable, payload2->executable);
 
   // Cleanup
   manager_.release(lease1);
@@ -169,7 +185,11 @@ TEST_F(MpsGraphManagerTest, DifferentKeyShapeTriggersNewCompile) {
 
 TEST_F(MpsGraphManagerTest, InvalidKeyRejected) {
   // Arrange
-  manager_.initialize(device_, &mock_, /*capacity=*/1);
+  mps_rt::MpsGraphManager::Config config{};
+  config.device = device_;
+  config.ops = &mock_;
+  config.capacity = 1;
+  manager_.configure(config);
   mps_rt::GraphKey key = mps_rt::GraphKey::Named("");
   key.data_type = mps_wrapper::MpsGraphDataType::kFloat32;
   key.target_tensor_count = 1;
@@ -192,7 +212,11 @@ TEST_F(MpsGraphManagerTest, NullExecutableFromCompileThrowsAndCleansUp) {
   EXPECT_CALL(mock_, createGraph()).WillOnce(::testing::Return(graph));
   EXPECT_CALL(mock_, destroyGraph(graph)).Times(1);
 
-  manager_.initialize(device_, &mock_, /*capacity=*/1);
+  mps_rt::MpsGraphManager::Config config{};
+  config.device = device_;
+  config.ops = &mock_;
+  config.capacity = 1;
+  manager_.configure(config);
   mps_rt::GraphKey key = mps_rt::GraphKey::Named("null-exe");
   key.data_type = mps_wrapper::MpsGraphDataType::kFloat32;
   key.target_tensor_count = 1;

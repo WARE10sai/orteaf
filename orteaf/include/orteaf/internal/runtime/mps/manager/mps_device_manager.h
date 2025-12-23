@@ -108,7 +108,7 @@ struct DevicePayloadPoolTraits {
     MpsFenceManager::Config fence_config{};
     std::size_t heap_initial_capacity{0};
     std::size_t library_initial_capacity{0};
-    std::size_t graph_initial_capacity{0};
+    MpsGraphManager::Config graph_config{};
   };
 
   static bool create(Payload &payload, const Request &request,
@@ -135,8 +135,10 @@ struct DevicePayloadPoolTraits {
     payload.heap_manager.initialize(device, request.handle,
                                     &payload.library_manager, context.ops,
                                     context.heap_initial_capacity);
-    payload.graph_manager.initialize(device, context.ops,
-                                     context.graph_initial_capacity);
+    auto graph_config = context.graph_config;
+    graph_config.device = device;
+    graph_config.ops = context.ops;
+    payload.graph_manager.configure(graph_config);
     auto event_config = context.event_config;
     event_config.device = device;
     event_config.ops = context.ops;
@@ -205,13 +207,13 @@ public:
     std::size_t payload_size{0};
     std::size_t heap_initial_capacity{0};
     std::size_t library_initial_capacity{0};
-    std::size_t graph_initial_capacity{0};
     std::size_t control_block_size{0};
     std::size_t control_block_block_size{0};
     std::size_t control_block_growth_chunk_size{1};
     MpsCommandQueueManager::Config command_queue_config{};
     MpsEventManager::Config event_config{};
     MpsFenceManager::Config fence_config{};
+    MpsGraphManager::Config graph_config{};
   };
 
   MpsDeviceManager() = default;
