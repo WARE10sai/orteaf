@@ -130,7 +130,7 @@ MpsFenceManager::buildLease(ControlBlock &cb, FenceHandle payload_handle,
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS fence control block binding failed");
   }
-  return FenceLease{&cb, &core_.controlBlockPool(), cb_handle};
+  return FenceLease{&cb, core_.controlBlockPoolForLease(), cb_handle};
 }
 
 } // namespace orteaf::internal::runtime::mps::manager

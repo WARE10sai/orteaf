@@ -133,25 +133,29 @@ public:
   FenceLease acquire();
   void release(FenceLease &lease) noexcept { lease.release(); }
 
-  // Expose capacity
-  std::size_t capacity() const noexcept {
+#if ORTEAF_ENABLE_TEST
+  bool isInitializedForTest() const noexcept { return core_.isInitialized(); }
+
+  std::size_t payloadPoolSizeForTest() const noexcept {
     return core_.payloadPool().size();
   }
-  bool isInitialized() const noexcept { return core_.isInitialized(); }
-  bool isAlive(FenceHandle handle) const noexcept {
-    return core_.isAlive(handle);
+  std::size_t payloadPoolCapacityForTest() const noexcept {
+    return core_.payloadPool().capacity();
   }
-
-  std::size_t payloadGrowthChunkSize() const noexcept {
-    return payload_growth_chunk_size_;
+  std::size_t controlBlockPoolSizeForTest() const noexcept {
+    return core_.controlBlockPoolSizeForTest();
   }
-  std::size_t controlBlockGrowthChunkSize() const noexcept {
-    return core_.growthChunkSize();
-  }
-
-#if ORTEAF_ENABLE_TEST
   std::size_t controlBlockPoolCapacityForTest() const noexcept {
     return core_.controlBlockPoolCapacityForTest();
+  }
+  bool isAliveForTest(FenceHandle handle) const noexcept {
+    return core_.isAlive(handle);
+  }
+  std::size_t payloadGrowthChunkSizeForTest() const noexcept {
+    return payload_growth_chunk_size_;
+  }
+  std::size_t controlBlockGrowthChunkSizeForTest() const noexcept {
+    return core_.growthChunkSize();
   }
 #endif
 

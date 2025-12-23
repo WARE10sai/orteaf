@@ -69,7 +69,9 @@ MpsLibraryManager::acquire(const LibraryKey &key) {
     if (!resource.library)
       return false;
 
-    resource.pipeline_manager.initialize(device_, resource.library, ops_, 0);
+    resource.pipeline_manager.configure(
+        MpsComputePipelineStateManager::Config{device_, resource.library, ops_,
+                                               0, 0, 1, 1, 1});
     return true;
   });
 
@@ -122,7 +124,9 @@ MpsLibraryManager::pipelineManager(const LibraryKey &key) {
     if (!resource.library)
       return false;
 
-    resource.pipeline_manager.initialize(device_, resource.library, ops_, 0);
+    resource.pipeline_manager.configure(
+        MpsComputePipelineStateManager::Config{device_, resource.library, ops_,
+                                               0, 0, 1, 1, 1});
     return true;
   });
 

@@ -130,7 +130,7 @@ MpsEventManager::buildLease(ControlBlock &cb, EventHandle payload_handle,
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS event control block binding failed");
   }
-  return EventLease{&cb, &core_.controlBlockPool(), cb_handle};
+  return EventLease{&cb, core_.controlBlockPoolForLease(), cb_handle};
 }
 
 } // namespace orteaf::internal::runtime::mps::manager

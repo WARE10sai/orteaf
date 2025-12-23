@@ -30,7 +30,9 @@ public:
         } else if (!slow_ops_) {
             slow_ops_ = std::make_unique<SlowOpsImpl>();
         }
-        device_manager_.initialize(slow_ops_.get());
+        MpsDeviceManager::Config config{};
+        config.ops = slow_ops_.get();
+        device_manager_.configure(config);
     }
 
     void shutdown() {

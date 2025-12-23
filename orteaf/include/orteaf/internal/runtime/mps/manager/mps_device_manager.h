@@ -230,23 +230,26 @@ public:
   // =========================================================================
   // Device access
   // =========================================================================
-  std::size_t getDeviceCount() const { return core_.payloadPool().size(); }
-
   DeviceLease acquire(DeviceHandle handle);
   void release(DeviceLease &lease) noexcept { lease.release(); }
 
   ::orteaf::internal::architecture::Architecture
   getArch(DeviceHandle handle) const;
 
-  bool isInitialized() const noexcept { return core_.isInitialized(); }
-  std::size_t capacity() const noexcept {
+#if ORTEAF_ENABLE_TEST
+  std::size_t getDeviceCountForTest() const noexcept {
     return core_.payloadPool().size();
   }
-  bool isAlive(DeviceHandle handle) const noexcept {
+  bool isInitializedForTest() const noexcept { return core_.isInitialized(); }
+  std::size_t payloadPoolSizeForTest() const noexcept {
+    return core_.payloadPool().size();
+  }
+  std::size_t payloadPoolCapacityForTest() const noexcept {
+    return core_.payloadPool().capacity();
+  }
+  bool isAliveForTest(DeviceHandle handle) const noexcept {
     return core_.isAlive(handle);
   }
-
-#if ORTEAF_ENABLE_TEST
   std::size_t controlBlockPoolAvailableForTest() const noexcept {
     return core_.controlBlockPoolAvailableForTest();
   }

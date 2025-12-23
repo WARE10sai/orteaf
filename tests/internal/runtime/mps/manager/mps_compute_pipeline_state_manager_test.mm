@@ -66,7 +66,12 @@ protected:
   bool initializeManager(std::size_t capacity = 0) {
     const auto device = adapter().device();
     if (auto library = ensureLibrary()) {
-      manager().initialize(device, *library, this->getOps(), capacity);
+      mps_rt::MpsComputePipelineStateManager::Config config{};
+      config.device = device;
+      config.library = *library;
+      config.ops = this->getOps();
+      config.capacity = capacity;
+      manager().configure(config);
       return true;
     }
     return false;
@@ -140,23 +145,59 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
            GrowthChunkSizeCanBeAdjusted) {
   auto &manager = this->manager();
 
+  const auto device = this->adapter().device();
+  const auto maybe_library = this->ensureLibrary();
+  if (!maybe_library.has_value()) {
+    return;
+  }
+
   // Assert: Default is 1
-  EXPECT_EQ(manager.growthChunkSize(), 1u);
+  EXPECT_EQ(manager.payloadGrowthChunkSizeForTest(), 1u);
+  EXPECT_EQ(manager.controlBlockGrowthChunkSizeForTest(), 1u);
+
+  mps_rt::MpsComputePipelineStateManager::Config config{};
+  config.device = device;
+  config.library = *maybe_library;
+  config.ops = this->getOps();
+  config.payload_growth_chunk_size = 5;
+  config.control_block_growth_chunk_size = 6;
 
   // Act
-  manager.setGrowthChunkSize(5);
+  manager.configure(config);
 
   // Assert
-  EXPECT_EQ(manager.growthChunkSize(), 5u);
+  EXPECT_EQ(manager.payloadGrowthChunkSizeForTest(), 5u);
+  EXPECT_EQ(manager.controlBlockGrowthChunkSizeForTest(), 6u);
+
+  manager.shutdown();
 }
 
 TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
            GrowthChunkSizeRejectsZero) {
   auto &manager = this->manager();
+  const auto device = this->adapter().device();
+  const auto maybe_library = this->ensureLibrary();
+  if (!maybe_library.has_value()) {
+    return;
+  }
 
   // Act & Assert
-  ExpectError(diag_error::OrteafErrc::InvalidArgument,
-              [&] { manager.setGrowthChunkSize(0); });
+  ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] {
+    mps_rt::MpsComputePipelineStateManager::Config config{};
+    config.device = device;
+    config.library = *maybe_library;
+    config.ops = this->getOps();
+    config.payload_growth_chunk_size = 0;
+    manager.configure(config);
+  });
+  ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] {
+    mps_rt::MpsComputePipelineStateManager::Config config{};
+    config.device = device;
+    config.library = *maybe_library;
+    config.ops = this->getOps();
+    config.control_block_growth_chunk_size = 0;
+    manager.configure(config);
+  });
 }
 
 TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
@@ -168,10 +209,17 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
   auto &manager = this->manager();
 
   // Arrange
-  manager.setGrowthChunkSize(2);
-  if (!this->initializeManager(0)) {
+  const auto device = this->adapter().device();
+  const auto maybe_library = this->ensureLibrary();
+  if (!maybe_library.has_value()) {
     return;
   }
+  mps_rt::MpsComputePipelineStateManager::Config config{};
+  config.device = device;
+  config.library = *maybe_library;
+  config.ops = this->getOps();
+  config.payload_growth_chunk_size = 2;
+  manager.configure(config);
 
   const auto key = mps_rt::FunctionKey::Named("ChunkedFunction");
   const auto function_handle = makeFunction(0x8801);
@@ -184,7 +232,7 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
   auto lease = manager.acquire(key);
 
   // Assert: growOrAllocateSlot grows by growth_chunk_size_ (which is 2)
-  EXPECT_EQ(manager.capacity(), 2u);
+  EXPECT_EQ(manager.payloadPoolSizeForTest(), 2u);
 
   // Cleanup
   this->adapter().expectDestroyComputePipelineStates({pipeline_handle});
@@ -217,7 +265,12 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
 
   // Act & Assert
   ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] {
-    manager.initialize(nullptr, *maybe_library, this->getOps(), 1);
+    mps_rt::MpsComputePipelineStateManager::Config config{};
+    config.device = nullptr;
+    config.library = *maybe_library;
+    config.ops = this->getOps();
+    config.capacity = 1;
+    manager.configure(config);
   });
 }
 
@@ -227,8 +280,14 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
   const auto device = this->adapter().device();
 
   // Act & Assert
-  ExpectError(diag_error::OrteafErrc::InvalidArgument,
-              [&] { manager.initialize(device, nullptr, this->getOps(), 1); });
+  ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] {
+    mps_rt::MpsComputePipelineStateManager::Config config{};
+    config.device = device;
+    config.library = nullptr;
+    config.ops = this->getOps();
+    config.capacity = 1;
+    manager.configure(config);
+  });
 }
 
 TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
@@ -242,8 +301,12 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
 
   // Act & Assert
   ExpectError(diag_error::OrteafErrc::InvalidArgument, [&] {
-    manager.initialize(device, *maybe_library, this->getOps(),
-                       std::numeric_limits<std::size_t>::max());
+    mps_rt::MpsComputePipelineStateManager::Config config{};
+    config.device = device;
+    config.library = *maybe_library;
+    config.ops = this->getOps();
+    config.capacity = std::numeric_limits<std::size_t>::max();
+    manager.configure(config);
   });
 }
 
@@ -255,7 +318,7 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
   }
 
   // Assert
-  EXPECT_EQ(manager.capacity(), 0u);
+  EXPECT_EQ(manager.payloadPoolSizeForTest(), 0u);
 }
 
 TYPED_TEST(MpsComputePipelineStateManagerTypedTest, InitializeSetsCapacity) {
@@ -264,8 +327,8 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest, InitializeSetsCapacity) {
     return;
   }
 
-  // Assert: Cache pattern - capacity is 0 after init, grows on demand
-  EXPECT_EQ(manager.capacity(), 2u);
+  // Assert: Capacity mirrors configured size at initialization.
+  EXPECT_EQ(manager.payloadPoolSizeForTest(), 2u);
 }
 
 // =============================================================================
@@ -303,19 +366,20 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
   auto lease1 = manager.acquire(key);
 
   // Assert: Same handle (cached)
-  EXPECT_EQ(lease0.handle(), lease1.handle());
+  EXPECT_EQ(lease0.payloadHandle(), lease1.payloadHandle());
   if constexpr (TypeParam::is_mock) {
-    EXPECT_EQ(lease0.pointer(), pipeline_handle);
+    ASSERT_NE(lease0.payloadPtr(), nullptr);
+    EXPECT_EQ(lease0.payloadPtr()->pipeline_state, pipeline_handle);
   } else {
     EXPECT_TRUE(lease0);
   }
 
   // Assert: State is initialized with valid resource
-  const auto &cb = manager.controlBlockForTest(
-      static_cast<std::size_t>(lease0.handle().index));
-  EXPECT_TRUE(cb.isCreated());
-  EXPECT_TRUE(cb.payload().pipeline_state != nullptr);
-  EXPECT_TRUE(cb.payload().function != nullptr);
+  EXPECT_TRUE(manager.payloadCreatedForTest(lease0.payloadHandle()));
+  const auto *payload = manager.payloadForTest(lease0.payloadHandle());
+  ASSERT_NE(payload, nullptr);
+  EXPECT_NE(payload->pipeline_state, nullptr);
+  EXPECT_NE(payload->function, nullptr);
 
   // Cleanup
   this->adapter().expectDestroyComputePipelineStates({pipeline_handle});
@@ -353,19 +417,18 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
 
   // Act
   auto lease = manager.acquire(key);
-  const auto handle = lease.handle();
+  const auto handle = lease.payloadHandle();
   lease.release();
 
   // Assert: State stays alive (cache pattern)
-  const auto &released_cb =
-      manager.controlBlockForTest(static_cast<std::size_t>(handle.index));
-  EXPECT_TRUE(released_cb.isCreated());
+  EXPECT_TRUE(manager.payloadCreatedForTest(handle));
 
   // Act: Reacquire returns same cached resource
   auto reacquired = manager.acquire(key);
-  EXPECT_EQ(reacquired.handle(), handle);
+  EXPECT_EQ(reacquired.payloadHandle(), handle);
   if constexpr (TypeParam::is_mock) {
-    EXPECT_EQ(reacquired.pointer(), first_pipeline);
+    ASSERT_NE(reacquired.payloadPtr(), nullptr);
+    EXPECT_EQ(reacquired.payloadPtr()->pipeline_state, first_pipeline);
   } else {
     EXPECT_TRUE(reacquired);
   }
@@ -404,15 +467,13 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
 
   // Act
   auto lease = manager.acquire(mps_rt::FunctionKey::Named(*maybe_name));
-  const auto original_handle = lease.handle();
+  const auto original_handle = lease.payloadHandle();
   manager.release(lease);
 
   // Assert
   EXPECT_FALSE(static_cast<bool>(lease));
 
-  const auto &cb = manager.controlBlockForTest(
-      static_cast<std::size_t>(original_handle.index));
-  EXPECT_TRUE(cb.isCreated());
+  EXPECT_TRUE(manager.payloadCreatedForTest(original_handle));
 
   // Cleanup
   manager.shutdown();

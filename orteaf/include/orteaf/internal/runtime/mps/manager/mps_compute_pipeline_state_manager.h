@@ -7,12 +7,13 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/runtime/base/lease/control_block/raw.h"
-#include "orteaf/internal/runtime/base/lease/raw_lease.h"
-#include "orteaf/internal/runtime/base/lease/slot.h"
-#include "orteaf/internal/runtime/base/manager/base_manager_core.h"
+#include "orteaf/internal/runtime/base/lease/control_block/shared.h"
+#include "orteaf/internal/runtime/base/lease/strong_lease.h"
+#include "orteaf/internal/runtime/base/manager/base_pool_manager_core.h"
+#include "orteaf/internal/runtime/base/pool/fixed_slot_store.h"
 #include "orteaf/internal/runtime/mps/platform/mps_slow_ops.h"
 #include "orteaf/internal/runtime/mps/platform/wrapper/mps_compute_pipeline_state.h"
 #include "orteaf/internal/runtime/mps/platform/wrapper/mps_function.h"
@@ -57,25 +58,79 @@ struct MpsPipelineResource {
       pipeline_state{nullptr};
 };
 
-// Slot type (no generation - Raw uses cache pattern)
-using PipelineSlot =
-    ::orteaf::internal::runtime::base::RawSlot<MpsPipelineResource>;
-
-// Control block type (Raw - no ref counting needed)
-using PipelineControlBlock =
-    ::orteaf::internal::runtime::base::RawControlBlock<PipelineSlot>;
-
-/// @brief Traits for MpsComputePipelineStateManager
-struct MpsComputePipelineStateManagerTraits {
-  using ControlBlock = PipelineControlBlock;
+struct PipelinePayloadPoolTraits {
+  using Payload = MpsPipelineResource;
   using Handle = ::orteaf::internal::base::FunctionHandle;
+  using DeviceType =
+      ::orteaf::internal::runtime::mps::platform::wrapper::MpsDevice_t;
+  using LibraryType =
+      ::orteaf::internal::runtime::mps::platform::wrapper::MpsLibrary_t;
+  using SlowOps = ::orteaf::internal::runtime::mps::platform::MpsSlowOps;
+
+  struct Request {
+    FunctionKey key{};
+  };
+
+  struct Context {
+    DeviceType device{nullptr};
+    LibraryType library{nullptr};
+    SlowOps *ops{nullptr};
+  };
+
+  static bool create(Payload &payload, const Request &request,
+                     const Context &context) {
+    if (context.ops == nullptr || context.device == nullptr ||
+        context.library == nullptr) {
+      return false;
+    }
+    payload.function = context.ops->createFunction(context.library,
+                                                   request.key.identifier);
+    if (payload.function == nullptr) {
+      return false;
+    }
+    payload.pipeline_state =
+        context.ops->createComputePipelineState(context.device,
+                                                payload.function);
+    if (payload.pipeline_state == nullptr) {
+      context.ops->destroyFunction(payload.function);
+      payload.function = nullptr;
+      return false;
+    }
+    return true;
+  }
+
+  static void destroy(Payload &payload, const Request &, const Context &context) {
+    if (payload.pipeline_state != nullptr && context.ops != nullptr) {
+      context.ops->destroyComputePipelineState(payload.pipeline_state);
+      payload.pipeline_state = nullptr;
+    }
+    if (payload.function != nullptr && context.ops != nullptr) {
+      context.ops->destroyFunction(payload.function);
+      payload.function = nullptr;
+    }
+  }
+};
+
+using PipelinePayloadPool =
+    ::orteaf::internal::runtime::base::pool::FixedSlotStore<
+        PipelinePayloadPoolTraits>;
+
+struct PipelineControlBlockTag {};
+
+using PipelineControlBlock = ::orteaf::internal::runtime::base::SharedControlBlock<
+    ::orteaf::internal::base::FunctionHandle, MpsPipelineResource,
+    PipelinePayloadPool>;
+
+struct MpsComputePipelineStateManagerTraits {
+  using PayloadPool = PipelinePayloadPool;
+  using ControlBlock = PipelineControlBlock;
+  struct ControlBlockTag {};
+  using PayloadHandle = ::orteaf::internal::base::FunctionHandle;
   static constexpr const char *Name = "MpsComputePipelineStateManager";
 };
 
-class MpsComputePipelineStateManager
-    : protected ::orteaf::internal::runtime::base::BaseManagerCore<
-          MpsComputePipelineStateManagerTraits> {
-  using Base = ::orteaf::internal::runtime::base::BaseManagerCore<
+class MpsComputePipelineStateManager {
+  using Core = ::orteaf::internal::runtime::base::BasePoolManagerCore<
       MpsComputePipelineStateManagerTraits>;
 
 public:
@@ -87,8 +142,11 @@ public:
   using FunctionHandle = ::orteaf::internal::base::FunctionHandle;
   using PipelineState = ::orteaf::internal::runtime::mps::platform::wrapper::
       MpsComputePipelineState_t;
-  using PipelineLease = ::orteaf::internal::runtime::base::RawLease<
-      FunctionHandle, PipelineState, MpsComputePipelineStateManager>;
+  using ControlBlockHandle = Core::ControlBlockHandle;
+  using ControlBlockPool = Core::ControlBlockPool;
+  using PipelineLease = ::orteaf::internal::runtime::base::StrongLease<
+      ControlBlockHandle, PipelineControlBlock, ControlBlockPool,
+      MpsComputePipelineStateManager>;
 
   MpsComputePipelineStateManager() = default;
   MpsComputePipelineStateManager(const MpsComputePipelineStateManager &) =
@@ -100,44 +158,73 @@ public:
   operator=(MpsComputePipelineStateManager &&) = default;
   ~MpsComputePipelineStateManager() = default;
 
-  void initialize(DeviceType device, LibraryType library, SlowOps *ops,
-                  std::size_t capacity);
+  struct Config {
+    DeviceType device{nullptr};
+    LibraryType library{nullptr};
+    SlowOps *ops{nullptr};
+    std::size_t capacity{0};
+    std::size_t payload_block_size{0};
+    std::size_t control_block_block_size{1};
+    std::size_t payload_growth_chunk_size{1};
+    std::size_t control_block_growth_chunk_size{1};
+  };
+
+  void configure(const Config &config);
   void shutdown();
 
   PipelineLease acquire(const FunctionKey &key);
-  void release(PipelineLease &lease) noexcept;
-
-  // Growth configuration
-  using Base::growthChunkSize;
-  using Base::setGrowthChunkSize;
-
-  // Expose some base methods
-  using Base::capacity;
-  using Base::isAlive;
-  using Base::isInitialized;
+  void release(PipelineLease &lease) noexcept { lease.release(); }
 
 #if ORTEAF_ENABLE_TEST
-  using Base::controlBlockForTest;
-  using Base::freeListSizeForTest;
-  using Base::isInitializedForTest;
+  bool isInitializedForTest() const noexcept { return core_.isInitialized(); }
 
-  std::size_t growthChunkSizeForTest() const noexcept {
-    return Base::growthChunkSize();
+  std::size_t payloadPoolSizeForTest() const noexcept {
+    return core_.payloadPool().size();
+  }
+  std::size_t payloadPoolCapacityForTest() const noexcept {
+    return core_.payloadPool().capacity();
+  }
+  std::size_t controlBlockPoolSizeForTest() const noexcept {
+    return core_.controlBlockPoolSizeForTest();
+  }
+  std::size_t controlBlockPoolCapacityForTest() const noexcept {
+    return core_.controlBlockPoolCapacityForTest();
+  }
+  bool isAliveForTest(FunctionHandle handle) const noexcept {
+    return core_.isAlive(handle);
+  }
+  std::size_t payloadGrowthChunkSizeForTest() const noexcept {
+    return payload_growth_chunk_size_;
+  }
+  std::size_t controlBlockGrowthChunkSizeForTest() const noexcept {
+    return core_.growthChunkSize();
+  }
+
+  bool payloadCreatedForTest(FunctionHandle handle) const noexcept {
+    return core_.payloadPool().isCreated(handle);
+  }
+
+  const MpsPipelineResource *payloadForTest(FunctionHandle handle) const noexcept {
+    return core_.payloadPool().get(handle);
   }
 #endif
 
 private:
   friend PipelineLease;
-  using Base::acquireExisting;
 
   void validateKey(const FunctionKey &key) const;
-  void destroyResource(MpsPipelineResource &resource);
+  PipelineLease buildLease(FunctionHandle handle,
+                           MpsPipelineResource *payload_ptr);
+  PipelinePayloadPoolTraits::Context makePayloadContext() const noexcept;
 
-  std::unordered_map<FunctionKey, std::size_t, FunctionKeyHasher>
-      key_to_index_{};
+  std::unordered_map<FunctionKey, std::size_t, FunctionKeyHasher> key_to_index_{};
   LibraryType library_{nullptr};
   DeviceType device_{nullptr};
   SlowOps *ops_{nullptr};
+  std::size_t payload_block_size_{0};
+  std::size_t payload_growth_chunk_size_{1};
+  std::size_t next_index_{0};
+  Core core_{};
 };
 
 } // namespace orteaf::internal::runtime::mps::manager

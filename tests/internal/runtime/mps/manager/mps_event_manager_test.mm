@@ -398,7 +398,7 @@ TYPED_TEST(MpsEventManagerTypedTest, DebugStateReflectsEventState) {
 
   // Assert
   // Assert
-  EXPECT_TRUE(manager.isAlive(handle));
+  EXPECT_TRUE(manager.isAliveForTest(handle));
   // Generation check removed as BaseManagerCore + Slot does not use generations
 
   // Cleanup

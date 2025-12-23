@@ -116,7 +116,7 @@ MpsCommandQueueManager::CommandQueueLease MpsCommandQueueManager::acquire() {
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS command queue control block binding failed");
   }
-  return CommandQueueLease{cb, &core_.controlBlockPool(), cb_handle};
+  return CommandQueueLease{cb, core_.controlBlockPoolForLease(), cb_handle};
 }
 
 MpsCommandQueueManager::CommandQueueLease
@@ -150,7 +150,7 @@ MpsCommandQueueManager::acquire(CommandQueueHandle handle) {
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS command queue control block binding failed");
   }
-  return CommandQueueLease{cb, &core_.controlBlockPool(), cb_handle};
+  return CommandQueueLease{cb, core_.controlBlockPoolForLease(), cb_handle};
 }
 
 } // namespace orteaf::internal::runtime::mps::manager

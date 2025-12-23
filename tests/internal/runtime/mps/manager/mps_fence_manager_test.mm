@@ -370,7 +370,7 @@ TYPED_TEST(MpsFenceManagerTypedTest, DebugStateReflectsFenceState) {
   auto lease = manager.acquire();
 
   // Assert: Verify manager is initialized and fence is alive
-  EXPECT_TRUE(manager.isInitialized());
+  EXPECT_TRUE(manager.isInitializedForTest());
   EXPECT_GT(manager.controlBlockPoolCapacityForTest(), 0u);
 
   // Cleanup

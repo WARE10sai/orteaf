@@ -59,8 +59,8 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest, GrowthChunkSizeCanBeAdjusted) {
   const auto device = this->adapter().device();
 
   // Assert: Default is 1
-  EXPECT_EQ(manager.payloadGrowthChunkSize(), 1u);
-  EXPECT_EQ(manager.controlBlockGrowthChunkSize(), 1u);
+  EXPECT_EQ(manager.payloadGrowthChunkSizeForTest(), 1u);
+  EXPECT_EQ(manager.controlBlockGrowthChunkSizeForTest(), 1u);
 
   this->adapter().expectCreateCommandQueues({makeQueue(0x050)});
   this->adapter().expectDestroyCommandQueues({makeQueue(0x050)});
@@ -70,8 +70,8 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest, GrowthChunkSizeCanBeAdjusted) {
       device, this->getOps(), 1, 1, 1, 4, 5});
 
   // Assert
-  EXPECT_EQ(manager.payloadGrowthChunkSize(), 4u);
-  EXPECT_EQ(manager.controlBlockGrowthChunkSize(), 5u);
+  EXPECT_EQ(manager.payloadGrowthChunkSizeForTest(), 4u);
+  EXPECT_EQ(manager.controlBlockGrowthChunkSizeForTest(), 5u);
 
   manager.shutdown();
 }
@@ -116,8 +116,8 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest, InitializeSetsCapacity) {
                                                            1});
 
   // Assert
-  EXPECT_EQ(manager.capacity(), 2u);
-  EXPECT_TRUE(manager.isInitialized());
+  EXPECT_EQ(manager.payloadPoolSizeForTest(), 2u);
+  EXPECT_TRUE(manager.isInitializedForTest());
 
   // Cleanup
   manager.shutdown();
@@ -146,7 +146,7 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest, CapacityReflectsPoolSize) {
   const auto device = this->adapter().device();
 
   // Before init
-  EXPECT_EQ(manager.capacity(), 0u);
+  EXPECT_EQ(manager.payloadPoolSizeForTest(), 0u);
 
   this->adapter().expectCreateCommandQueues(
       {makeQueue(0x200), makeQueue(0x201), makeQueue(0x202)});
@@ -163,11 +163,11 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest, CapacityReflectsPoolSize) {
                                                            1});
 
   // Assert
-  EXPECT_EQ(manager.capacity(), 3u);
+  EXPECT_EQ(manager.payloadPoolSizeForTest(), 3u);
 
   // Cleanup
   manager.shutdown();
-  EXPECT_EQ(manager.capacity(), 0u);
+  EXPECT_EQ(manager.payloadPoolSizeForTest(), 0u);
 }
 
 // =============================================================================
@@ -425,7 +425,7 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest, IsAliveReturnsTrueForValidHandle) {
     handle = lease.payloadHandle();
 
     // Assert
-    EXPECT_TRUE(manager.isAlive(handle));
+    EXPECT_TRUE(manager.isAliveForTest(handle));
   } // lease released here
 
   // Cleanup
@@ -450,7 +450,7 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest,
 
   // Assert
   using Handle = mps_rt::MpsCommandQueueManager::CommandQueueHandle;
-  EXPECT_FALSE(manager.isAlive(Handle::invalid()));
+  EXPECT_FALSE(manager.isAliveForTest(Handle::invalid()));
 
   // Cleanup
   this->adapter().expectDestroyCommandQueues({makeQueue(0x710)});

@@ -128,7 +128,7 @@ MpsDeviceManager::DeviceLease MpsDeviceManager::acquire(DeviceHandle handle) {
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS device control block binding failed");
   }
-  return DeviceLease{cb_ref.payload_ptr, &core_.controlBlockPool(),
+  return DeviceLease{cb_ref.payload_ptr, core_.controlBlockPoolForLease(),
                      cb_ref.handle};
 }
 
