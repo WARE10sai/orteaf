@@ -78,20 +78,12 @@ MpsEventManager::EventLease MpsEventManager::acquire() {
   core_.ensureInitialized();
   const EventPayloadPoolTraits::Request request{};
   const auto context = makePayloadContext();
-  auto payload_ref = core_.payloadPool().tryAcquire(request, context);
+  auto payload_ref = core_.acquirePayloadOrGrowAndCreate(
+      payload_growth_chunk_size_, request, context);
   if (!payload_ref.valid()) {
-    if (!core_.growPayloadPoolByAndCreate(payload_growth_chunk_size_, request,
-                                          context)) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          "Failed to create MPS event payloads");
-    }
-    payload_ref = core_.payloadPool().tryAcquire(request, context);
-    if (!payload_ref.valid()) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
-          "MPS event manager has no available slots");
-    }
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
+        "MPS event manager has no available slots");
   }
 
   auto cb_ref = core_.acquireControlBlock();
