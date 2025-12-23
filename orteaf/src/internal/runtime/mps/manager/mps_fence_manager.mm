@@ -6,29 +6,54 @@
 
 namespace orteaf::internal::runtime::mps::manager {
 
-void MpsFenceManager::initialize(DeviceType device, SlowOps *ops,
-                                 std::size_t capacity) {
+void MpsFenceManager::configure(const Config &config) {
   shutdown();
-  if (device == nullptr) {
+  if (config.device == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "MPS fence manager requires a valid device");
   }
-  if (ops == nullptr) {
+  if (config.ops == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "MPS fence manager requires valid ops");
   }
-  if (capacity > static_cast<std::size_t>(FenceHandle::invalid_index())) {
+  if (config.capacity > static_cast<std::size_t>(FenceHandle::invalid_index())) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "MPS fence manager capacity exceeds maximum handle range");
   }
-  device_ = device;
-  ops_ = ops;
+  if (config.capacity != 0 && config.payload_block_size == 0) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+        "MPS fence manager requires non-zero payload block size");
+  }
+  if (config.control_block_block_size == 0) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+        "MPS fence manager requires non-zero control block size");
+  }
+  if (config.payload_growth_chunk_size == 0) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+        "MPS fence manager requires non-zero payload growth chunk size");
+  }
+  if (config.control_block_growth_chunk_size == 0) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+        "MPS fence manager requires non-zero control block growth chunk size");
+  }
+  device_ = config.device;
+  ops_ = config.ops;
+  payload_block_size_ = config.payload_block_size;
+  payload_growth_chunk_size_ = config.payload_growth_chunk_size;
 
-  core_.payloadPool().initialize(FencePayloadPoolTraits::Config{capacity});
-  core_.initializeControlBlockPool(capacity);
+  core_.payloadPool().configure(
+      FencePayloadPool::Config{config.capacity, config.payload_block_size});
+  core_.configure(MpsFenceManager::Core::Config{
+      /*control_block_capacity=*/config.capacity,
+      /*control_block_block_size=*/config.control_block_block_size,
+      /*growth_chunk_size=*/config.control_block_growth_chunk_size});
   core_.setInitialized(true);
 }
 
@@ -55,27 +80,18 @@ MpsFenceManager::FenceLease MpsFenceManager::acquire() {
   const auto context = makePayloadContext();
   auto payload_ref = core_.payloadPool().tryAcquire(request, context);
   if (!payload_ref.valid()) {
-    auto reserved = core_.payloadPool().tryReserve(request, context);
-    if (!reserved.valid()) {
-      const auto desired =
-          core_.payloadPool().capacity() + core_.growthChunkSize();
-      growPools(desired);
-      reserved = core_.payloadPool().tryReserve(request, context);
+    if (!core_.growPayloadPoolByAndCreate(payload_growth_chunk_size_, request,
+                                          context)) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+          "Failed to create MPS fence payloads");
     }
-    if (!reserved.valid()) {
+    payload_ref = core_.payloadPool().tryAcquire(request, context);
+    if (!payload_ref.valid()) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
           "MPS fence manager has no available slots");
     }
-    FencePayloadPoolTraits::Request create_request{reserved.handle};
-    if (!core_.payloadPool().emplace(reserved.handle, create_request,
-                                     context)) {
-      core_.payloadPool().release(reserved.handle);
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          "Failed to create MPS fence");
-    }
-    payload_ref = reserved;
   }
 
   auto cb_ref = core_.acquireControlBlock();
@@ -92,14 +108,6 @@ MpsFenceManager::FenceLease MpsFenceManager::acquire() {
 FencePayloadPoolTraits::Context
 MpsFenceManager::makePayloadContext() const noexcept {
   return FencePayloadPoolTraits::Context{device_, ops_};
-}
-
-void MpsFenceManager::growPools(std::size_t desired_capacity) {
-  if (desired_capacity <= core_.payloadPool().capacity()) {
-    return;
-  }
-  core_.payloadPool().grow(FencePayloadPoolTraits::Config{desired_capacity});
-  // Note: CB pool grows on demand in acquireControlBlock, no need to grow here
 }
 
 MpsFenceManager::FenceLease

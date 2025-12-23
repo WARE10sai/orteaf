@@ -36,10 +36,6 @@ struct FencePayloadPoolTraits {
     SlowOps *ops{nullptr};
   };
 
-  struct Config {
-    std::size_t capacity{0};
-  };
-
   static bool create(Payload &payload, const Request &,
                      const Context &context) {
     if (context.ops == nullptr || context.device == nullptr) {
@@ -114,6 +110,16 @@ private:
   friend FenceLease;
 
 public:
+  struct Config {
+    DeviceType device{nullptr};
+    SlowOps *ops{nullptr};
+    std::size_t capacity{0};
+    std::size_t payload_block_size{0};
+    std::size_t control_block_block_size{1};
+    std::size_t payload_growth_chunk_size{1};
+    std::size_t control_block_growth_chunk_size{1};
+  };
+
   MpsFenceManager() = default;
   MpsFenceManager(const MpsFenceManager &) = delete;
   MpsFenceManager &operator=(const MpsFenceManager &) = delete;
@@ -121,7 +127,7 @@ public:
   MpsFenceManager &operator=(MpsFenceManager &&) = default;
   ~MpsFenceManager() = default;
 
-  void initialize(DeviceType device, SlowOps *ops, std::size_t capacity);
+  void configure(const Config &config);
   void shutdown();
 
   FenceLease acquire();
@@ -129,11 +135,18 @@ public:
 
   // Expose capacity
   std::size_t capacity() const noexcept {
-    return core_.payloadPool().capacity();
+    return core_.payloadPool().size();
   }
   bool isInitialized() const noexcept { return core_.isInitialized(); }
   bool isAlive(FenceHandle handle) const noexcept {
     return core_.isAlive(handle);
+  }
+
+  std::size_t payloadGrowthChunkSize() const noexcept {
+    return payload_growth_chunk_size_;
+  }
+  std::size_t controlBlockGrowthChunkSize() const noexcept {
+    return core_.growthChunkSize();
   }
 
 #if ORTEAF_ENABLE_TEST
@@ -144,13 +157,14 @@ public:
 
 private:
   FencePayloadPoolTraits::Context makePayloadContext() const noexcept;
-  void growPools(std::size_t desired_capacity);
   FenceLease buildLease(ControlBlock &cb, FenceHandle payload_handle,
                         ControlBlockHandle cb_handle);
 
   DeviceType device_{nullptr};
   SlowOps *ops_{nullptr};
   Core core_{};
+  std::size_t payload_block_size_{0};
+  std::size_t payload_growth_chunk_size_{1};
 };
 
 } // namespace orteaf::internal::runtime::mps::manager
