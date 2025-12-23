@@ -50,6 +50,13 @@ void MpsFenceManager::configure(const Config &config) {
 
   core_.payloadPool().configure(
       FencePayloadPool::Config{config.capacity, config.payload_block_size});
+  const FencePayloadPoolTraits::Request payload_request{};
+  const auto payload_context = makePayloadContext();
+  if (!core_.payloadPool().createAll(payload_request, payload_context)) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+        "Failed to create MPS fences");
+  }
   core_.configure(MpsFenceManager::Core::Config{
       /*control_block_capacity=*/config.capacity,
       /*control_block_block_size=*/config.control_block_block_size,

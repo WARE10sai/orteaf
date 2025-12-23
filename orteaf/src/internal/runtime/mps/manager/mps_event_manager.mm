@@ -50,6 +50,13 @@ void MpsEventManager::configure(const Config &config) {
 
   core_.payloadPool().configure(
       EventPayloadPool::Config{config.capacity, config.payload_block_size});
+  const EventPayloadPoolTraits::Request payload_request{};
+  const auto payload_context = makePayloadContext();
+  if (!core_.payloadPool().createAll(payload_request, payload_context)) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+        "Failed to create MPS events");
+  }
   core_.configure(MpsEventManager::Core::Config{
       /*control_block_capacity=*/config.capacity,
       /*control_block_block_size=*/config.control_block_block_size,
