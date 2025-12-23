@@ -227,11 +227,10 @@ public:
   // ===========================================================================
 
   /**
-   * @brief ControlBlock Poolへのアクセス
+   * @brief ControlBlock Pool for lease construction only.
    */
-  ControlBlockPool &controlBlockPool() noexcept { return control_block_pool_; }
-  const ControlBlockPool &controlBlockPool() const noexcept {
-    return control_block_pool_;
+  ControlBlockPool *controlBlockPoolForLease() noexcept {
+    return &control_block_pool_;
   }
 
   /**
@@ -352,8 +351,12 @@ public:
   // Test Support
   // ===========================================================================
 
-  std::size_t controlBlockPoolCapacityForTest() const noexcept {
+  std::size_t controlBlockPoolSizeForTest() const noexcept {
     return control_block_pool_.size();
+  }
+
+  std::size_t controlBlockPoolCapacityForTest() const noexcept {
+    return control_block_pool_.capacity();
   }
 
   std::size_t controlBlockPoolAvailableForTest() const noexcept {
