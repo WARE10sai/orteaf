@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "orteaf/internal/base/handle.h"
+#include "orteaf/internal/diagnostics/error/error.h"
 #include "orteaf/internal/runtime/mps/manager/mps_runtime_manager.h"
 #include "orteaf/internal/runtime/mps/platform/mps_slow_ops.h"
 
@@ -39,15 +40,33 @@ public:
                                        const LibraryKey &library_key,
                                        const FunctionKey &function_key) {
     Runtime &rt = runtime();
-    auto *lib_mgr = rt.deviceManager().libraryManager(device);
-    auto *pipeline_mgr = lib_mgr->pipelineManager(library_key);
-    return pipeline_mgr->acquire(function_key);
+    auto device_lease = rt.deviceManager().acquire(device);
+    auto *resource = device_lease.payloadPtr();
+    if (resource == nullptr) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+          "MPS device lease has no payload");
+    }
+    auto library_lease = resource->library_manager.acquire(library_key);
+    auto *library_resource = library_lease.payloadPtr();
+    if (library_resource == nullptr) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+          "MPS library lease has no payload");
+    }
+    return library_resource->pipeline_manager.acquire(function_key);
   }
 
   static FenceLease acquireFence(DeviceHandle device) {
     Runtime &rt = runtime();
-    auto *fence_pool = rt.deviceManager().fencePool(device);
-    return fence_pool->acquire();
+    auto device_lease = rt.deviceManager().acquire(device);
+    auto *resource = device_lease.payloadPtr();
+    if (resource == nullptr) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+          "MPS device lease has no payload");
+    }
+    return resource->fence_pool.acquire();
   }
 
 private:

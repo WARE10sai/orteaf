@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "orteaf/internal/base/heap_vector.h"
+#include "orteaf/internal/base/runtime_block_vector.h"
 #include "orteaf/internal/diagnostics/error/error.h"
 
 namespace orteaf::internal::runtime::base::pool {
@@ -15,21 +16,21 @@ namespace orteaf::internal::runtime::base::pool {
  *
  * SlotPool stores a contiguous array of Payload objects. Acquisition returns a
  * SlotRef containing a handle and a pointer to the payload storage. Released
- * slots are pushed back to a freelist and can be reacquired later. If the handle
- * type supports generation tracking (Handle::has_generation), releases bump the
- * generation to invalidate stale handles.
+ * slots are pushed back to a freelist and can be reacquired later. If the
+ * handle type supports generation tracking (Handle::has_generation), releases
+ * bump the generation to invalidate stale handles.
  *
  * Creation and destruction of payloads is separated from slot acquisition. This
  * allows the pool to manage storage reuse independently of object lifetime.
- * - reserve/tryReserve: reserve an uncreated slot for initialization.
- * - acquire/tryAcquire: acquire an already-created slot for reuse.
+ * - reserve/tryReserveUncreated: reserve an uncreated slot for initialization.
+ * - acquire/tryAcquireCreated: acquire an already-created slot for reuse.
  * - emplace/destroy: create/destroy the payload for a specific handle.
  *
  * The pool does not interpret Request/Context beyond passing them to Traits.
  * This keeps pool APIs stable while allowing callers to define allocation
  * policies and initialization behavior in Traits or custom lambdas.
  *
- * @tparam Traits Policy type defining Payload/Handle/Request/Context/Config and
+ * @tparam Traits Policy type defining Payload/Handle/Request/Context and
  *         creation/destruction hooks.
  */
 template <typename Traits> class SlotPool {
@@ -38,7 +39,11 @@ public:
   using Handle = typename Traits::Handle;
   using Request = typename Traits::Request;
   using Context = typename Traits::Context;
-  using Config = typename Traits::Config;
+
+  struct Config {
+    std::size_t size{0};
+    std::size_t block_size{0};
+  };
 
   /**
    * @brief Lightweight handle+pointer pair returned by acquisition calls.
@@ -67,49 +72,67 @@ public:
   ~SlotPool() = default;
 
   /**
-   * @brief Initializes storage and freelist using Config capacity.
+   * @brief Applies configuration to the pool, growing storage if needed.
    *
-   * This method resets the internal state, resizes payload storage, initializes
-   * generation and created flags, and fills the freelist with all slot indices.
+   * This method does not reset existing state. Call shutdown() first when
+   * reinitialization is required. Configuration changes are restricted to
+   * size growth and a fixed block size.
    *
-   * @param config Configuration containing capacity.
-   * @throws OrteafErrc::InvalidArgument if capacity exceeds handle range.
+   * @param config Configuration containing size and block size.
+   * @return The previous size before applying the configuration.
+   * @throws OrteafErrc::InvalidArgument if size exceeds handle range.
    */
-  void initialize(const Config &config) {
-    shutdown();
-    grow(config);
-  }
-
-  /**
-   * @brief Initializes storage and creates payloads for all slots.
-   *
-   * This method resets the internal state, grows storage to capacity, and
-   * creates payloads for all slots using Traits::create.
-   *
-   * @param config Configuration containing capacity.
-   * @param request Request details forwarded to Traits::create.
-   * @param context Context details forwarded to Traits::create.
-   * @return True if all payloads were created successfully.
-   */
-  bool initializeAndCreate(const Config &config, const Request &request,
-                           const Context &context) {
-    shutdown();
-    return growAndCreate(config, request, context);
-  }
+  std::size_t configure(const Config &config) { return applyConfig(config); }
 
   /**
    * @brief Returns the number of slots in the pool.
    */
-  std::size_t capacity() const noexcept { return payloads_.size(); }
+  std::size_t size() const noexcept { return payloads_.size(); }
+  /**
+   * @brief Returns the reserved storage capacity in slots.
+   */
+  std::size_t capacity() const noexcept { return payloads_.capacity(); }
+  /**
+   * @brief Returns the payload block size in use.
+   */
+  std::size_t blockSize() const noexcept { return payloads_.blockSize(); }
   /**
    * @brief Returns the number of slots currently available in the freelist.
    */
   std::size_t available() const noexcept { return freelist_.size(); }
 
   /**
-   * @brief Releases all storage and resets internal state.
+   * @brief Reserves storage for at least new_capacity slots.
    */
-  void shutdown() noexcept {
+  void reserve(std::size_t new_capacity) { reserveStorage(new_capacity); }
+
+  /**
+   * @brief Resizes the pool to new_size slots, growing only.
+   *
+   * @return The previous size before resizing.
+   * @throws OrteafErrc::InvalidArgument if new_size is smaller than current.
+   */
+  std::size_t resize(std::size_t new_size) { return resizeStorage(new_size); }
+
+  /**
+   * @brief Destroys all created payloads and releases storage.
+   *
+   * This method iterates over all slots and calls Traits::destroy for any
+   * slot marked as created before clearing internal storage. Callers should
+   * verify canShutdown at the manager layer before calling this method.
+   *
+   * @param request Request details forwarded to Traits::destroy.
+   * @param context Context details forwarded to Traits::destroy.
+   */
+  void shutdown(const Request &request = {},
+                const Context &context = {}) noexcept {
+    // Destroy all created payloads before clearing storage
+    for (std::size_t idx = 0; idx < size(); ++idx) {
+      if (created_[idx] != 0) {
+        Handle handle = makeHandle(static_cast<index_type>(idx));
+        destroy(handle, request, context);
+      }
+    }
     payloads_.clear();
     generations_.clear();
     created_.clear();
@@ -117,37 +140,38 @@ public:
   }
 
   /**
-   * @brief Grows storage to the specified capacity without creating payloads.
+   * @brief Creates payloads for all slots in the pool.
    *
-   * New slots are appended to the freelist in "not created" state.
-   *
-   * @param config Configuration containing the new capacity.
-   * @throws OrteafErrc::InvalidArgument if capacity exceeds handle range.
+   * @param request Request details forwarded to Traits::create.
+   * @param context Context details forwarded to Traits::create.
+   * @return True if all payloads were created successfully.
    */
-  void grow(const Config &config) {
-    growStorage(config);
+  bool createAll(const Request &request, const Context &context) {
+    return createRange(0, size(), request, context);
   }
 
   /**
-   * @brief Grows storage and creates payloads for new slots.
+   * @brief Creates payloads for a slot range [start, end).
    *
-   * New slots are created using Traits::create and remain available for
-   * acquire (created=true). Returns false if any create fails.
-   *
-   * @param config Configuration containing the new capacity.
+   * @param start Inclusive start index.
+   * @param end Exclusive end index.
    * @param request Request details forwarded to Traits::create.
    * @param context Context details forwarded to Traits::create.
-   * @return True if all new payloads were created successfully.
-   * @throws OrteafErrc::InvalidArgument if capacity exceeds handle range.
+   * @return True if all payloads were created successfully.
+   * @throws OrteafErrc::InvalidArgument if range is invalid.
    */
-  bool growAndCreate(const Config &config, const Request &request,
-                     const Context &context) {
-    const std::size_t old_capacity = growStorage(config);
-    const std::size_t new_capacity = payloads_.size();
+  bool createRange(std::size_t start, std::size_t end, const Request &request,
+                   const Context &context) {
+    if (start > end || end > size()) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+          "SlotPool create range is out of bounds");
+    }
     bool all_created = true;
-    for (std::size_t idx = old_capacity; idx < new_capacity; ++idx) {
+    for (std::size_t idx = start; idx < end; ++idx) {
       Request slot_request = request;
-      setHandleIfPresent(slot_request, makeHandle(static_cast<index_type>(idx)));
+      setHandleIfPresent(slot_request,
+                         makeHandle(static_cast<index_type>(idx)));
       if (!emplace(makeHandle(static_cast<index_type>(idx)), slot_request,
                    context)) {
         all_created = false;
@@ -159,16 +183,16 @@ public:
   /**
    * @brief Acquires a created slot or throws if none are available.
    *
-   * acquire returns only slots with isCreated=true. It does not create
-   * payloads itself.
+   * tryAcquireCreated returns only slots with isCreated=true. It does not
+   * create payloads itself.
    *
    * @param request Allocation/request details passed through for symmetry.
    * @param context Context information (backend/device, etc.).
    * @return SlotRef with a valid handle and payload pointer.
    * @throws OrteafErrc::OutOfRange if the freelist is empty.
    */
-  SlotRef acquire(const Request &request, const Context &context) {
-    SlotRef ref = tryAcquire(request, context);
+  SlotRef acquireCreated(const Request &request, const Context &context) {
+    SlotRef ref = tryAcquireCreated(request, context);
     if (!ref.valid()) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
@@ -182,7 +206,7 @@ public:
    *
    * @return SlotRef with invalid handle and null pointer if no slots available.
    */
-  SlotRef tryAcquire(const Request &, const Context &) noexcept {
+  SlotRef tryAcquireCreated(const Request &, const Context &) noexcept {
     if (freelist_.empty()) {
       return SlotRef{Handle::invalid(), nullptr};
     }
@@ -201,16 +225,16 @@ public:
   /**
    * @brief Reserves an uncreated slot or throws if none are available.
    *
-   * reserve returns only slots with isCreated=false. It does not create
-   * payloads itself. Use emplace to initialize the payload.
+   * tryReserveUncreated returns only slots with isCreated=false. It does not
+   * create payloads itself. Use emplace to initialize the payload.
    *
    * @param request Allocation/request details passed through for symmetry.
    * @param context Context information (backend/device, etc.).
    * @return SlotRef with a valid handle and payload pointer.
    * @throws OrteafErrc::OutOfRange if no uncreated slots are available.
    */
-  SlotRef reserve(const Request &request, const Context &context) {
-    SlotRef ref = tryReserve(request, context);
+  SlotRef reserveUncreated(const Request &request, const Context &context) {
+    SlotRef ref = tryReserveUncreated(request, context);
     if (!ref.valid()) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
@@ -224,7 +248,7 @@ public:
    *
    * @return SlotRef with invalid handle and null pointer if none available.
    */
-  SlotRef tryReserve(const Request &, const Context &) noexcept {
+  SlotRef tryReserveUncreated(const Request &, const Context &) noexcept {
     if (freelist_.empty()) {
       return SlotRef{Handle::invalid(), nullptr};
     }
@@ -314,13 +338,30 @@ public:
   }
 
   /**
+   * @brief Invoke a callable for each created payload.
+   *
+   * This scans all slots and invokes the callable for slots marked as created.
+   * Intended for pool-wide inspection without exposing raw index accessors.
+   */
+  template <typename Func>
+    requires std::invocable<Func, std::size_t, const Payload &>
+  void forEachCreated(Func &&func) const {
+    const std::size_t count = size();
+    for (std::size_t idx = 0; idx < count; ++idx) {
+      if (created_[idx] != 0) {
+        std::forward<Func>(func)(idx, payloads_[idx]);
+      }
+    }
+  }
+
+  /**
    * @brief Validates a handle against bounds and generation (if supported).
    *
    * @return True if index is in range and generation matches (when enabled).
    */
   bool isValid(Handle handle) const noexcept {
     const auto idx = static_cast<std::size_t>(handle.index);
-    if (idx >= payloads_.size()) {
+    if (idx >= size()) {
       return false;
     }
     if constexpr (Handle::has_generation) {
@@ -341,7 +382,6 @@ public:
     }
     return created_[static_cast<std::size_t>(handle.index)] != 0;
   }
-
 
   /**
    * @brief Creates a payload using Traits::create.
@@ -374,7 +414,7 @@ public:
    */
   template <typename CreateFn>
     requires std::invocable<CreateFn, Payload &, const Request &,
-                             const Context &> &&
+                            const Context &> &&
              std::convertible_to<
                  std::invoke_result_t<CreateFn, Payload &, const Request &,
                                       const Context &>,
@@ -421,7 +461,7 @@ public:
    */
   template <typename DestroyFn>
     requires std::invocable<DestroyFn, Payload &, const Request &,
-                             const Context &>
+                            const Context &>
   bool destroy(Handle handle, const Request &request, const Context &context,
                DestroyFn &&destroyFn) {
     if (!isValid(handle) || !isCreated(handle)) {
@@ -429,8 +469,8 @@ public:
     }
     auto &payload = payloads_[static_cast<std::size_t>(handle.index)];
     if constexpr (std::convertible_to<
-                      std::invoke_result_t<DestroyFn, Payload &, const Request &,
-                                           const Context &>,
+                      std::invoke_result_t<DestroyFn, Payload &,
+                                           const Request &, const Context &>,
                       bool>) {
       if (!std::forward<DestroyFn>(destroyFn)(payload, request, context)) {
         return false;
@@ -445,8 +485,8 @@ public:
 private:
   using index_type = typename Handle::index_type;
   using generation_storage_t =
-      std::conditional_t<Handle::has_generation, typename Handle::generation_type,
-                         std::uint8_t>;
+      std::conditional_t<Handle::has_generation,
+                         typename Handle::generation_type, std::uint8_t>;
   static constexpr bool destroy_on_release_ = [] {
     if constexpr (requires { Traits::destroy_on_release; }) {
       return static_cast<bool>(Traits::destroy_on_release);
@@ -460,25 +500,61 @@ private:
     }
   }
 
-  std::size_t growStorage(const Config &config) {
-    const std::size_t capacity = config.capacity;
-    if (capacity > static_cast<std::size_t>(Handle::invalid_index())) {
+  std::size_t applyConfig(const Config &config) {
+    const std::size_t desired_size = config.size;
+    if (desired_size > static_cast<std::size_t>(Handle::invalid_index())) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+          "SlotPool size exceeds handle range");
+    }
+    const std::size_t desired_block_size = config.block_size;
+    if (desired_block_size == 0) {
+      if (desired_size != 0 && payloads_.blockSize() == 0) {
+        ::orteaf::internal::diagnostics::error::throwError(
+            ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+            "SlotPool requires non-zero block size when size > 0");
+      }
+    } else if (payloads_.blockSize() != desired_block_size) {
+      payloads_.resizeBlocks(desired_block_size);
+    }
+    return resizeStorage(desired_size);
+  }
+
+  void reserveStorage(std::size_t new_capacity) {
+    if (new_capacity > static_cast<std::size_t>(Handle::invalid_index())) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
           "SlotPool capacity exceeds handle range");
     }
-    const std::size_t old_capacity = payloads_.size();
-    if (capacity <= old_capacity) {
-      return old_capacity;
+    payloads_.reserve(new_capacity);
+    generations_.reserve(new_capacity);
+    created_.reserve(new_capacity);
+    freelist_.reserve(new_capacity);
+  }
+
+  std::size_t resizeStorage(std::size_t new_size) {
+    const std::size_t old_size = size();
+    if (new_size < old_size) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+          "SlotPool size cannot shrink without shutdown");
     }
-    payloads_.resize(capacity);
-    generations_.resize(capacity, 0);
-    created_.resize(capacity, 0);
-    freelist_.reserve(capacity);
-    for (std::size_t i = capacity; i > old_capacity; --i) {
+    if (new_size > static_cast<std::size_t>(Handle::invalid_index())) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+          "SlotPool size exceeds handle range");
+    }
+    if (new_size == old_size) {
+      return old_size;
+    }
+    payloads_.resize(new_size);
+    generations_.resize(new_size, 0);
+    created_.resize(new_size, 0);
+    freelist_.reserve(new_size);
+    for (std::size_t i = new_size; i > old_size; --i) {
       freelist_.pushBack(static_cast<index_type>(i - 1));
     }
-    return old_capacity;
+    return old_size;
   }
 
   bool releaseImpl(Handle handle) noexcept {
@@ -507,7 +583,7 @@ private:
     return Handle{idx};
   }
 
-  ::orteaf::internal::base::HeapVector<Payload> payloads_{};
+  ::orteaf::internal::base::RuntimeBlockVector<Payload> payloads_{};
   ::orteaf::internal::base::HeapVector<generation_storage_t> generations_{};
   ::orteaf::internal::base::HeapVector<std::uint8_t> created_{};
   ::orteaf::internal::base::HeapVector<index_type> freelist_{};

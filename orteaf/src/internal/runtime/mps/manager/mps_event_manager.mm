@@ -6,90 +6,143 @@
 
 namespace orteaf::internal::runtime::mps::manager {
 
-void MpsEventManager::initialize(DeviceType device, SlowOps *ops,
-                                 std::size_t capacity) {
+void MpsEventManager::configure(const Config &config) {
   shutdown();
-  if (device == nullptr) {
+  if (config.device == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "MPS event manager requires a valid device");
   }
-  if (ops == nullptr) {
+  if (config.ops == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "MPS event manager requires valid ops");
   }
-  if (capacity > static_cast<std::size_t>(EventHandle::invalid_index())) {
+  const std::size_t payload_capacity =
+      config.payload_capacity != 0 ? config.payload_capacity : 0u;
+  const std::size_t control_block_capacity =
+      config.control_block_capacity != 0 ? config.control_block_capacity
+                                         : payload_capacity;
+  if (payload_capacity >
+      static_cast<std::size_t>(EventHandle::invalid_index())) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "MPS event manager capacity exceeds maximum handle range");
   }
-  device_ = device;
-  ops_ = ops;
-
-  // Fill pool with capacity
-  Base::setupPool(capacity);
-}
-
-void MpsEventManager::destroyResource(EventType &resource) {
-  if (resource != nullptr) {
-    ops_->destroyEvent(resource);
-    resource = nullptr;
+  if (control_block_capacity >
+      static_cast<std::size_t>(Core::ControlBlockHandle::invalid_index())) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+        "MPS event manager control block capacity exceeds maximum handle range");
   }
+  if (payload_capacity != 0 && config.payload_block_size == 0) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+        "MPS event manager requires non-zero payload block size");
+  }
+  if (config.control_block_block_size == 0) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+        "MPS event manager requires non-zero control block size");
+  }
+  if (config.payload_growth_chunk_size == 0) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+        "MPS event manager requires non-zero payload growth chunk size");
+  }
+  if (config.control_block_growth_chunk_size == 0) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+        "MPS event manager requires non-zero control block growth chunk size");
+  }
+  device_ = config.device;
+  ops_ = config.ops;
+  payload_block_size_ = config.payload_block_size;
+  payload_growth_chunk_size_ = config.payload_growth_chunk_size;
+
+  core_.payloadPool().configure(
+      EventPayloadPool::Config{payload_capacity, config.payload_block_size});
+  const EventPayloadPoolTraits::Request payload_request{};
+  const auto payload_context = makePayloadContext();
+  if (!core_.payloadPool().createAll(payload_request, payload_context)) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+        "Failed to create MPS events");
+  }
+  core_.configure(MpsEventManager::Core::Config{
+      /*control_block_capacity=*/control_block_capacity,
+      /*control_block_block_size=*/config.control_block_block_size,
+      /*growth_chunk_size=*/config.control_block_growth_chunk_size});
+  core_.setInitialized(true);
 }
 
 void MpsEventManager::shutdown() {
-  if (!Base::isInitialized()) {
+  if (!core_.isInitialized()) {
     return;
   }
-  // Teardown and destroy all created resources
-  Base::teardownPool([this](EventType &payload) {
-    if (payload != nullptr) {
-      destroyResource(payload);
-    }
-  });
+  // Check canShutdown on all created control blocks
+  core_.checkCanShutdownOrThrow();
+
+  const EventPayloadPoolTraits::Request payload_request{};
+  const auto payload_context = makePayloadContext();
+  core_.payloadPool().shutdown(payload_request, payload_context);
+  core_.shutdownControlBlockPool();
 
   device_ = nullptr;
   ops_ = nullptr;
+  core_.setInitialized(false);
 }
 
 MpsEventManager::EventLease MpsEventManager::acquire() {
-  ensureInitialized();
+  core_.ensureInitialized();
+  const EventPayloadPoolTraits::Request request{};
+  const auto context = makePayloadContext();
+  auto payload_ref = core_.acquirePayloadOrGrowAndCreate(
+      payload_growth_chunk_size_, request, context);
+  if (!payload_ref.valid()) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
+        "MPS event manager has no available slots");
+  }
 
-  auto handle = Base::acquireFresh([this](EventType &payload) {
-    auto event = ops_->createEvent(device_);
-    if (event == nullptr) {
-      return false;
-    }
-    payload = event;
-    return true;
-  });
-
-  if (!handle.isValid()) {
+  auto cb_ref = core_.acquireControlBlock();
+  auto cb_handle = cb_ref.handle;
+  auto *cb = cb_ref.payload_ptr;
+  if (cb == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "Failed to create MPS event");
+        "MPS event control block is unavailable");
   }
-
-  auto &cb = Base::getControlBlock(handle);
-  return EventLease{this, handle, cb.payload()};
+  return buildLease(*cb, payload_ref.handle, cb_handle);
 }
 
-MpsEventManager::EventLease MpsEventManager::acquire(EventHandle handle) {
-  auto &cb = Base::acquireExisting(handle);
-  return EventLease{this, handle, cb.payload()};
+EventPayloadPoolTraits::Context
+MpsEventManager::makePayloadContext() const noexcept {
+  return EventPayloadPoolTraits::Context{device_, ops_};
 }
 
-void MpsEventManager::release(EventLease &lease) noexcept {
-  release(lease.handle());
-  lease.invalidate();
-}
-
-void MpsEventManager::release(EventHandle handle) noexcept {
-  if (!Base::isValidHandle(handle)) {
-    return;
+MpsEventManager::EventLease
+MpsEventManager::buildLease(ControlBlock &cb, EventHandle payload_handle,
+                            ControlBlockHandle cb_handle) {
+  auto *payload_ptr = core_.payloadPool().get(payload_handle);
+  if (payload_ptr == nullptr) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+        "MPS event payload is unavailable");
   }
-  Base::releaseForReuse(handle);
+  if (cb.hasPayload()) {
+    if (cb.payloadHandle() != payload_handle) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+          "MPS event control block payload mismatch");
+    }
+  } else if (!cb.tryBindPayload(payload_handle, payload_ptr,
+                                &core_.payloadPool())) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+        "MPS event control block binding failed");
+  }
+  return EventLease{&cb, core_.controlBlockPoolForLease(), cb_handle};
 }
 
 } // namespace orteaf::internal::runtime::mps::manager

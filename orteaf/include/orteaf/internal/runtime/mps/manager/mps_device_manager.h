@@ -8,13 +8,11 @@
 
 #include "orteaf/internal/architecture/architecture.h"
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/base/heap_vector.h"
 #include "orteaf/internal/diagnostics/error/error.h"
-#include "orteaf/internal/runtime/base/lease/control_block/raw.h"
-#include "orteaf/internal/runtime/base/lease/raw_lease.h"
-#include "orteaf/internal/runtime/base/lease/slot.h"
-#include "orteaf/internal/runtime/base/manager/base_manager_core.h"
-#include "orteaf/internal/runtime/mps/manager/mps_buffer_manager.h"
+#include "orteaf/internal/runtime/base/lease/control_block/weak.h"
+#include "orteaf/internal/runtime/base/lease/weak_lease.h"
+#include "orteaf/internal/runtime/base/manager/base_pool_manager_core.h"
+#include "orteaf/internal/runtime/base/pool/fixed_slot_store.h"
 #include "orteaf/internal/runtime/mps/manager/mps_command_queue_manager.h"
 #include "orteaf/internal/runtime/mps/manager/mps_event_manager.h"
 #include "orteaf/internal/runtime/mps/manager/mps_fence_manager.h"
@@ -91,39 +89,144 @@ private:
 };
 
 // =============================================================================
-// BaseManagerCore Types (RawControlBlock - no lifecycle tracking)
+// Payload Pool
 // =============================================================================
 
-using DeviceSlot =
-    ::orteaf::internal::runtime::base::RawSlot<MpsDeviceResource>;
-using DeviceControlBlock =
-    ::orteaf::internal::runtime::base::RawControlBlock<DeviceSlot>;
+struct DevicePayloadPoolTraits {
+  using Payload = MpsDeviceResource;
+  using Handle = ::orteaf::internal::base::DeviceHandle;
+  using SlowOps = ::orteaf::internal::runtime::mps::platform::MpsSlowOps;
+
+  struct Request {
+    Handle handle{Handle::invalid()};
+  };
+
+  struct Context {
+    SlowOps *ops{nullptr};
+    MpsCommandQueueManager::Config command_queue_config{};
+    MpsEventManager::Config event_config{};
+    MpsFenceManager::Config fence_config{};
+    std::size_t heap_initial_capacity{0};
+    std::size_t library_initial_capacity{0};
+    MpsGraphManager::Config graph_config{};
+  };
+
+  static bool create(Payload &payload, const Request &request,
+                     const Context &context) {
+    if (context.ops == nullptr || !request.handle.isValid()) {
+      return false;
+    }
+    const auto device = context.ops->getDevice(
+        static_cast<
+            ::orteaf::internal::runtime::mps::platform::wrapper::MPSInt_t>(
+            request.handle.index));
+    payload.device = device;
+    if (device == nullptr) {
+      payload.arch = ::orteaf::internal::architecture::Architecture::MpsGeneric;
+      return false;
+    }
+    payload.arch = context.ops->detectArchitecture(request.handle);
+    auto command_queue_config = context.command_queue_config;
+    command_queue_config.device = device;
+    command_queue_config.ops = context.ops;
+    payload.command_queue_manager.configure(command_queue_config);
+    // Configure library manager (payload/control capacities share initial
+    // value).
+    MpsLibraryManager::Config library_config{};
+    library_config.device = device;
+    library_config.ops = context.ops;
+    library_config.payload_capacity = context.library_initial_capacity;
+    library_config.control_block_capacity = context.library_initial_capacity;
+    payload.library_manager.configure(library_config);
+    // Configure heap manager
+    MpsHeapManager::Config heap_config{};
+    heap_config.device = device;
+    heap_config.device_handle = request.handle;
+    heap_config.library_manager = &payload.library_manager;
+    heap_config.ops = context.ops;
+    heap_config.payload_capacity = context.heap_initial_capacity;
+    heap_config.control_block_capacity = context.heap_initial_capacity;
+    payload.heap_manager.configure(heap_config);
+    auto graph_config = context.graph_config;
+    graph_config.device = device;
+    graph_config.ops = context.ops;
+    payload.graph_manager.configure(graph_config);
+    auto event_config = context.event_config;
+    event_config.device = device;
+    event_config.ops = context.ops;
+    payload.event_pool.configure(event_config);
+    auto fence_config = context.fence_config;
+    fence_config.device = device;
+    fence_config.ops = context.ops;
+    payload.fence_pool.configure(fence_config);
+    return true;
+  }
+
+  static void destroy(Payload &payload, const Request &,
+                      const Context &context) {
+    payload.reset(context.ops);
+  }
+};
+
+using DevicePayloadPool =
+    ::orteaf::internal::runtime::base::pool::FixedSlotStore<
+        DevicePayloadPoolTraits>;
+
+// =============================================================================
+// ControlBlock (using default pool traits via BasePoolManagerCore)
+// =============================================================================
+
+struct DeviceControlBlockTag {};
+
+using DeviceControlBlock = ::orteaf::internal::runtime::base::WeakControlBlock<
+    ::orteaf::internal::base::DeviceHandle, MpsDeviceResource,
+    DevicePayloadPool>;
+
+// =============================================================================
+// Manager Traits for BasePoolManagerCore
+// =============================================================================
 
 struct MpsDeviceManagerTraits {
+  using PayloadPool = DevicePayloadPool;
   using ControlBlock = DeviceControlBlock;
-  using Handle = ::orteaf::internal::base::DeviceHandle;
-  static constexpr const char *Name = "MpsDeviceManager";
+  struct ControlBlockTag {};
+  using PayloadHandle = ::orteaf::internal::base::DeviceHandle;
+  static constexpr const char *Name = "MPS device manager";
 };
 
 // =============================================================================
 // MpsDeviceManager
 // =============================================================================
 
-class MpsDeviceManager
-    : protected ::orteaf::internal::runtime::base::BaseManagerCore<
-          MpsDeviceManagerTraits> {
-  using Base = ::orteaf::internal::runtime::base::BaseManagerCore<
-      MpsDeviceManagerTraits>;
-
+class MpsDeviceManager {
 public:
   using SlowOps = ::orteaf::internal::runtime::mps::platform::MpsSlowOps;
   using DeviceHandle = ::orteaf::internal::base::DeviceHandle;
   using DeviceType =
       ::orteaf::internal::runtime::mps::platform::wrapper::MpsDevice_t;
-  using ControlBlock = typename Base::ControlBlock;
-  using DeviceLease =
-      ::orteaf::internal::runtime::base::RawLease<DeviceHandle, DeviceType,
-                                                  MpsDeviceManager>;
+
+  using Core = ::orteaf::internal::runtime::base::BasePoolManagerCore<
+      MpsDeviceManagerTraits>;
+  using ControlBlock = Core::ControlBlock;
+  using ControlBlockHandle = Core::ControlBlockHandle;
+  using ControlBlockPool = Core::ControlBlockPool;
+
+  using DeviceLease = ::orteaf::internal::runtime::base::WeakLease<
+      ControlBlockHandle, ControlBlock, ControlBlockPool, MpsDeviceManager>;
+
+  struct Config {
+    SlowOps *ops{nullptr};
+    std::size_t payload_size{0};
+    std::size_t heap_initial_capacity{0};
+    std::size_t library_initial_capacity{0};
+    std::size_t control_block_size{0};
+    std::size_t control_block_block_size{0};
+    std::size_t control_block_growth_chunk_size{1};
+    MpsCommandQueueManager::Config command_queue_config{};
+    MpsEventManager::Config event_config{};
+    MpsFenceManager::Config fence_config{};
+    MpsGraphManager::Config graph_config{};
+  };
 
   MpsDeviceManager() = default;
   MpsDeviceManager(const MpsDeviceManager &) = delete;
@@ -133,84 +236,42 @@ public:
   ~MpsDeviceManager() = default;
 
   // =========================================================================
-  // Configuration (call before initialize)
-  // =========================================================================
-  void setCommandQueueInitialCapacity(std::size_t capacity) {
-    command_queue_initial_capacity_ = capacity;
-  }
-  std::size_t commandQueueInitialCapacity() const noexcept {
-    return command_queue_initial_capacity_;
-  }
-
-  void setHeapInitialCapacity(std::size_t capacity) {
-    heap_initial_capacity_ = capacity;
-  }
-  std::size_t heapInitialCapacity() const noexcept {
-    return heap_initial_capacity_;
-  }
-
-  void setLibraryInitialCapacity(std::size_t capacity) {
-    library_initial_capacity_ = capacity;
-  }
-  std::size_t libraryInitialCapacity() const noexcept {
-    return library_initial_capacity_;
-  }
-
-  void setGraphInitialCapacity(std::size_t capacity) {
-    graph_initial_capacity_ = capacity;
-  }
-  std::size_t graphInitialCapacity() const noexcept {
-    return graph_initial_capacity_;
-  }
-
-  // =========================================================================
   // Lifecycle
   // =========================================================================
-  void initialize(SlowOps *slow_ops);
+  void configure(const Config &config);
   void shutdown();
 
   // =========================================================================
   // Device access
   // =========================================================================
-  std::size_t getDeviceCount() const { return Base::capacity(); }
-
   DeviceLease acquire(DeviceHandle handle);
-  void release(DeviceLease &lease) noexcept;
+  void release(DeviceLease &lease) noexcept { lease.release(); }
 
   ::orteaf::internal::architecture::Architecture
   getArch(DeviceHandle handle) const;
 
-
-  // =========================================================================
-  // Direct access to child managers
-  // =========================================================================
-  MpsCommandQueueManager *commandQueueManager(DeviceHandle handle);
-  MpsHeapManager *heapManager(DeviceHandle handle);
-  MpsLibraryManager *libraryManager(DeviceHandle handle);
-  MpsGraphManager *graphManager(DeviceHandle handle);
-  MpsEventManager *eventPool(DeviceHandle handle);
-  MpsFenceManager *fencePool(DeviceHandle handle);
-
-  // Expose base methods
-  using Base::isAlive;
-  using Base::capacity;
-  using Base::isInitialized;
-
 #if ORTEAF_ENABLE_TEST
-  using Base::controlBlockForTest;
-  using Base::freeListSizeForTest;
-  using Base::isInitializedForTest;
+  std::size_t getDeviceCountForTest() const noexcept {
+    return core_.payloadPool().size();
+  }
+  bool isInitializedForTest() const noexcept { return core_.isInitialized(); }
+  std::size_t payloadPoolSizeForTest() const noexcept {
+    return core_.payloadPool().size();
+  }
+  std::size_t payloadPoolCapacityForTest() const noexcept {
+    return core_.payloadPool().capacity();
+  }
+  bool isAliveForTest(DeviceHandle handle) const noexcept {
+    return core_.isAlive(handle);
+  }
+  std::size_t controlBlockPoolAvailableForTest() const noexcept {
+    return core_.controlBlockPoolAvailableForTest();
+  }
 #endif
 
 private:
-  ControlBlock &ensureValidControlBlock(DeviceHandle handle);
-  const ControlBlock &ensureValidControlBlockConst(DeviceHandle handle) const;
-
   SlowOps *ops_{nullptr};
-  std::size_t command_queue_initial_capacity_{0};
-  std::size_t heap_initial_capacity_{0};
-  std::size_t library_initial_capacity_{0};
-  std::size_t graph_initial_capacity_{0};
+  Core core_{};
 };
 
 } // namespace orteaf::internal::runtime::mps::manager

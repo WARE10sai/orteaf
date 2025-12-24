@@ -6,52 +6,84 @@
 
 namespace orteaf::internal::runtime::mps::manager {
 
-void MpsComputePipelineStateManager::initialize(DeviceType device,
-                                                LibraryType library,
-                                                SlowOps *ops,
-                                                std::size_t capacity) {
-  if (isInitialized()) {
-    shutdown();
-  }
-  if (device == nullptr || library == nullptr) {
+void MpsComputePipelineStateManager::configure(const Config &config) {
+  shutdown();
+  if (config.device == nullptr || config.library == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "MPS compute pipeline state manager requires a valid device and "
         "library");
   }
-  if (ops == nullptr) {
+  if (config.ops == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "MPS compute pipeline state manager requires valid ops");
   }
-  if (capacity > static_cast<std::size_t>(FunctionHandle::invalid_index())) {
+  const std::size_t payload_capacity =
+      config.payload_capacity != 0 ? config.payload_capacity : 0u;
+  const std::size_t control_block_capacity =
+      config.control_block_capacity != 0 ? config.control_block_capacity
+                                                 : payload_capacity;
+  if (payload_capacity >
+      static_cast<std::size_t>(FunctionHandle::invalid_index())) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "MPS compute pipeline state manager capacity exceeds maximum handle "
         "range");
   }
+  if (control_block_capacity >
+      static_cast<std::size_t>(Core::ControlBlockHandle::invalid_index())) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+        "MPS compute pipeline state manager control block capacity exceeds maximum handle range");
+  }
+  if (config.payload_growth_chunk_size == 0) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+        "MPS compute pipeline state manager requires non-zero payload growth chunk size");
+  }
+  if (config.control_block_growth_chunk_size == 0) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+        "MPS compute pipeline state manager requires non-zero control block growth chunk size");
+  }
+  std::size_t payload_block_size = config.payload_block_size;
+  if (payload_block_size == 0) {
+    payload_block_size =
+        payload_capacity == 0 ? 1u : payload_capacity;
+  }
+  std::size_t control_block_block_size = config.control_block_block_size;
+  if (control_block_block_size == 0) {
+    control_block_block_size =
+        control_block_capacity == 0 ? 1u : control_block_capacity;
+  }
 
-  device_ = device;
-  library_ = library;
-  ops_ = ops;
+  device_ = config.device;
+  library_ = config.library;
+  ops_ = config.ops;
+  payload_block_size_ = payload_block_size;
+  payload_growth_chunk_size_ = config.payload_growth_chunk_size;
   key_to_index_.clear();
 
-  // Setup empty pool (cache pattern - grows on demand)
-  setupPool(capacity);
+  core_.payloadPool().configure(
+      PipelinePayloadPool::Config{payload_capacity, payload_block_size_});
+  core_.configure(MpsComputePipelineStateManager::Core::Config{
+      /*control_block_capacity=*/control_block_capacity,
+      /*control_block_block_size=*/control_block_block_size,
+      /*growth_chunk_size=*/config.control_block_growth_chunk_size});
+  core_.setInitialized(true);
 }
 
 void MpsComputePipelineStateManager::shutdown() {
-  if (!isInitialized()) {
+  if (!core_.isInitialized()) {
     return;
   }
 
-  // Destroy all created resources
-  teardownPool([this](MpsPipelineResource &payload) {
-    if (payload.pipeline_state != nullptr) {
-      destroyResource(payload);
-    }
-  });
-
+  core_.checkCanShutdownOrThrow();
+  const PipelinePayloadPoolTraits::Request payload_request{};
+  const auto payload_context = makePayloadContext();
+  core_.payloadPool().shutdown(payload_request, payload_context);
+  core_.shutdownControlBlockPool();
   key_to_index_.clear();
   device_ = nullptr;
   library_ = nullptr;
@@ -60,50 +92,48 @@ void MpsComputePipelineStateManager::shutdown() {
 
 MpsComputePipelineStateManager::PipelineLease
 MpsComputePipelineStateManager::acquire(const FunctionKey &key) {
-  ensureInitialized();
+  core_.ensureInitialized();
   validateKey(key);
 
   // Check cache first
   if (auto it = key_to_index_.find(key); it != key_to_index_.end()) {
-    auto handle = static_cast<FunctionHandle>(it->second);
-    auto &cb = Base::acquireExisting(handle); // Increment weak reference count
-    return PipelineLease{this, handle, cb.payload().pipeline_state};
+    auto handle =
+        FunctionHandle{static_cast<FunctionHandle::index_type>(it->second)};
+    auto *payload_ptr = core_.payloadPool().get(handle);
+    if (payload_ptr == nullptr || !core_.payloadPool().isCreated(handle)) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+          "MPS compute pipeline state cache is invalid");
+    }
+    return buildLease(handle, payload_ptr);
   }
 
-  // Acquire new slot and create resource
-  Handle handle = acquireFresh([&](MpsPipelineResource &resource) {
-    resource.function = ops_->createFunction(library_, key.identifier);
-    if (!resource.function)
-      return false;
+  // Reserve an uncreated slot and create the pipeline state
+  PipelinePayloadPoolTraits::Request request{key};
+  const auto context = makePayloadContext();
+  auto payload_ref = core_.reserveUncreatedPayloadOrGrow(
+      payload_growth_chunk_size_, request, context);
+  if (!payload_ref.valid()) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
+        "MPS compute pipeline state manager has no available slots");
+  }
 
-    resource.pipeline_state =
-        ops_->createComputePipelineState(device_, resource.function);
-    if (!resource.pipeline_state) {
-      ops_->destroyFunction(resource.function);
-      resource.function = nullptr;
-      return false;
-    }
-    return true;
-  });
-
-  if (!handle.isValid()) {
+  const auto handle = payload_ref.handle;
+  if (!core_.payloadPool().emplace(handle, request, context)) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "Failed to create MPS compute pipeline state");
   }
 
   key_to_index_.emplace(key, static_cast<std::size_t>(handle.index));
-  return PipelineLease{this, handle,
-                       getControlBlock(handle).payload().pipeline_state};
-}
-
-void MpsComputePipelineStateManager::release(PipelineLease &lease) noexcept {
-  if (!lease) {
-    return;
+  auto *payload_ptr = core_.payloadPool().get(handle);
+  if (payload_ptr == nullptr) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+        "MPS compute pipeline state payload is unavailable");
   }
-  // Decrement weak reference count (resource stays in cache until shutdown)
-  Base::releaseForReuse(lease.handle());
-  lease.invalidate();
+  return buildLease(handle, payload_ptr);
 }
 
 void MpsComputePipelineStateManager::validateKey(const FunctionKey &key) const {
@@ -114,16 +144,33 @@ void MpsComputePipelineStateManager::validateKey(const FunctionKey &key) const {
   }
 }
 
-void MpsComputePipelineStateManager::destroyResource(
-    MpsPipelineResource &resource) {
-  if (resource.pipeline_state != nullptr) {
-    ops_->destroyComputePipelineState(resource.pipeline_state);
-    resource.pipeline_state = nullptr;
+MpsComputePipelineStateManager::PipelineLease
+MpsComputePipelineStateManager::buildLease(FunctionHandle handle,
+                                           MpsPipelineResource *payload_ptr) {
+  auto cb_ref = core_.acquireControlBlock();
+  auto *cb = cb_ref.payload_ptr;
+  if (cb == nullptr) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+        "MPS compute pipeline state control block is unavailable");
   }
-  if (resource.function != nullptr) {
-    ops_->destroyFunction(resource.function);
-    resource.function = nullptr;
+  if (cb->hasPayload()) {
+    if (cb->payloadHandle() != handle) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+          "MPS compute pipeline state control block payload mismatch");
+    }
+  } else if (!cb->tryBindPayload(handle, payload_ptr, &core_.payloadPool())) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+        "MPS compute pipeline state control block binding failed");
   }
+  return PipelineLease{cb, core_.controlBlockPoolForLease(), cb_ref.handle};
+}
+
+PipelinePayloadPoolTraits::Context
+MpsComputePipelineStateManager::makePayloadContext() const noexcept {
+  return PipelinePayloadPoolTraits::Context{device_, library_, ops_};
 }
 
 } // namespace orteaf::internal::runtime::mps::manager

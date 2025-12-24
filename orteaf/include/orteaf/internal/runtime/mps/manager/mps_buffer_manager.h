@@ -17,10 +17,11 @@
 #include "orteaf/internal/runtime/allocator/policies/reuse/deferred_reuse_policy.h"
 #include "orteaf/internal/runtime/allocator/policies/threading/threading_policies.h"
 #include "orteaf/internal/runtime/allocator/pool/segregate_pool.h"
-#include "orteaf/internal/runtime/base/lease/control_block/shared.h"
-#include "orteaf/internal/runtime/base/lease/shared_lease.h"
-#include "orteaf/internal/runtime/base/lease/slot.h"
-#include "orteaf/internal/runtime/base/manager/base_manager_core.h"
+#include "orteaf/internal/runtime/base/lease/control_block/weak_shared.h"
+#include "orteaf/internal/runtime/base/lease/strong_lease.h"
+#include "orteaf/internal/runtime/base/lease/weak_lease.h"
+#include "orteaf/internal/runtime/base/manager/base_pool_manager_core.h"
+#include "orteaf/internal/runtime/base/pool/slot_pool.h"
 #include "orteaf/internal/runtime/mps/manager/mps_library_manager.h"
 #include "orteaf/internal/runtime/mps/platform/wrapper/mps_device.h"
 #include "orteaf/internal/runtime/mps/resource/mps_buffer_view.h"
@@ -30,7 +31,7 @@ namespace orteaf::internal::runtime::mps::manager {
 using ::orteaf::internal::backend::Backend;
 
 // ============================================================================
-// Pool type alias template
+// SegregatePool type alias template (for GPU memory allocation)
 // ============================================================================
 template <typename ResourceT>
 using MpsBufferPoolT =
@@ -47,312 +48,394 @@ using MpsBufferPoolT =
         ::orteaf::internal::runtime::allocator::policies::
             HostStackFreelistPolicy<ResourceT>>;
 
-// ============================================================================
-// Resource wrapper for BaseManagerCore slot
-// ============================================================================
-struct MpsBufferResource {
-  ::orteaf::internal::runtime::allocator::Buffer buffer{};
-};
-
-// ============================================================================
-// BaseManagerCore Types
-// ============================================================================
-using BufferSlot =
-    ::orteaf::internal::runtime::base::GenerationalSlot<MpsBufferResource>;
-using BufferControlBlock =
-    ::orteaf::internal::runtime::base::SharedControlBlock<BufferSlot>;
-
-// ============================================================================
-// Traits for BaseManagerCore - templated on ResourceT for pool type
-// ============================================================================
-template <typename ResourceT> struct MpsBufferManagerTraitsT {
-  using ControlBlock = BufferControlBlock;
-  using Handle = ::orteaf::internal::base::BufferHandle;
-  using DeviceType =
-      ::orteaf::internal::runtime::mps::platform::wrapper::MpsDevice_t;
-  static constexpr const char *Name = "MpsBufferManager";
-};
-
 // Forward declaration
 template <typename ResourceT> class MpsBufferManagerT;
 
 // ============================================================================
-// MpsBufferManagerT - Templated buffer manager using BaseManagerCore
+// BufferPayloadPoolTraits - Defines Payload/Handle/Request/Context for SlotPool
+// ============================================================================
+template <typename ResourceT> struct BufferPayloadPoolTraitsT {
+  using Payload = ::orteaf::internal::runtime::allocator::Buffer;
+  using Handle = ::orteaf::internal::base::BufferHandle;
+  using SegregatePool = MpsBufferPoolT<ResourceT>;
+  using LaunchParams = typename SegregatePool::LaunchParams;
+
+  struct Request {
+    std::size_t size{0};
+    std::size_t alignment{0};
+  };
+
+  struct Context {
+    SegregatePool *segregate_pool{nullptr};
+    LaunchParams *launch_params{nullptr};
+  };
+
+  static bool create(Payload &payload, const Request &request,
+                     const Context &context) {
+    if (context.segregate_pool == nullptr || context.launch_params == nullptr) {
+      return false;
+    }
+    if (request.size == 0) {
+      // Zero-size is valid but results in invalid buffer
+      payload = Payload{};
+      return true;
+    }
+    auto res = context.segregate_pool->allocate(request.size, request.alignment,
+                                                *context.launch_params);
+    if (!res.valid()) {
+      return false;
+    }
+    payload = Payload{std::move(res), request.size, request.alignment};
+    return true;
+  }
+
+  static void destroy(Payload &payload, const Request &,
+                      const Context &context) {
+    if (!payload.valid()) {
+      return;
+    }
+    if (context.segregate_pool == nullptr || context.launch_params == nullptr) {
+      payload = Payload{};
+      return;
+    }
+    auto &res = payload.template asResource<Backend::Mps>();
+    if (res.valid()) {
+      context.segregate_pool->deallocate(std::move(res), payload.size(),
+                                         payload.alignment(),
+                                         *context.launch_params);
+    }
+    payload = Payload{};
+  }
+};
+
+// ============================================================================
+// PayloadPool type alias
 // ============================================================================
 template <typename ResourceT>
-class MpsBufferManagerT
-    : protected ::orteaf::internal::runtime::base::BaseManagerCore<
-          MpsBufferManagerTraitsT<ResourceT>> {
+using BufferPayloadPoolT = ::orteaf::internal::runtime::base::pool::SlotPool<
+    BufferPayloadPoolTraitsT<ResourceT>>;
+
+// ============================================================================
+// ControlBlock type using WeakSharedControlBlock
+// ============================================================================
+template <typename ResourceT>
+using BufferControlBlockT =
+    ::orteaf::internal::runtime::base::WeakSharedControlBlock<
+        ::orteaf::internal::base::BufferHandle,
+        ::orteaf::internal::runtime::allocator::Buffer,
+        BufferPayloadPoolT<ResourceT>>;
+
+// ============================================================================
+// Traits for BasePoolManagerCore
+// ============================================================================
+template <typename ResourceT> struct MpsBufferManagerTraitsT {
+  using PayloadPool = BufferPayloadPoolT<ResourceT>;
+  using ControlBlock = BufferControlBlockT<ResourceT>;
+  struct ControlBlockTag {};
+  using PayloadHandle = ::orteaf::internal::base::BufferHandle;
+  static constexpr const char *Name = "MpsBufferManager";
+};
+
+// ============================================================================
+// MpsBufferManagerT - Templated buffer manager using BasePoolManagerCore
+// ============================================================================
+template <typename ResourceT> class MpsBufferManagerT {
 public:
   using Traits = MpsBufferManagerTraitsT<ResourceT>;
-  using Base = ::orteaf::internal::runtime::base::BaseManagerCore<Traits>;
+  using Core = ::orteaf::internal::runtime::base::BasePoolManagerCore<Traits>;
   using Buffer = ::orteaf::internal::runtime::allocator::Buffer;
-  using BufferHandle = typename Traits::Handle;
-  using BufferLease =
-      ::orteaf::internal::runtime::base::SharedLease<BufferHandle, Buffer *,
-                                                     MpsBufferManagerT>;
+  using BufferHandle = ::orteaf::internal::base::BufferHandle;
+  using SegregatePool = MpsBufferPoolT<ResourceT>;
+  using LaunchParams = typename SegregatePool::LaunchParams;
+  using Resource = ResourceT;
+  using DeviceType =
+      ::orteaf::internal::runtime::mps::platform::wrapper::MpsDevice_t;
+
+  using ControlBlock = typename Core::ControlBlock;
+  using ControlBlockHandle = typename Core::ControlBlockHandle;
+  using ControlBlockPool = typename Core::ControlBlockPool;
+  using PayloadPool = typename Core::PayloadPool;
+
+  // Lease types
+  using StrongBufferLease = ::orteaf::internal::runtime::base::StrongLease<
+      ControlBlockHandle, ControlBlock, ControlBlockPool, MpsBufferManagerT>;
+  using WeakBufferLease = ::orteaf::internal::runtime::base::WeakLease<
+      ControlBlockHandle, ControlBlock, ControlBlockPool, MpsBufferManagerT>;
+  // Legacy alias for compatibility
+  using BufferLease = StrongBufferLease;
 
 private:
-  // Friend for Lease copy constructor access
-  friend BufferLease;
+  friend StrongBufferLease;
+  friend WeakBufferLease;
 
 public:
-  using DeviceType = typename Traits::DeviceType;
-  using Pool = MpsBufferPoolT<ResourceT>;
-  using LaunchParams = typename Pool::LaunchParams;
-  using Resource = ResourceT;
-  using ControlBlock = typename Base::ControlBlock;
+  // HeapType deduced from Resource::Config
+  using HeapType = decltype(std::declval<typename Resource::Config>().heap);
 
   // =========================================================================
-  // User-tunable configuration (Pool/Resource options with defaults)
+  // Config - All dependencies and settings in one struct
   // =========================================================================
   struct Config {
+    // Dependencies
+    DeviceType device{nullptr};
+    ::orteaf::internal::base::DeviceHandle device_handle{};
+    HeapType heap{nullptr};
+    MpsLibraryManager *library_manager{nullptr};
+    // SegregatePool config
     std::size_t chunk_size{16 * 1024 * 1024};
     std::size_t min_block_size{64};
     std::size_t max_block_size{16 * 1024 * 1024};
     ::orteaf::internal::runtime::mps::platform::wrapper::MpsBufferUsage_t usage{
         ::orteaf::internal::runtime::mps::platform::wrapper::
             kMPSDefaultBufferUsage};
+    // BasePoolManagerCore config
+    std::size_t payload_capacity{0};
+    std::size_t control_block_capacity{0};
+    std::size_t payload_block_size{1};
+    std::size_t control_block_block_size{1};
+    std::size_t payload_growth_chunk_size{1};
+    std::size_t control_block_growth_chunk_size{1};
   };
 
+  // =========================================================================
+  // Lifecycle
+  // =========================================================================
   MpsBufferManagerT() = default;
   MpsBufferManagerT(const MpsBufferManagerT &) = delete;
   MpsBufferManagerT &operator=(const MpsBufferManagerT &) = delete;
-
-  MpsBufferManagerT(MpsBufferManagerT &&other) noexcept
-      : Base(std::move(other)), pool_(std::move(other.pool_)),
-        device_(other.device_), device_handle_(other.device_handle_),
-        heap_(other.heap_) {
-    other.device_ = nullptr;
-    other.heap_ = nullptr;
-  }
-
-  MpsBufferManagerT &operator=(MpsBufferManagerT &&other) noexcept {
-    if (this != &other) {
-      Base::operator=(std::move(other));
-      pool_ = std::move(other.pool_);
-      device_ = other.device_;
-      device_handle_ = other.device_handle_;
-      heap_ = other.heap_;
-      other.device_ = nullptr;
-      other.heap_ = nullptr;
-    }
-    return *this;
-  }
-
+  MpsBufferManagerT(MpsBufferManagerT &&) = default;
+  MpsBufferManagerT &operator=(MpsBufferManagerT &&) = default;
   ~MpsBufferManagerT() = default;
 
-  // =========================================================================
-  // Lifecycle - Dependencies as args, config as param
-  // HeapType is deduced from Resource::Config::heap type
-  // =========================================================================
-  using HeapType = decltype(std::declval<typename Resource::Config>().heap);
-
-  void initialize(DeviceType device,
-                  ::orteaf::internal::base::DeviceHandle device_handle,
-                  HeapType heap, MpsLibraryManager *library_manager,
-                  const Config &config, std::size_t capacity) {
+  void configure(const Config &config) {
     shutdown();
 
-    if (device == nullptr) {
+    if (config.device == nullptr) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
           std::string(Traits::Name) + " requires a valid device");
     }
-    if (heap == nullptr) {
+    if (config.heap == nullptr) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
           std::string(Traits::Name) + " requires a valid heap");
     }
 
-    device_ = device;
-    device_handle_ = device_handle;
-    heap_ = heap;
+    device_ = config.device;
+    device_handle_ = config.device_handle;
+    heap_ = config.heap;
 
-    // Build ResourceConfig from dependencies
+    // Initialize SegregatePool
     typename Resource::Config res_cfg{};
-    res_cfg.device = device;
-    res_cfg.device_handle = device_handle;
-    res_cfg.heap = heap;
+    res_cfg.device = config.device;
+    res_cfg.device_handle = config.device_handle;
+    res_cfg.heap = config.heap;
     res_cfg.usage = config.usage;
-    res_cfg.library_manager = library_manager;
+    res_cfg.library_manager = config.library_manager;
 
-    // Initialize pool with resource
     Resource backend_resource{};
     backend_resource.initialize(res_cfg);
-    pool_.~Pool();
-    new (&pool_) Pool(std::move(backend_resource));
+    segregate_pool_.~SegregatePool();
+    new (&segregate_pool_) SegregatePool(std::move(backend_resource));
 
-    // Build PoolConfig from user config
-    typename Pool::Config pool_cfg{};
+    typename SegregatePool::Config pool_cfg{};
     pool_cfg.chunk_size = config.chunk_size;
     pool_cfg.min_block_size = config.min_block_size;
     pool_cfg.max_block_size = config.max_block_size;
-    pool_cfg.fast_free.resource = pool_.resource();
-    pool_cfg.threading.resource = pool_.resource();
-    pool_cfg.large_alloc.resource = pool_.resource();
-    pool_cfg.chunk_locator.resource = pool_.resource();
-    pool_cfg.reuse.resource = pool_.resource();
-    pool_cfg.freelist.resource = pool_.resource();
-    pool_.initialize(pool_cfg);
+    pool_cfg.fast_free.resource = segregate_pool_.resource();
+    pool_cfg.threading.resource = segregate_pool_.resource();
+    pool_cfg.large_alloc.resource = segregate_pool_.resource();
+    pool_cfg.chunk_locator.resource = segregate_pool_.resource();
+    pool_cfg.reuse.resource = segregate_pool_.resource();
+    pool_cfg.freelist.resource = segregate_pool_.resource();
+    segregate_pool_.initialize(pool_cfg);
 
-    Base::setupPool(capacity);
+    // Configure BasePoolManagerCore
+    typename Core::Config core_cfg{};
+    core_cfg.control_block_capacity = config.control_block_capacity;
+    core_cfg.control_block_block_size = config.control_block_block_size;
+    core_cfg.growth_chunk_size = config.control_block_growth_chunk_size;
+    core_.configure(core_cfg);
+
+    // Configure PayloadPool
+    typename PayloadPool::Config payload_cfg{};
+    payload_cfg.size = config.payload_capacity;
+    payload_cfg.block_size = config.payload_block_size;
+    core_.payloadPool().configure(payload_cfg);
+
+    payload_growth_chunk_size_ = config.payload_growth_chunk_size;
+    core_.setInitialized(true);
   }
 
-  // =========================================================================
-  // Shutdown (default params version)
-  // =========================================================================
-  void shutdown() { shutdown(default_params_); }
+  void shutdown() {
+    if (!core_.isInitialized()) {
+      return;
+    }
 
-  // =========================================================================
-  // Shutdown (explicit params version)
-  // =========================================================================
-  void shutdown(LaunchParams &params) {
-    Base::teardownPool([this, &params](MpsBufferResource &resource) {
-      if (resource.buffer.valid()) {
-        deallocateBuffer(resource.buffer, params);
-      }
-    });
+    core_.checkCanShutdownOrThrow();
 
-    pool_.~Pool();
-    new (&pool_) Pool{};
+    // Destroy all payloads
+    auto context = makePayloadContext();
+    typename BufferPayloadPoolTraitsT<ResourceT>::Request request{};
+    core_.payloadPool().shutdown(request, context);
+
+    // Shutdown ControlBlock pool
+    core_.shutdownControlBlockPool();
+
+    // Shutdown SegregatePool
+    segregate_pool_.~SegregatePool();
+    new (&segregate_pool_) SegregatePool{};
 
     device_ = nullptr;
     heap_ = nullptr;
+    core_.setInitialized(false);
   }
 
   // =========================================================================
-  // Acquire (allocate new buffer - default params version)
+  // Acquire (allocate new buffer)
   // =========================================================================
-  BufferLease acquire(std::size_t size, std::size_t alignment) {
+  StrongBufferLease acquire(std::size_t size, std::size_t alignment) {
     return acquire(size, alignment, default_params_);
   }
 
-  // =========================================================================
-  // Acquire (allocate new buffer - explicit params version)
-  // =========================================================================
-  BufferLease acquire(std::size_t size, std::size_t alignment,
-                      LaunchParams &params) {
-    Base::ensureInitialized();
+  StrongBufferLease acquire(std::size_t size, std::size_t alignment,
+                            LaunchParams &params) {
+    core_.ensureInitialized();
     if (size == 0) {
       return {};
     }
 
-    auto handle = Base::acquireFresh(
-        [this, size, alignment, &params](MpsBufferResource &resource) {
-          resource.buffer = allocateBuffer(size, alignment, params);
-          return resource.buffer.valid();
-        });
-
-    if (handle == BufferHandle::invalid()) {
+    // Get or grow PayloadPool slot
+    typename BufferPayloadPoolTraitsT<ResourceT>::Request request{size,
+                                                                  alignment};
+    auto context = makePayloadContext(&params);
+    auto payload_ref = core_.reserveUncreatedPayloadOrGrow(
+        payload_growth_chunk_size_, request, context);
+    if (!payload_ref.valid()) {
       return {};
     }
 
-    return BufferLease{this, handle,
-                       &Base::getControlBlock(handle).payload().buffer};
+    // Create the buffer using emplace
+    if (!core_.payloadPool().emplace(payload_ref.handle, request, context)) {
+      core_.payloadPool().release(payload_ref.handle);
+      return {};
+    }
+
+    // Acquire ControlBlock
+    auto cb_ref = core_.acquireControlBlock();
+    auto *cb = cb_ref.payload_ptr;
+
+    // Bind payload to ControlBlock
+    if (!cb->tryBindPayload(payload_ref.handle, payload_ref.payload_ptr,
+                            &core_.payloadPool())) {
+      // Rollback
+      core_.payloadPool().destroy(payload_ref.handle, request, context);
+      core_.payloadPool().release(payload_ref.handle);
+      core_.releaseControlBlock(cb_ref.handle);
+      return {};
+    }
+
+    return StrongBufferLease{cb, core_.controlBlockPoolForLease(),
+                             cb_ref.handle};
   }
 
   // =========================================================================
   // Acquire (share existing buffer by handle)
   // =========================================================================
-  BufferLease acquire(BufferHandle handle) {
-    Base::ensureInitialized();
-    auto &cb = Base::acquireExisting(handle);
-    return BufferLease{this, handle, &cb.payload().buffer};
-  }
-
-  // =========================================================================
-  // Release (default params version)
-  // =========================================================================
-  void release(BufferHandle handle) { release(handle, default_params_); }
-
-  void release(BufferLease &lease) noexcept {
-    release(lease.handle(), default_params_);
-    lease.invalidate();
-  }
-
-  // =========================================================================
-  // Release (explicit params version)
-  // =========================================================================
-  void release(BufferHandle handle, LaunchParams &params) {
-    if (!Base::isInitialized()) {
-      return;
-    }
-    if (!Base::isValidHandle(handle)) {
-      return;
+  StrongBufferLease acquire(BufferHandle handle) {
+    core_.ensureInitialized();
+    if (!core_.isAlive(handle)) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+          std::string(Traits::Name) + " handle is not alive");
     }
 
-    Base::releaseAndDestroy(handle,
-                            [this, &params](MpsBufferResource &resource) {
-                              deallocateBuffer(resource.buffer, params);
-                              resource.buffer = Buffer{};
-                            });
+    // Find ControlBlock for this payload handle
+    // For now, create a new ControlBlock for the same payload
+    auto *payload_ptr = core_.payloadPool().get(handle);
+    if (payload_ptr == nullptr) {
+      return {};
+    }
+
+    auto cb_ref = core_.acquireControlBlock();
+    auto *cb = cb_ref.payload_ptr;
+
+    if (!cb->tryBindPayload(handle, payload_ptr, &core_.payloadPool())) {
+      core_.releaseControlBlock(cb_ref.handle);
+      return {};
+    }
+
+    return StrongBufferLease{cb, core_.controlBlockPoolForLease(),
+                             cb_ref.handle};
   }
 
-  void release(BufferLease &lease, LaunchParams &params) noexcept {
-    release(lease.handle(), params);
-    lease.invalidate();
-  }
+  // =========================================================================
+  // Release
+  // =========================================================================
+  void release(StrongBufferLease &lease) noexcept { lease.release(); }
 
-  Pool *pool() { return &pool_; }
-  const Pool *pool() const { return &pool_; }
+  void release(WeakBufferLease &lease) noexcept { lease.release(); }
 
   // =========================================================================
-  // Growth chunk size (for pool expansion)
+  // Accessors
   // =========================================================================
-  using Base::growthChunkSize;
-  using Base::setGrowthChunkSize;
-
-  // Expose base methods
-  using Base::capacity;
-  using Base::isAlive;
-  using Base::isInitialized;
+  SegregatePool *pool() { return &segregate_pool_; }
+  const SegregatePool *pool() const { return &segregate_pool_; }
 
 #if ORTEAF_ENABLE_TEST
-  using Base::controlBlockForTest;
-  using Base::freeListSizeForTest;
-  using Base::isInitializedForTest;
+  bool isInitializedForTest() const noexcept { return core_.isInitialized(); }
+  std::size_t payloadPoolSizeForTest() const noexcept {
+    return core_.payloadPool().size();
+  }
+  std::size_t payloadPoolCapacityForTest() const noexcept {
+    return core_.payloadPool().capacity();
+  }
+  std::size_t payloadPoolAvailableForTest() const noexcept {
+    return core_.payloadPool().available();
+  }
+  std::size_t controlBlockPoolSizeForTest() const noexcept {
+    return core_.controlBlockPoolSizeForTest();
+  }
+  std::size_t controlBlockPoolCapacityForTest() const noexcept {
+    return core_.controlBlockPoolCapacityForTest();
+  }
+  bool isAliveForTest(BufferHandle handle) const noexcept {
+    return core_.isAlive(handle);
+  }
+  std::size_t payloadGrowthChunkSizeForTest() const noexcept {
+    return payload_growth_chunk_size_;
+  }
+  std::size_t controlBlockGrowthChunkSizeForTest() const noexcept {
+    return core_.growthChunkSize();
+  }
+  const ControlBlock *controlBlockForTest(ControlBlockHandle handle) const {
+    return core_.controlBlockPoolForLease()->get(handle);
+  }
 #endif
 
 private:
-  using Base::acquireExisting;
-
-  Buffer allocateBuffer(std::size_t size, std::size_t alignment,
-                        LaunchParams &params) {
-    if (size == 0) {
-      return {};
-    }
-    auto res = pool_.allocate(size, alignment, params);
-    if (!res.valid()) {
-      return {};
-    }
-    return Buffer{std::move(res), size, alignment};
-  }
-
-  void deallocateBuffer(Buffer &buffer, LaunchParams &params) {
-    if (!buffer.valid()) {
-      return;
-    }
-    auto &res = buffer.asResource<Backend::Mps>();
-    if (!res.valid()) {
-      return;
-    }
-    pool_.deallocate(std::move(res), buffer.size(), buffer.alignment(), params);
+  typename BufferPayloadPoolTraitsT<ResourceT>::Context
+  makePayloadContext(LaunchParams *params = nullptr) noexcept {
+    typename BufferPayloadPoolTraitsT<ResourceT>::Context ctx{};
+    ctx.segregate_pool = &segregate_pool_;
+    ctx.launch_params = params ? params : &default_params_;
+    return ctx;
   }
 
   // Runtime state
-  Pool pool_{};
+  SegregatePool segregate_pool_{};
   DeviceType device_{nullptr};
   ::orteaf::internal::base::DeviceHandle device_handle_{};
   HeapType heap_{nullptr};
   LaunchParams default_params_{};
+  std::size_t payload_growth_chunk_size_{1};
+  Core core_{};
 };
 
 } // namespace orteaf::internal::runtime::mps::manager
 
 // ============================================================================
 // Default type alias (after namespace to avoid circular dependency)
-// Include mps_resource.h only when you need MpsBufferManager alias
 // ============================================================================
 #include "orteaf/internal/runtime/allocator/resource/mps/mps_resource.h"
 

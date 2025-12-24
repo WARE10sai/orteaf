@@ -36,7 +36,8 @@ protected:
     if (command_buffer_ == nullptr) {
       GTEST_SKIP() << "Failed to create command buffer";
     }
-    fence_pool_.initialize(device_, &ops_, 1);
+    fence_pool_.configure(mps_rt::manager::MpsFenceManager::Config{
+        device_, &ops_, 1, 1, 1, 1, 1, 1});
 #else
     GTEST_SKIP() << "MPS not enabled";
 #endif
@@ -89,7 +90,7 @@ TEST_F(MpsFenceTicketTest, ValueConstructorStoresMembers) {
   EXPECT_EQ(ticket.commandQueueHandle(), queue_id_);
   EXPECT_EQ(ticket.commandBuffer(), command_buffer_);
   id<MTLFence> objc_fence =
-      (__bridge id<MTLFence>)(ticket.fenceHandle().pointer());
+      (__bridge id<MTLFence>)(*ticket.fenceHandle().payloadPtr());
   EXPECT_NE(objc_fence, nil);
   id<MTLCommandBuffer> objc_cb =
       (__bridge id<MTLCommandBuffer>)ticket.commandBuffer();

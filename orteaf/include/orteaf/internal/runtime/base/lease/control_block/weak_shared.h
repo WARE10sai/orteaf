@@ -41,8 +41,27 @@ public:
   WeakSharedControlBlock() = default;
   WeakSharedControlBlock(const WeakSharedControlBlock &) = delete;
   WeakSharedControlBlock &operator=(const WeakSharedControlBlock &) = delete;
-  WeakSharedControlBlock(WeakSharedControlBlock &&) = default;
-  WeakSharedControlBlock &operator=(WeakSharedControlBlock &&) = default;
+  WeakSharedControlBlock(WeakSharedControlBlock &&other) noexcept {
+    strong_count_.store(other.strong_count_.load(std::memory_order_relaxed),
+                        std::memory_order_relaxed);
+    weak_count_.store(other.weak_count_.load(std::memory_order_relaxed),
+                      std::memory_order_relaxed);
+    payload_handle_ = other.payload_handle_;
+    payload_ptr_ = other.payload_ptr_;
+    payload_pool_ = other.payload_pool_;
+  }
+  WeakSharedControlBlock &operator=(WeakSharedControlBlock &&other) noexcept {
+    if (this != &other) {
+      strong_count_.store(other.strong_count_.load(std::memory_order_relaxed),
+                          std::memory_order_relaxed);
+      weak_count_.store(other.weak_count_.load(std::memory_order_relaxed),
+                        std::memory_order_relaxed);
+      payload_handle_ = other.payload_handle_;
+      payload_ptr_ = other.payload_ptr_;
+      payload_pool_ = other.payload_pool_;
+    }
+    return *this;
+  }
   ~WeakSharedControlBlock() = default;
 
   /**
@@ -153,7 +172,13 @@ public:
       if (weak_count_.compare_exchange_weak(current, current - 1,
                                             std::memory_order_acq_rel,
                                             std::memory_order_relaxed)) {
-        return current == 1;
+        if (current == 1) {
+          if (canShutdown()) {
+            clearPayload();
+          }
+          return true;
+        }
+        return false;
       }
     }
     return false;
@@ -206,10 +231,15 @@ private:
    * Pool::release returns true, the payload binding is cleared.
    */
   void tryReleasePayload() noexcept {
-    if (payload_pool_ != nullptr && payload_handle_.isValid()) {
-      if (payload_pool_->release(payload_handle_)) {
-        clearPayload();
-      }
+    if (!payload_handle_.isValid()) {
+      return;
+    }
+    if (payload_pool_ == nullptr) {
+      clearPayload();
+      return;
+    }
+    if (payload_pool_->release(payload_handle_)) {
+      clearPayload();
     }
   }
 
