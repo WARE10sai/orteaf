@@ -3,7 +3,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "orteaf/internal/execution/base/lease/category.h"
+#include "orteaf/internal/base/lease/category.h"
 
 namespace orteaf::internal::execution::base {
 

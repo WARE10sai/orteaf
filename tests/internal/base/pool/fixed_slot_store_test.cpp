@@ -1,4 +1,4 @@
-#include "orteaf/internal/execution/base/pool/fixed_slot_store.h"
+#include "orteaf/internal/base/pool/fixed_slot_store.h"
 
 #include <gtest/gtest.h>
 #include <system_error>

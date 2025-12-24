@@ -11,10 +11,10 @@
 #include <vector>
 
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/execution/base/lease/control_block/strong.h"
-#include "orteaf/internal/execution/base/lease/strong_lease.h"
-#include "orteaf/internal/execution/base/manager/base_pool_manager_core.h"
-#include "orteaf/internal/execution/base/pool/fixed_slot_store.h"
+#include "orteaf/internal/base/lease/control_block/strong.h"
+#include "orteaf/internal/base/lease/strong_lease.h"
+#include "orteaf/internal/base/manager/base_pool_manager_core.h"
+#include "orteaf/internal/base/pool/fixed_slot_store.h"
 #include "orteaf/internal/execution/mps/platform/mps_slow_ops.h"
 #include "orteaf/internal/execution/mps/platform/wrapper/mps_graph.h"
 

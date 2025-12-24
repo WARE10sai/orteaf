@@ -6,7 +6,7 @@
 #include <string>
 
 #include <orteaf/internal/diagnostics/error/error.h>
-#include <orteaf/internal/execution/base/pool/default_control_block_pool_traits.h>
+#include <orteaf/internal/base/pool/default_control_block_pool_traits.h>
 
 namespace orteaf::internal::execution::base {
 
