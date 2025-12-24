@@ -62,9 +62,12 @@ MpsHeapManager::acquire(const HeapDescriptorKey &key) {
     resource.heap = createHeap(key);
     // Initialize buffer manager for this heap
     resource.buffer_manager = std::make_unique<BufferManager>();
-    BufferManager::Config buf_cfg{}; // Use defaults
-    resource.buffer_manager->initialize(device_, device_handle_, resource.heap,
-                                        library_manager_, buf_cfg, 0);
+    BufferManager::Config buf_cfg{};
+    buf_cfg.device = device_;
+    buf_cfg.device_handle = device_handle_;
+    buf_cfg.heap = resource.heap;
+    buf_cfg.library_manager = library_manager_;
+    resource.buffer_manager->configure(buf_cfg);
     return true;
   });
 
@@ -112,8 +115,11 @@ MpsHeapManager::bufferManager(const HeapDescriptorKey &key) {
     resource.heap = createHeap(key);
     resource.buffer_manager = std::make_unique<BufferManager>();
     BufferManager::Config buf_cfg{};
-    resource.buffer_manager->initialize(device_, device_handle_, resource.heap,
-                                        library_manager_, buf_cfg, 0);
+    buf_cfg.device = device_;
+    buf_cfg.device_handle = device_handle_;
+    buf_cfg.heap = resource.heap;
+    buf_cfg.library_manager = library_manager_;
+    resource.buffer_manager->configure(buf_cfg);
     return true;
   });
 
