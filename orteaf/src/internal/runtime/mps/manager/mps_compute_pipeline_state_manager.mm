@@ -23,7 +23,7 @@ void MpsComputePipelineStateManager::configure(const Config &config) {
       config.payload_capacity != 0 ? config.payload_capacity : 0u;
   const std::size_t control_block_capacity =
       config.control_block_capacity != 0 ? config.control_block_capacity
-                                         : payload_capacity;
+                                                 : payload_capacity;
   if (payload_capacity >
       static_cast<std::size_t>(FunctionHandle::invalid_index())) {
     ::orteaf::internal::diagnostics::error::throwError(
@@ -64,7 +64,6 @@ void MpsComputePipelineStateManager::configure(const Config &config) {
   payload_block_size_ = payload_block_size;
   payload_growth_chunk_size_ = config.payload_growth_chunk_size;
   key_to_index_.clear();
-  next_index_ = 0;
 
   core_.payloadPool().configure(
       PipelinePayloadPool::Config{payload_capacity, payload_block_size_});
@@ -86,7 +85,6 @@ void MpsComputePipelineStateManager::shutdown() {
   core_.payloadPool().shutdown(payload_request, payload_context);
   core_.shutdownControlBlockPool();
   key_to_index_.clear();
-  next_index_ = 0;
   device_ = nullptr;
   library_ = nullptr;
   ops_ = nullptr;
@@ -99,8 +97,8 @@ MpsComputePipelineStateManager::acquire(const FunctionKey &key) {
 
   // Check cache first
   if (auto it = key_to_index_.find(key); it != key_to_index_.end()) {
-    auto handle = FunctionHandle{static_cast<FunctionHandle::index_type>(
-        it->second)};
+    auto handle =
+        FunctionHandle{static_cast<FunctionHandle::index_type>(it->second)};
     auto *payload_ptr = core_.payloadPool().get(handle);
     if (payload_ptr == nullptr || !core_.payloadPool().isCreated(handle)) {
       ::orteaf::internal::diagnostics::error::throwError(
@@ -110,19 +108,18 @@ MpsComputePipelineStateManager::acquire(const FunctionKey &key) {
     return buildLease(handle, payload_ptr);
   }
 
-  if (next_index_ >= core_.payloadPool().size()) {
-    core_.growPayloadPoolBy(payload_growth_chunk_size_);
-  }
-  if (next_index_ >= core_.payloadPool().size()) {
+  // Reserve an uncreated slot and create the pipeline state
+  PipelinePayloadPoolTraits::Request request{key};
+  const auto context = makePayloadContext();
+  auto payload_ref = core_.reserveUncreatedPayloadOrGrow(
+      payload_growth_chunk_size_, request, context);
+  if (!payload_ref.valid()) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
         "MPS compute pipeline state manager has no available slots");
   }
-  const auto handle = FunctionHandle{
-      static_cast<FunctionHandle::index_type>(next_index_)};
-  ++next_index_;
-  PipelinePayloadPoolTraits::Request request{key};
-  const auto context = makePayloadContext();
+
+  const auto handle = payload_ref.handle;
   if (!core_.payloadPool().emplace(handle, request, context)) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,

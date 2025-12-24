@@ -83,14 +83,13 @@ struct PipelinePayloadPoolTraits {
         context.library == nullptr) {
       return false;
     }
-    payload.function = context.ops->createFunction(context.library,
-                                                   request.key.identifier);
+    payload.function =
+        context.ops->createFunction(context.library, request.key.identifier);
     if (payload.function == nullptr) {
       return false;
     }
-    payload.pipeline_state =
-        context.ops->createComputePipelineState(context.device,
-                                                payload.function);
+    payload.pipeline_state = context.ops->createComputePipelineState(
+        context.device, payload.function);
     if (payload.pipeline_state == nullptr) {
       context.ops->destroyFunction(payload.function);
       payload.function = nullptr;
@@ -99,7 +98,8 @@ struct PipelinePayloadPoolTraits {
     return true;
   }
 
-  static void destroy(Payload &payload, const Request &, const Context &context) {
+  static void destroy(Payload &payload, const Request &,
+                      const Context &context) {
     if (payload.pipeline_state != nullptr && context.ops != nullptr) {
       context.ops->destroyComputePipelineState(payload.pipeline_state);
       payload.pipeline_state = nullptr;
@@ -117,9 +117,10 @@ using PipelinePayloadPool =
 
 struct PipelineControlBlockTag {};
 
-using PipelineControlBlock = ::orteaf::internal::runtime::base::WeakControlBlock<
-    ::orteaf::internal::base::FunctionHandle, MpsPipelineResource,
-    PipelinePayloadPool>;
+using PipelineControlBlock =
+    ::orteaf::internal::runtime::base::WeakControlBlock<
+        ::orteaf::internal::base::FunctionHandle, MpsPipelineResource,
+        PipelinePayloadPool>;
 
 struct MpsComputePipelineStateManagerTraits {
   using PayloadPool = PipelinePayloadPool;
@@ -205,7 +206,8 @@ public:
     return core_.payloadPool().isCreated(handle);
   }
 
-  const MpsPipelineResource *payloadForTest(FunctionHandle handle) const noexcept {
+  const MpsPipelineResource *
+  payloadForTest(FunctionHandle handle) const noexcept {
     return core_.payloadPool().get(handle);
   }
 #endif
@@ -224,7 +226,6 @@ private:
   SlowOps *ops_{nullptr};
   std::size_t payload_block_size_{0};
   std::size_t payload_growth_chunk_size_{1};
-  std::size_t next_index_{0};
   Core core_{};
 };
 
