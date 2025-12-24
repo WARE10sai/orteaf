@@ -135,8 +135,11 @@ public:
       return nullptr;
     }
     auto *encoder = FastOps::createComputeCommandEncoder(command_buffer);
-    FastOps::setPipelineState(encoder,
-                              entry.pipelines[pipeline_index].pointer());
+    auto *pipeline_payload = entry.pipelines[pipeline_index].payloadPtr();
+    if (!pipeline_payload || !pipeline_payload->pipeline_state) {
+      return nullptr;
+    }
+    FastOps::setPipelineState(encoder, pipeline_payload->pipeline_state);
     return encoder;
   }
 
@@ -158,7 +161,11 @@ public:
       return nullptr;
     }
     auto *encoder = FastOps::createComputeCommandEncoder(command_buffer);
-    FastOps::setPipelineState(encoder, entry.pipelines[idx].pointer());
+    auto *pipeline_payload = entry.pipelines[idx].payloadPtr();
+    if (!pipeline_payload || !pipeline_payload->pipeline_state) {
+      return nullptr;
+    }
+    FastOps::setPipelineState(encoder, pipeline_payload->pipeline_state);
     return encoder;
   }
 
@@ -328,8 +335,11 @@ public:
 
     auto *command_buffer = FastOps::createCommandBuffer(*queue_ptr);
     auto *encoder = FastOps::createComputeCommandEncoder(command_buffer);
-    FastOps::setPipelineState(encoder,
-                              entry.pipelines[pipeline_index].pointer());
+    auto *pipeline_payload = entry.pipelines[pipeline_index].payloadPtr();
+    if (!pipeline_payload || !pipeline_payload->pipeline_state) {
+      return nullptr;
+    }
+    FastOps::setPipelineState(encoder, pipeline_payload->pipeline_state);
     static_cast<Binder &&>(binder)(encoder);
     FastOps::setThreadgroups(encoder, threadgroups, threads_per_threadgroup);
     if (fence_token && queue_lease.payloadHandle().isValid()) {

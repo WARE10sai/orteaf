@@ -37,7 +37,8 @@ protected:
     if (command_buffer_a_ == nullptr || command_buffer_b_ == nullptr) {
       GTEST_SKIP() << "Failed to create command buffers";
     }
-    fence_pool_.initialize(device_, &ops_, 2);
+    fence_pool_.configure(mps_rt::manager::MpsFenceManager::Config{
+        device_, &ops_, 2, 2, 2, 2, 1, 1});
 #else
     GTEST_SKIP() << "MPS not enabled";
 #endif

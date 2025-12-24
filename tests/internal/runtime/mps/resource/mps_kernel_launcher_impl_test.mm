@@ -80,7 +80,9 @@ struct TestCommandQueueLease {
     EXPECT_CALL(ops, createCommandQueue(device))
         .WillOnce(::testing::Return(queue));
     EXPECT_CALL(ops, destroyCommandQueue(queue)).Times(1);
-    manager.initialize(device, &ops, 1);
+    manager.configure(
+        ::orteaf::internal::runtime::mps::manager::MpsCommandQueueManager::
+            Config{device, &ops, 1, 1, 1, 1, 1});
     lease = manager.acquire();
   }
 

@@ -33,7 +33,11 @@ TEST(MpsKernelLauncherImplDeviceTest, InitializeWithEmbeddedLibraryRealDevice) {
     ASSERT_EQ(impl.sizeForTest(), 1u);
 
     auto &lease = impl.pipelineLeaseForTest(device, 0);
-    EXPECT_NE(lease.pointer(), nullptr);
+    auto *payload = lease.payloadPtr();
+    EXPECT_NE(payload, nullptr);
+    if (payload) {
+      EXPECT_NE(payload->pipeline_state, nullptr);
+    }
   } // impl destroyed here, releases all leases
 
   mps_api::MpsRuntimeApi::shutdown();
@@ -53,7 +57,8 @@ TEST(MpsKernelLauncherImplDeviceTest, DispatchOneShotExecutesEmbeddedIdentity) {
   ::orteaf::internal::runtime::mps::platform::MpsSlowOpsImpl slow_ops{};
   ::orteaf::internal::runtime::mps::manager::MpsCommandQueueManager
       queue_manager{};
-  queue_manager.initialize(device_handle, &slow_ops, 1);
+  queue_manager.configure(
+      ::orteaf::internal::runtime::mps::manager::MpsCommandQueueManager::Config{device_handle, &slow_ops, 1, 1, 1, 1, 1, 1});
   auto queue_lease = queue_manager.acquire();
 
   // Create a shared heap and buffer.

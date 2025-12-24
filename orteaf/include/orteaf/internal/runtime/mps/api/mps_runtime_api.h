@@ -47,8 +47,14 @@ public:
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
           "MPS device lease has no payload");
     }
-    auto *pipeline_mgr = resource->library_manager.pipelineManager(library_key);
-    return pipeline_mgr->acquire(function_key);
+    auto library_lease = resource->library_manager.acquire(library_key);
+    auto *library_resource = library_lease.payloadPtr();
+    if (library_resource == nullptr) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+          "MPS library lease has no payload");
+    }
+    return library_resource->pipeline_manager.acquire(function_key);
   }
 
   static FenceLease acquireFence(DeviceHandle device) {
