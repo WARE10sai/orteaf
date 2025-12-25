@@ -136,7 +136,7 @@ MpsDeviceManager::DeviceLease MpsDeviceManager::acquire(DeviceHandle handle) {
 }
 
 ::orteaf::internal::architecture::Architecture
-MpsDeviceManager::getArch(DeviceHandle handle) const {
+MpsDeviceManager::getArch(DeviceHandle handle) {
   if (!core_.isConfigured()) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
