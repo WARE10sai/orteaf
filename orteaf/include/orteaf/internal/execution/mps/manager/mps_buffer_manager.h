@@ -20,7 +20,7 @@
 #include "orteaf/internal/base/lease/control_block/shared.h"
 #include "orteaf/internal/base/lease/strong_lease.h"
 #include "orteaf/internal/base/lease/weak_lease.h"
-#include "orteaf/internal/base/manager/base_pool_manager_core.h"
+#include "orteaf/internal/base/manager/pool_manager.h"
 #include "orteaf/internal/base/pool/slot_pool.h"
 #include "orteaf/internal/execution/mps/manager/mps_library_manager.h"
 #include "orteaf/internal/execution/mps/platform/wrapper/mps_device.h"
@@ -126,7 +126,7 @@ using BufferControlBlockT =
         BufferPayloadPoolT<ResourceT>>;
 
 // ============================================================================
-// Traits for BasePoolManagerCore
+// Traits for PoolManager
 // ============================================================================
 template <typename ResourceT> struct MpsBufferManagerTraitsT {
   using PayloadPool = BufferPayloadPoolT<ResourceT>;
@@ -137,12 +137,12 @@ template <typename ResourceT> struct MpsBufferManagerTraitsT {
 };
 
 // ============================================================================
-// MpsBufferManagerT - Templated buffer manager using BasePoolManagerCore
+// MpsBufferManagerT - Templated buffer manager using PoolManager
 // ============================================================================
 template <typename ResourceT> class MpsBufferManagerT {
 public:
   using Traits = MpsBufferManagerTraitsT<ResourceT>;
-  using Core = ::orteaf::internal::execution::base::BasePoolManagerCore<Traits>;
+  using Core = ::orteaf::internal::execution::base::PoolManager<Traits>;
   using Buffer = ::orteaf::internal::execution::allocator::Buffer;
   using BufferHandle = ::orteaf::internal::base::BufferHandle;
   using SegregatePool = MpsBufferPoolT<ResourceT>;
@@ -188,7 +188,7 @@ public:
     ::orteaf::internal::execution::mps::platform::wrapper::MpsBufferUsage_t usage{
         ::orteaf::internal::execution::mps::platform::wrapper::
             kMPSDefaultBufferUsage};
-    // BasePoolManagerCore config
+    // PoolManager config
     std::size_t payload_capacity{0};
     std::size_t control_block_capacity{0};
     std::size_t payload_block_size{1};
@@ -250,7 +250,7 @@ public:
     pool_cfg.freelist.resource = segregate_pool_.resource();
     segregate_pool_.initialize(pool_cfg);
 
-    // Configure BasePoolManagerCore
+    // Configure PoolManager
     typename Core::Config core_cfg{};
     core_cfg.control_block_capacity = config.control_block_capacity;
     core_cfg.control_block_block_size = config.control_block_block_size;

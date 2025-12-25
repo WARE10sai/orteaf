@@ -9,7 +9,7 @@ namespace orteaf::internal::execution::base::pool {
  * @brief PayloadPoolの共通APIを定義するConcept
  *
  * SlotPoolとFixedSlotStoreの両方がこのConceptを満たすことで、
- * BasePoolManagerCoreから統一的に使用できる。
+ * PoolManagerから統一的に使用できる。
  */
 template <typename Pool>
 concept PayloadPoolConcept =
