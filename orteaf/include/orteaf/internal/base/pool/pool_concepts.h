@@ -5,74 +5,149 @@
 
 namespace orteaf::internal::base::pool {
 
-/**
- * @brief PayloadPoolの共通APIを定義するConcept
- *
- * SlotPoolとFixedSlotStoreの両方がこのConceptを満たすことで、
- * PoolManagerから統一的に使用できる。
- */
+// =============================================================================
+// 型定義 Concept
+// =============================================================================
+
+/// @brief Pool型が必要な基本型を定義しているか
 template <typename Pool>
-concept PayloadPoolConcept =
-    requires(Pool &pool, const Pool &const_pool,
-             const typename Pool::Request &request,
-             const typename Pool::Context &context,
-             typename Pool::Handle handle, std::size_t size) {
-      // Type requirements
-      typename Pool::Payload;
-      typename Pool::Handle;
+concept PoolTypeConcept = requires {
+  typename Pool::Payload;
+  typename Pool::Handle;
+  typename Pool::SlotRef;
+};
+
+// =============================================================================
+// 設定 Concept
+// =============================================================================
+
+/// @brief configure/shutdown/resize操作をサポート
+template <typename Pool>
+concept PoolConfigurableConcept =
+    PoolTypeConcept<Pool> && requires(Pool &pool, std::size_t n) {
+      typename Pool::Config;
+      {
+        pool.configure(typename Pool::Config{})
+      } -> std::convertible_to<std::size_t>;
+      { pool.shutdown() };
+      { pool.resize(n) } -> std::convertible_to<std::size_t>;
+    };
+
+// =============================================================================
+// サイズ情報 Concept
+// =============================================================================
+
+/// @brief size/capacity取得をサポート
+template <typename Pool>
+concept PoolSizeQueryConcept = requires(const Pool &pool) {
+  { pool.size() } -> std::convertible_to<std::size_t>;
+  { pool.capacity() } -> std::convertible_to<std::size_t>;
+};
+
+// =============================================================================
+// ハンドル検証 Concept
+// =============================================================================
+
+/// @brief isValid/isCreatedをサポート
+template <typename Pool>
+concept HandleValidationConcept =
+    PoolTypeConcept<Pool> &&
+    requires(const Pool &pool, typename Pool::Handle h) {
+      { pool.isValid(h) } -> std::convertible_to<bool>;
+      { pool.isCreated(h) } -> std::convertible_to<bool>;
+    };
+
+// =============================================================================
+// ペイロードアクセス Concept
+// =============================================================================
+
+/// @brief handleからPayload*を取得
+template <typename Pool>
+concept PayloadAccessConcept =
+    PoolTypeConcept<Pool> &&
+    requires(Pool &pool, const Pool &const_pool, typename Pool::Handle h) {
+      { pool.get(h) } -> std::same_as<typename Pool::Payload *>;
+      { const_pool.get(h) } -> std::same_as<const typename Pool::Payload *>;
+    };
+
+// =============================================================================
+// スロット取得 Concept
+// =============================================================================
+
+/// @brief 作成済みスロットの取得をサポート
+template <typename Pool>
+concept CreatedSlotAcquirableConcept =
+    PoolTypeConcept<Pool> && requires(Pool &pool) {
+      { pool.tryAcquireCreated() } -> std::same_as<typename Pool::SlotRef>;
+      { pool.acquireCreated() } -> std::same_as<typename Pool::SlotRef>;
+    };
+
+/// @brief 未作成スロットの予約をサポート
+template <typename Pool>
+concept UncreatedSlotReservableConcept =
+    PoolTypeConcept<Pool> && requires(Pool &pool) {
+      { pool.tryReserveUncreated() } -> std::same_as<typename Pool::SlotRef>;
+      { pool.reserveUncreated() } -> std::same_as<typename Pool::SlotRef>;
+    };
+
+// =============================================================================
+// スロットリリース Concept
+// =============================================================================
+
+/// @brief スロットのリリースをサポート
+template <typename Pool>
+concept SlotReleasableConcept =
+    PoolTypeConcept<Pool> && requires(Pool &pool, typename Pool::Handle h) {
+      { pool.release(h) } -> std::convertible_to<bool>;
+    };
+
+// =============================================================================
+// ペイロード作成 Concept
+// =============================================================================
+
+/// @brief emplace/destroyをサポート (Request/Contextが必要)
+template <typename Pool>
+concept PayloadCreatableConcept =
+    PoolTypeConcept<Pool> && requires(Pool &pool, typename Pool::Handle h,
+                                      const typename Pool::Request &req,
+                                      const typename Pool::Context &ctx) {
       typename Pool::Request;
       typename Pool::Context;
-      typename Pool::SlotRef;
-
-      // SlotRef requirements
-      { typename Pool::SlotRef{}.valid() } -> std::convertible_to<bool>;
-      {
-        typename Pool::SlotRef{}.handle
-      } -> std::convertible_to<typename Pool::Handle>;
-      {
-        typename Pool::SlotRef{}.payload_ptr
-      } -> std::convertible_to<typename Pool::Payload *>;
-
-      // Size and state operations
-      { const_pool.size() } -> std::convertible_to<std::size_t>;
-      { pool.resize(size) } -> std::convertible_to<std::size_t>;
-      { const_pool.isValid(handle) } -> std::convertible_to<bool>;
-      { const_pool.isCreated(handle) } -> std::convertible_to<bool>;
-
-      // Payload access
-      { pool.get(handle) } -> std::same_as<typename Pool::Payload *>;
-      {
-        const_pool.get(handle)
-      } -> std::same_as<const typename Pool::Payload *>;
-
-      // Creation and destruction
-      { pool.emplace(handle, request, context) } -> std::convertible_to<bool>;
+      { pool.emplace(h, req, ctx) } -> std::convertible_to<bool>;
+      { pool.destroy(h, req, ctx) } -> std::convertible_to<bool>;
     };
 
-/**
- * @brief 作成済みスロットの取得をサポートするPoolのConcept
- */
+// =============================================================================
+// 一括作成 Concept
+// =============================================================================
+
+/// @brief createAll/createRangeをサポート
 template <typename Pool>
-concept CreatedSlotAcquirable =
-    PayloadPoolConcept<Pool> &&
-    requires(Pool &pool, const typename Pool::Request &request,
-             const typename Pool::Context &context) {
-      {
-        pool.tryAcquireCreated(request, context)
-      } -> std::same_as<typename Pool::SlotRef>;
+concept BatchCreatableConcept =
+    PayloadCreatableConcept<Pool> &&
+    requires(Pool &pool, std::size_t start, std::size_t end,
+             const typename Pool::Request &req,
+             const typename Pool::Context &ctx) {
+      { pool.createAll(req, ctx) } -> std::convertible_to<bool>;
+      { pool.createRange(start, end, req, ctx) } -> std::convertible_to<bool>;
     };
 
-/**
- * @brief 未作成スロットの予約をサポートするPoolのConcept
- */
+// =============================================================================
+// 組み合わせ Concept
+// =============================================================================
+
+/// @brief SlotPoolとFixedSlotStoreが共通で満たすべき最低限
 template <typename Pool>
-concept UncreatedSlotReservable =
-    PayloadPoolConcept<Pool> &&
-    requires(Pool &pool, const typename Pool::Request &request,
-             const typename Pool::Context &context) {
-      {
-        pool.tryReserveUncreated(request, context)
-      } -> std::same_as<typename Pool::SlotRef>;
-    };
+concept BasePoolConcept =
+    PoolTypeConcept<Pool> && PoolConfigurableConcept<Pool> &&
+    PoolSizeQueryConcept<Pool> && HandleValidationConcept<Pool> &&
+    PayloadAccessConcept<Pool>;
+
+/// @brief 完全なPool (すべての機能を持つ)
+template <typename Pool>
+concept FullPoolConcept =
+    BasePoolConcept<Pool> && CreatedSlotAcquirableConcept<Pool> &&
+    UncreatedSlotReservableConcept<Pool> && SlotReleasableConcept<Pool> &&
+    PayloadCreatableConcept<Pool>;
 
 } // namespace orteaf::internal::base::pool

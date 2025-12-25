@@ -168,12 +168,10 @@ public:
    * @throws OutOfRange grow後も取得できない場合
    */
   typename ControlBlockPool::SlotRef acquireControlBlock() {
-    typename ControlBlockPoolTraits::Request request{};
-    typename ControlBlockPoolTraits::Context context{};
-    auto ref = control_block_pool_.tryAcquireCreated(request, context);
+    auto ref = control_block_pool_.tryAcquireCreated();
     if (!ref.valid()) {
       growControlBlockPool();
-      ref = control_block_pool_.tryAcquireCreated(request, context);
+      ref = control_block_pool_.tryAcquireCreated();
     }
     if (!ref.valid()) {
       ::orteaf::internal::diagnostics::error::throwError(
@@ -289,14 +287,13 @@ public:
   typename PayloadPool::SlotRef
   acquirePayloadOrGrowAndCreate(std::size_t grow_by, const Request &request,
                                 const Context &context)
-    requires requires(PayloadPool &pool, const Request &req,
-                      const Context &ctx) {
+    requires requires(PayloadPool &pool) {
       {
-        pool.tryAcquireCreated(req, ctx)
+        pool.tryAcquireCreated()
       } -> std::same_as<typename PayloadPool::SlotRef>;
     }
   {
-    auto ref = payload_pool_.tryAcquireCreated(request, context);
+    auto ref = payload_pool_.tryAcquireCreated();
     if (ref.valid()) {
       return ref;
     }
@@ -305,34 +302,29 @@ public:
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
           std::string(managerName()) + " failed to create payloads");
     }
-    return payload_pool_.tryAcquireCreated(request, context);
+    return payload_pool_.tryAcquireCreated();
   }
 
   /**
    * @brief 未作成スロットを予約（必要なら拡張）
    *
    * @param grow_by 追加で確保するスロット数
-   * @param request 予約に使うリクエスト
-   * @param context 予約に使うコンテキスト
    * @return 取得できなければ invalid な SlotRef
    */
-  template <typename Request, typename Context>
   typename PayloadPool::SlotRef
-  reserveUncreatedPayloadOrGrow(std::size_t grow_by, const Request &request,
-                                const Context &context)
-    requires requires(PayloadPool &pool, const Request &req,
-                      const Context &ctx) {
+  reserveUncreatedPayloadOrGrow(std::size_t grow_by)
+    requires requires(PayloadPool &pool) {
       {
-        pool.tryReserveUncreated(req, ctx)
+        pool.tryReserveUncreated()
       } -> std::same_as<typename PayloadPool::SlotRef>;
     }
   {
-    auto ref = payload_pool_.tryReserveUncreated(request, context);
+    auto ref = payload_pool_.tryReserveUncreated();
     if (ref.valid() || grow_by == 0) {
       return ref;
     }
     growPayloadPoolBy(grow_by);
-    return payload_pool_.tryReserveUncreated(request, context);
+    return payload_pool_.tryReserveUncreated();
   }
 
   // ===========================================================================

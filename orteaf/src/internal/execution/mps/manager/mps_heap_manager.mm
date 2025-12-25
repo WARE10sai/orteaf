@@ -164,8 +164,8 @@ MpsHeapManager::acquire(const HeapDescriptorKey &key) {
   // Reserve an uncreated slot and create the heap
   HeapPayloadPoolTraits::Request request{key};
   auto context = makePayloadContext();
-  auto payload_ref = core_.reserveUncreatedPayloadOrGrow(
-      payload_growth_chunk_size_, request, context);
+  auto payload_ref =
+      core_.reserveUncreatedPayloadOrGrow(payload_growth_chunk_size_);
   if (!payload_ref.valid()) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,

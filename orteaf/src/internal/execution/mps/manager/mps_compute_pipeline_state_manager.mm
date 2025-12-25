@@ -49,8 +49,7 @@ void MpsComputePipelineStateManager::configure(const Config &config) {
   }
   std::size_t payload_block_size = config.payload_block_size;
   if (payload_block_size == 0) {
-    payload_block_size =
-        payload_capacity == 0 ? 1u : payload_capacity;
+    payload_block_size = payload_capacity == 0 ? 1u : payload_capacity;
   }
   std::size_t control_block_block_size = config.control_block_block_size;
   if (control_block_block_size == 0) {
@@ -111,8 +110,8 @@ MpsComputePipelineStateManager::acquire(const FunctionKey &key) {
   // Reserve an uncreated slot and create the pipeline state
   PipelinePayloadPoolTraits::Request request{key};
   const auto context = makePayloadContext();
-  auto payload_ref = core_.reserveUncreatedPayloadOrGrow(
-      payload_growth_chunk_size_, request, context);
+  auto payload_ref =
+      core_.reserveUncreatedPayloadOrGrow(payload_growth_chunk_size_);
   if (!payload_ref.valid()) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,

@@ -312,8 +312,8 @@ public:
     typename BufferPayloadPoolTraitsT<ResourceT>::Request request{size,
                                                                   alignment};
     auto context = makePayloadContext(&params);
-    auto payload_ref = core_.reserveUncreatedPayloadOrGrow(
-        payload_growth_chunk_size_, request, context);
+    auto payload_ref =
+        core_.reserveUncreatedPayloadOrGrow(payload_growth_chunk_size_);
     if (!payload_ref.valid()) {
       return {};
     }

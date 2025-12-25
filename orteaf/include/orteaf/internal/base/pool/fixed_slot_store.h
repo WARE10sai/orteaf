@@ -177,13 +177,11 @@ public:
    * This method searches for the first slot that is created and returns a
    * reference to it.
    *
-   * @param request Request details (unused for acquisition search).
-   * @param context Context details (unused for acquisition search).
    * @return SlotRef with a valid handle and payload pointer.
    * @throws OrteafErrc::OutOfRange if no created slots are available.
    */
-  SlotRef acquireCreated(const Request &request, const Context &context) {
-    SlotRef ref = tryAcquireCreated(request, context);
+  SlotRef acquireCreated() {
+    SlotRef ref = tryAcquireCreated();
     if (!ref.valid()) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
@@ -200,7 +198,7 @@ public:
    *
    * @return SlotRef with invalid handle and null pointer if not available.
    */
-  SlotRef tryAcquireCreated(const Request &, const Context &) noexcept {
+  SlotRef tryAcquireCreated() noexcept {
     if (next_uncreated_index_ == 0) {
       return SlotRef{Handle::invalid(), nullptr};
     }
@@ -215,13 +213,11 @@ public:
   /**
    * @brief Reserves an uncreated slot by scanning the store.
    *
-   * @param request Request details (unused for reservation search).
-   * @param context Context details (unused for reservation search).
    * @return SlotRef with a valid handle and payload pointer.
    * @throws OrteafErrc::OutOfRange if no uncreated slots are available.
    */
-  SlotRef reserveUncreated(const Request &request, const Context &context) {
-    SlotRef ref = tryReserveUncreated(request, context);
+  SlotRef reserveUncreated() {
+    SlotRef ref = tryReserveUncreated();
     if (!ref.valid()) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
@@ -238,7 +234,7 @@ public:
    *
    * @return SlotRef with invalid handle and null pointer if none available.
    */
-  SlotRef tryReserveUncreated(const Request &, const Context &) noexcept {
+  SlotRef tryReserveUncreated() noexcept {
     if (next_uncreated_index_ >= size()) {
       return SlotRef{Handle::invalid(), nullptr};
     }

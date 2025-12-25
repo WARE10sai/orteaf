@@ -186,13 +186,11 @@ public:
    * tryAcquireCreated returns only slots with isCreated=true. It does not
    * create payloads itself.
    *
-   * @param request Allocation/request details passed through for symmetry.
-   * @param context Context information (execution/device, etc.).
    * @return SlotRef with a valid handle and payload pointer.
    * @throws OrteafErrc::OutOfRange if the freelist is empty.
    */
-  SlotRef acquireCreated(const Request &request, const Context &context) {
-    SlotRef ref = tryAcquireCreated(request, context);
+  SlotRef acquireCreated() {
+    SlotRef ref = tryAcquireCreated();
     if (!ref.valid()) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
@@ -206,7 +204,7 @@ public:
    *
    * @return SlotRef with invalid handle and null pointer if no slots available.
    */
-  SlotRef tryAcquireCreated(const Request &, const Context &) noexcept {
+  SlotRef tryAcquireCreated() noexcept {
     if (freelist_.empty()) {
       return SlotRef{Handle::invalid(), nullptr};
     }
@@ -228,13 +226,11 @@ public:
    * tryReserveUncreated returns only slots with isCreated=false. It does not
    * create payloads itself. Use emplace to initialize the payload.
    *
-   * @param request Allocation/request details passed through for symmetry.
-   * @param context Context information (execution/device, etc.).
    * @return SlotRef with a valid handle and payload pointer.
    * @throws OrteafErrc::OutOfRange if no uncreated slots are available.
    */
-  SlotRef reserveUncreated(const Request &request, const Context &context) {
-    SlotRef ref = tryReserveUncreated(request, context);
+  SlotRef reserveUncreated() {
+    SlotRef ref = tryReserveUncreated();
     if (!ref.valid()) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
@@ -248,7 +244,7 @@ public:
    *
    * @return SlotRef with invalid handle and null pointer if none available.
    */
-  SlotRef tryReserveUncreated(const Request &, const Context &) noexcept {
+  SlotRef tryReserveUncreated() noexcept {
     if (freelist_.empty()) {
       return SlotRef{Handle::invalid(), nullptr};
     }
