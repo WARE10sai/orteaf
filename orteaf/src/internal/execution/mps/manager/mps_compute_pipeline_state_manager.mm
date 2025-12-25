@@ -21,8 +21,8 @@ void MpsComputePipelineStateManager::configure(const Config &config) {
   }
   const std::size_t payload_capacity =
       config.payload_capacity != 0 ? config.payload_capacity : 0u;
-  const std::size_t control_block_capacity =
-      config.control_block_capacity != 0 ? config.control_block_capacity
+  const std::size_t control_block_capacity = config.control_block_capacity != 0
+                                                 ? config.control_block_capacity
                                                  : payload_capacity;
   if (payload_capacity >
       static_cast<std::size_t>(FunctionHandle::invalid_index())) {
@@ -110,15 +110,12 @@ MpsComputePipelineStateManager::acquire(const FunctionKey &key) {
   // Reserve an uncreated slot and create the pipeline state
   PipelinePayloadPoolTraits::Request request{key};
   const auto context = makePayloadContext();
-  auto payload_ref =
-      core_.reserveUncreatedPayloadOrGrow(payload_growth_chunk_size_);
-  if (!payload_ref.valid()) {
+  auto handle = core_.reserveUncreatedPayloadOrGrow(payload_growth_chunk_size_);
+  if (!handle.isValid()) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
         "MPS compute pipeline state manager has no available slots");
   }
-
-  const auto handle = payload_ref.handle;
   if (!core_.payloadPool().emplace(handle, request, context)) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
@@ -146,8 +143,8 @@ void MpsComputePipelineStateManager::validateKey(const FunctionKey &key) const {
 MpsComputePipelineStateManager::PipelineLease
 MpsComputePipelineStateManager::buildLease(FunctionHandle handle,
                                            MpsPipelineResource *payload_ptr) {
-  auto cb_ref = core_.acquireControlBlock();
-  auto *cb = cb_ref.payload_ptr;
+  auto cb_handle = core_.acquireControlBlock();
+  auto *cb = core_.getControlBlock(cb_handle);
   if (cb == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
@@ -164,7 +161,7 @@ MpsComputePipelineStateManager::buildLease(FunctionHandle handle,
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS compute pipeline state control block binding failed");
   }
-  return PipelineLease{cb, core_.controlBlockPoolForLease(), cb_ref.handle};
+  return PipelineLease{cb, core_.controlBlockPoolForLease(), cb_handle};
 }
 
 PipelinePayloadPoolTraits::Context

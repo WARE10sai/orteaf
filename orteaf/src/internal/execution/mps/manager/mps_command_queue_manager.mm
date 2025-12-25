@@ -20,9 +20,9 @@ void MpsCommandQueueManager::configure(const Config &config) {
   }
   const std::size_t payload_capacity =
       config.payload_capacity != 0 ? config.payload_capacity : 0u;
-  const std::size_t control_block_capacity =
-      config.control_block_capacity != 0 ? config.control_block_capacity
-                                         : payload_capacity;
+  const std::size_t control_block_capacity = config.control_block_capacity != 0
+                                                 ? config.control_block_capacity
+                                                 : payload_capacity;
   if (payload_capacity >
       static_cast<std::size_t>(CommandQueueHandle::invalid_index())) {
     ::orteaf::internal::diagnostics::error::throwError(
@@ -98,31 +98,29 @@ MpsCommandQueueManager::CommandQueueLease MpsCommandQueueManager::acquire() {
   const CommandQueuePayloadPoolTraits::Request request{};
   const CommandQueuePayloadPoolTraits::Context context{device_, ops_};
 
-  auto payload_ref = core_.acquirePayloadOrGrowAndCreate(
-      payload_growth_chunk_size_, request, context);
-  if (!payload_ref.valid()) {
+  auto handle = core_.acquirePayloadOrGrowAndCreate(payload_growth_chunk_size_,
+                                                    request, context);
+  if (!handle.isValid()) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
         "MPS command queue manager has no available slots");
   }
 
-  auto cb_ref = core_.acquireControlBlock();
-  auto cb_handle = cb_ref.handle;
-  auto *cb = cb_ref.payload_ptr;
+  auto cb_handle = core_.acquireControlBlock();
+  auto *cb = core_.getControlBlock(cb_handle);
   if (cb == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS command queue control block is unavailable");
   }
 
-  auto *payload_ptr = core_.payloadPool().get(payload_ref.handle);
+  auto *payload_ptr = core_.payloadPool().get(handle);
   if (payload_ptr == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS command queue payload is unavailable");
   }
-  if (!cb->tryBindPayload(payload_ref.handle, payload_ptr,
-                          &core_.payloadPool())) {
+  if (!cb->tryBindPayload(handle, payload_ptr, &core_.payloadPool())) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS command queue control block binding failed");
@@ -147,9 +145,8 @@ MpsCommandQueueManager::acquire(CommandQueueHandle handle) {
         "Command queue handle does not exist");
   }
 
-  auto cb_ref = core_.acquireControlBlock();
-  auto cb_handle = cb_ref.handle;
-  auto *cb = cb_ref.payload_ptr;
+  auto cb_handle = core_.acquireControlBlock();
+  auto *cb = core_.getControlBlock(cb_handle);
   if (cb == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,

@@ -52,11 +52,9 @@ struct DestroyOnReleaseTraits {
   }
 };
 
-using Store =
-    ::orteaf::internal::base::pool::FixedSlotStore<DummyTraits>;
+using Store = ::orteaf::internal::base::pool::FixedSlotStore<DummyTraits>;
 using DestroyOnReleaseStore =
-    ::orteaf::internal::base::pool::FixedSlotStore<
-        DestroyOnReleaseTraits>;
+    ::orteaf::internal::base::pool::FixedSlotStore<DestroyOnReleaseTraits>;
 
 Store makeStore(std::size_t capacity) {
   Store store;
@@ -83,8 +81,8 @@ TEST(FixedSlotStore, TryAcquireInvalidWhenNotCreated) {
   DummyTraits::Context ctx{};
   DummyTraits::Request req{StoreHandle{0, 0}};
 
-  auto ref = store.tryAcquireCreated();
-  EXPECT_FALSE(ref.valid());
+  auto handle = store.tryAcquireCreated();
+  EXPECT_FALSE(handle.isValid());
 }
 
 TEST(FixedSlotStore, EmplaceAndAcquireReturnPayload) {
@@ -94,9 +92,9 @@ TEST(FixedSlotStore, EmplaceAndAcquireReturnPayload) {
 
   EXPECT_TRUE(store.emplace(req.handle, req, ctx));
 
-  auto ref = store.acquireCreated();
-  EXPECT_TRUE(ref.valid());
-  EXPECT_EQ(ref.payload_ptr->value, 123);
+  auto handle = store.acquireCreated();
+  EXPECT_TRUE(handle.isValid());
+  EXPECT_EQ(store.get(handle)->value, 123);
   EXPECT_EQ(store.get(req.handle)->value, 123);
 }
 
@@ -189,9 +187,9 @@ TEST(FixedSlotStore, GrowAndCreateCreatesNewSlots) {
 
   // Now we have 2 created slots (0 and 1)
   // tryAcquireCreated returns one of the created slots (index 0)
-  auto ref = store.tryAcquireCreated();
-  EXPECT_TRUE(ref.valid());
-  EXPECT_EQ(ref.payload_ptr->value, 123);
+  auto handle = store.tryAcquireCreated();
+  EXPECT_TRUE(handle.isValid());
+  EXPECT_EQ(store.get(handle)->value, 123);
 }
 
 TEST(FixedSlotStore, ReserveDoesNotChangeSize) {
@@ -217,9 +215,9 @@ TEST(FixedSlotStore, InitializeAndCreateCreatesAllSlots) {
   EXPECT_TRUE(store.createAll(req, ctx));
 
   // tryAcquireCreated returns one of the created slots
-  auto ref = store.tryAcquireCreated();
-  EXPECT_TRUE(ref.valid());
-  EXPECT_EQ(ref.payload_ptr->value, 55);
+  auto handle = store.tryAcquireCreated();
+  EXPECT_TRUE(handle.isValid());
+  EXPECT_EQ(store.get(handle)->value, 55);
 }
 
 } // namespace

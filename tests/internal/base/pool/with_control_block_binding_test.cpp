@@ -93,30 +93,30 @@ TEST_F(BoundSlotPoolTest, ConfigureInitializesBoundControlBlocks) {
 }
 
 TEST_F(BoundSlotPoolTest, HasBoundControlBlockReturnsFalseInitially) {
-  auto ref = pool.reserveUncreated();
-  ASSERT_TRUE(ref.valid());
-  EXPECT_FALSE(pool.hasBoundControlBlock(ref.handle));
+  auto handle = pool.reserveUncreated();
+  ASSERT_TRUE(handle.isValid());
+  EXPECT_FALSE(pool.hasBoundControlBlock(handle));
 }
 
 TEST_F(BoundSlotPoolTest, BindAndUnbindControlBlock) {
-  auto ref = pool.reserveUncreated();
-  ASSERT_TRUE(ref.valid());
-  EXPECT_TRUE(pool.emplace(ref.handle, req, ctx));
+  auto handle = pool.reserveUncreated();
+  ASSERT_TRUE(handle.isValid());
+  EXPECT_TRUE(pool.emplace(handle, req, ctx));
 
   CBHandle cb_handle{0, 1};
-  pool.bindControlBlock(ref.handle, cb_handle);
+  pool.bindControlBlock(handle, cb_handle);
 
-  EXPECT_TRUE(pool.hasBoundControlBlock(ref.handle));
-  EXPECT_EQ(pool.getBoundControlBlock(ref.handle), cb_handle);
+  EXPECT_TRUE(pool.hasBoundControlBlock(handle));
+  EXPECT_EQ(pool.getBoundControlBlock(handle), cb_handle);
 
-  pool.unbindControlBlock(ref.handle);
-  EXPECT_FALSE(pool.hasBoundControlBlock(ref.handle));
+  pool.unbindControlBlock(handle);
+  EXPECT_FALSE(pool.hasBoundControlBlock(handle));
 }
 
 TEST_F(BoundSlotPoolTest, GetBoundControlBlockReturnsInvalidForUnbound) {
-  auto ref = pool.reserveUncreated();
-  ASSERT_TRUE(ref.valid());
-  EXPECT_FALSE(pool.getBoundControlBlock(ref.handle).isValid());
+  auto handle = pool.reserveUncreated();
+  ASSERT_TRUE(handle.isValid());
+  EXPECT_FALSE(pool.getBoundControlBlock(handle).isValid());
 }
 
 TEST_F(BoundSlotPoolTest, ResizeExpandsBoundControlBlocks) {
@@ -125,12 +125,12 @@ TEST_F(BoundSlotPoolTest, ResizeExpandsBoundControlBlocks) {
 }
 
 TEST_F(BoundSlotPoolTest, ShutdownClearsBoundControlBlocks) {
-  auto ref = pool.reserveUncreated();
-  ASSERT_TRUE(ref.valid());
-  pool.emplace(ref.handle, req, ctx);
+  auto handle = pool.reserveUncreated();
+  ASSERT_TRUE(handle.isValid());
+  pool.emplace(handle, req, ctx);
 
   CBHandle cb_handle{0, 1};
-  pool.bindControlBlock(ref.handle, cb_handle);
+  pool.bindControlBlock(handle, cb_handle);
 
   pool.shutdown(req, ctx);
   EXPECT_EQ(pool.boundControlBlocksSize(), 0u);
@@ -154,15 +154,15 @@ TEST_F(BoundFixedSlotStoreTest, ConfigureInitializesBoundControlBlocks) {
 }
 
 TEST_F(BoundFixedSlotStoreTest, BindAndRetrieveControlBlock) {
-  auto ref = store.reserveUncreated();
-  ASSERT_TRUE(ref.valid());
-  EXPECT_TRUE(store.emplace(ref.handle, req, ctx));
+  auto handle = store.reserveUncreated();
+  ASSERT_TRUE(handle.isValid());
+  EXPECT_TRUE(store.emplace(handle, req, ctx));
 
   CBHandle cb_handle{1, 2};
-  store.bindControlBlock(ref.handle, cb_handle);
+  store.bindControlBlock(handle, cb_handle);
 
-  EXPECT_TRUE(store.hasBoundControlBlock(ref.handle));
-  EXPECT_EQ(store.getBoundControlBlock(ref.handle), cb_handle);
+  EXPECT_TRUE(store.hasBoundControlBlock(handle));
+  EXPECT_EQ(store.getBoundControlBlock(handle), cb_handle);
 }
 
 TEST_F(BoundFixedSlotStoreTest, MultiplePayloadsCanHaveDifferentCBs) {

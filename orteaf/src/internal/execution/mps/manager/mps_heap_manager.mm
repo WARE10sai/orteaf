@@ -164,15 +164,12 @@ MpsHeapManager::acquire(const HeapDescriptorKey &key) {
   // Reserve an uncreated slot and create the heap
   HeapPayloadPoolTraits::Request request{key};
   auto context = makePayloadContext();
-  auto payload_ref =
-      core_.reserveUncreatedPayloadOrGrow(payload_growth_chunk_size_);
-  if (!payload_ref.valid()) {
+  auto handle = core_.reserveUncreatedPayloadOrGrow(payload_growth_chunk_size_);
+  if (!handle.isValid()) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
         "Heap manager has no available slots");
   }
-
-  const auto handle = payload_ref.handle;
   if (!core_.payloadPool().emplace(handle, request, context)) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
@@ -234,18 +231,18 @@ void MpsHeapManager::validateKey(const HeapDescriptorKey &key) const {
 MpsHeapManager::HeapLease
 MpsHeapManager::buildLease(HeapHandle handle, MpsHeapResource *payload_ptr) {
   // Acquire control block
-  auto cb_ref = core_.acquireControlBlock();
-  auto *cb = cb_ref.payload_ptr;
+  auto cb_handle = core_.acquireControlBlock();
+  auto *cb = core_.getControlBlock(cb_handle);
 
   // Bind payload to control block
   if (!cb->tryBindPayload(handle, payload_ptr, &core_.payloadPool())) {
-    core_.releaseControlBlock(cb_ref.handle);
+    core_.releaseControlBlock(cb_handle);
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "Failed to bind heap payload to control block");
   }
 
-  return HeapLease{cb, core_.controlBlockPoolForLease(), cb_ref.handle};
+  return HeapLease{cb, core_.controlBlockPoolForLease(), cb_handle};
 }
 
 HeapPayloadPoolTraits::Context

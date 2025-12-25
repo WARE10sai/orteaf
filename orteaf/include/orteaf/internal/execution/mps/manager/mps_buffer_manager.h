@@ -312,35 +312,25 @@ public:
     // Get or grow PayloadPool slot
     typename BufferPayloadPoolTraitsT<ResourceT>::Request request{size,
                                                                   alignment};
-    auto context = makePayloadContext(&params);
-    auto payload_ref =
-        core_.reserveUncreatedPayloadOrGrow(payload_growth_chunk_size_);
-    if (!payload_ref.valid()) {
-      return {};
+    auto context =
+        makePayloadContext(&params); // Build lease for the buffer payload
+    auto payload_handle = core_.acquirePayloadOrGrowAndCreate(
+        payload_growth_chunk_size_, request, context);
+    if (!payload_handle.isValid()) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
+          "MPS buffer manager has no available slots");
     }
-
-    // Create the buffer using emplace
-    if (!core_.payloadPool().emplace(payload_ref.handle, request, context)) {
-      core_.payloadPool().release(payload_ref.handle);
-      return {};
-    }
-
-    // Acquire ControlBlock
-    auto cb_ref = core_.acquireControlBlock();
-    auto *cb = cb_ref.payload_ptr;
-
-    // Bind payload to ControlBlock
-    if (!cb->tryBindPayload(payload_ref.handle, payload_ref.payload_ptr,
+    auto cb_handle = core_.acquireControlBlock();
+    auto *cb = core_.getControlBlock(cb_handle);
+    auto *payload_ptr = core_.payloadPool().get(payload_handle);
+    if (!cb->tryBindPayload(payload_handle, payload_ptr,
                             &core_.payloadPool())) {
-      // Rollback
-      core_.payloadPool().destroy(payload_ref.handle, request, context);
-      core_.payloadPool().release(payload_ref.handle);
-      core_.releaseControlBlock(cb_ref.handle);
-      return {};
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+          "MPS buffer control block binding failed");
     }
-
-    return StrongBufferLease{cb, core_.controlBlockPoolForLease(),
-                             cb_ref.handle};
+    return BufferLease{cb, core_.controlBlockPoolForLease(), cb_handle};
   }
 
   // =========================================================================
@@ -361,16 +351,13 @@ public:
       return {};
     }
 
-    auto cb_ref = core_.acquireControlBlock();
-    auto *cb = cb_ref.payload_ptr;
-
+    auto cb_handle = core_.acquireControlBlock();
+    auto *cb = core_.getControlBlock(cb_handle);
     if (!cb->tryBindPayload(handle, payload_ptr, &core_.payloadPool())) {
-      core_.releaseControlBlock(cb_ref.handle);
+      core_.releaseControlBlock(cb_handle);
       return {};
     }
-
-    return StrongBufferLease{cb, core_.controlBlockPoolForLease(),
-                             cb_ref.handle};
+    return StrongBufferLease{cb, core_.controlBlockPoolForLease(), cb_handle};
   }
 
   // =========================================================================

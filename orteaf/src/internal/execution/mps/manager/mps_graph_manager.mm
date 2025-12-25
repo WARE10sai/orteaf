@@ -20,9 +20,9 @@ void MpsGraphManager::configure(const Config &config) {
   }
   const std::size_t payload_capacity =
       config.payload_capacity != 0 ? config.payload_capacity : 0u;
-  const std::size_t control_block_capacity =
-      config.control_block_capacity != 0 ? config.control_block_capacity
-                                         : payload_capacity;
+  const std::size_t control_block_capacity = config.control_block_capacity != 0
+                                                 ? config.control_block_capacity
+                                                 : payload_capacity;
   if (payload_capacity >
       static_cast<std::size_t>(GraphHandle::invalid_index())) {
     ::orteaf::internal::diagnostics::error::throwError(
@@ -48,8 +48,7 @@ void MpsGraphManager::configure(const Config &config) {
 
   std::size_t payload_block_size = config.payload_block_size;
   if (payload_block_size == 0) {
-    payload_block_size =
-        payload_capacity == 0 ? 1u : payload_capacity;
+    payload_block_size = payload_capacity == 0 ? 1u : payload_capacity;
   }
   std::size_t control_block_block_size = config.control_block_block_size;
   if (control_block_block_size == 0) {
@@ -100,8 +99,8 @@ MpsGraphManager::acquire(const GraphKey &key, const CompileFn &compile_fn) {
 
   // Check if already cached
   if (auto it = key_to_index_.find(key); it != key_to_index_.end()) {
-    const auto handle = GraphHandle{
-        static_cast<typename GraphHandle::index_type>(it->second)};
+    const auto handle =
+        GraphHandle{static_cast<typename GraphHandle::index_type>(it->second)};
     auto *payload_ptr = core_.payloadPool().get(handle);
     if (payload_ptr == nullptr || !core_.payloadPool().isCreated(handle)) {
       ::orteaf::internal::diagnostics::error::throwError(
@@ -120,8 +119,8 @@ MpsGraphManager::acquire(const GraphKey &key, const CompileFn &compile_fn) {
         "MPS graph manager has no available slots");
   }
 
-  const auto handle = GraphHandle{
-      static_cast<typename GraphHandle::index_type>(next_index_)};
+  const auto handle =
+      GraphHandle{static_cast<typename GraphHandle::index_type>(next_index_)};
   ++next_index_;
   GraphPayloadPoolTraits::Request request{&compile_fn};
   const auto context = makePayloadContext();
@@ -161,10 +160,9 @@ void MpsGraphManager::validateKey(const GraphKey &key) const {
 }
 
 MpsGraphManager::GraphLease
-MpsGraphManager::buildLease(GraphHandle handle,
-                            MpsGraphResource *payload_ptr) {
-  auto cb_ref = core_.acquireControlBlock();
-  auto *cb = cb_ref.payload_ptr;
+MpsGraphManager::buildLease(GraphHandle handle, MpsGraphResource *payload_ptr) {
+  auto cb_handle = core_.acquireControlBlock();
+  auto *cb = core_.getControlBlock(cb_handle);
   if (cb == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
@@ -181,7 +179,7 @@ MpsGraphManager::buildLease(GraphHandle handle,
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS graph control block binding failed");
   }
-  return GraphLease{cb, core_.controlBlockPoolForLease(), cb_ref.handle};
+  return GraphLease{cb, core_.controlBlockPoolForLease(), cb_handle};
 }
 
 GraphPayloadPoolTraits::Context

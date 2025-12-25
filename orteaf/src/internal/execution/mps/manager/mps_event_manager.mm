@@ -20,9 +20,9 @@ void MpsEventManager::configure(const Config &config) {
   }
   const std::size_t payload_capacity =
       config.payload_capacity != 0 ? config.payload_capacity : 0u;
-  const std::size_t control_block_capacity =
-      config.control_block_capacity != 0 ? config.control_block_capacity
-                                         : payload_capacity;
+  const std::size_t control_block_capacity = config.control_block_capacity != 0
+                                                 ? config.control_block_capacity
+                                                 : payload_capacity;
   if (payload_capacity >
       static_cast<std::size_t>(EventHandle::invalid_index())) {
     ::orteaf::internal::diagnostics::error::throwError(
@@ -97,23 +97,22 @@ MpsEventManager::EventLease MpsEventManager::acquire() {
   core_.ensureConfigured();
   const EventPayloadPoolTraits::Request request{};
   const auto context = makePayloadContext();
-  auto payload_ref = core_.acquirePayloadOrGrowAndCreate(
-      payload_growth_chunk_size_, request, context);
-  if (!payload_ref.valid()) {
+  auto handle = core_.acquirePayloadOrGrowAndCreate(payload_growth_chunk_size_,
+                                                    request, context);
+  if (!handle.isValid()) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
         "MPS event manager has no available slots");
   }
 
-  auto cb_ref = core_.acquireControlBlock();
-  auto cb_handle = cb_ref.handle;
-  auto *cb = cb_ref.payload_ptr;
+  auto cb_handle = core_.acquireControlBlock();
+  auto *cb = core_.getControlBlock(cb_handle);
   if (cb == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS event control block is unavailable");
   }
-  return buildLease(*cb, payload_ref.handle, cb_handle);
+  return buildLease(*cb, handle, cb_handle);
 }
 
 EventPayloadPoolTraits::Context
