@@ -9,10 +9,10 @@
 #include <unordered_map>
 
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/execution/base/lease/control_block/weak.h"
-#include "orteaf/internal/execution/base/lease/weak_lease.h"
-#include "orteaf/internal/execution/base/manager/base_pool_manager_core.h"
-#include "orteaf/internal/execution/base/pool/fixed_slot_store.h"
+#include "orteaf/internal/base/lease/control_block/weak.h"
+#include "orteaf/internal/base/lease/weak_lease.h"
+#include "orteaf/internal/base/manager/pool_manager.h"
+#include "orteaf/internal/base/pool/fixed_slot_store.h"
 #include "orteaf/internal/execution/mps/manager/mps_compute_pipeline_state_manager.h"
 #include "orteaf/internal/execution/mps/platform/wrapper/mps_device.h"
 #include "orteaf/internal/execution/mps/platform/wrapper/mps_library.h"
@@ -110,7 +110,7 @@ using LibraryControlBlock = ::orteaf::internal::execution::base::WeakControlBloc
     ::orteaf::internal::base::LibraryHandle, MpsLibraryResource,
     LibraryPayloadPool>;
 
-// Traits for BasePoolManagerCore
+// Traits for PoolManager
 struct MpsLibraryManagerTraits {
   using PayloadPool = LibraryPayloadPool;
   using ControlBlock = LibraryControlBlock;
@@ -121,7 +121,7 @@ struct MpsLibraryManagerTraits {
 
 class MpsLibraryManager {
 public:
-  using Core = ::orteaf::internal::execution::base::BasePoolManagerCore<
+  using Core = ::orteaf::internal::execution::base::PoolManager<
       MpsLibraryManagerTraits>;
   using SlowOps = ::orteaf::internal::execution::mps::platform::MpsSlowOps;
   using DeviceType =

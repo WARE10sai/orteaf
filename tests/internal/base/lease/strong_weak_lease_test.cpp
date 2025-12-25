@@ -1,12 +1,12 @@
-#include "orteaf/internal/execution/base/lease/strong_lease.h"
-#include "orteaf/internal/execution/base/lease/weak_lease.h"
+#include "orteaf/internal/base/lease/strong_lease.h"
+#include "orteaf/internal/base/lease/weak_lease.h"
 
 #include <cstddef>
 
 #include <gtest/gtest.h>
 
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/execution/base/lease/control_block/shared.h"
+#include "orteaf/internal/base/lease/control_block/shared.h"
 
 namespace {
 

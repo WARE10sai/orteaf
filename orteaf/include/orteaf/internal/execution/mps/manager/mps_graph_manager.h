@@ -11,10 +11,10 @@
 #include <vector>
 
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/execution/base/lease/control_block/strong.h"
-#include "orteaf/internal/execution/base/lease/strong_lease.h"
-#include "orteaf/internal/execution/base/manager/base_pool_manager_core.h"
-#include "orteaf/internal/execution/base/pool/fixed_slot_store.h"
+#include "orteaf/internal/base/lease/control_block/strong.h"
+#include "orteaf/internal/base/lease/strong_lease.h"
+#include "orteaf/internal/base/manager/pool_manager.h"
+#include "orteaf/internal/base/pool/fixed_slot_store.h"
 #include "orteaf/internal/execution/mps/platform/mps_slow_ops.h"
 #include "orteaf/internal/execution/mps/platform/wrapper/mps_graph.h"
 
@@ -152,7 +152,7 @@ using GraphControlBlock = ::orteaf::internal::execution::base::StrongControlBloc
     ::orteaf::internal::base::GraphHandle, MpsGraphResource, GraphPayloadPool>;
 
 // =============================================================================
-// Manager Traits for BasePoolManagerCore
+// Manager Traits for PoolManager
 // =============================================================================
 
 struct MpsGraphManagerTraits {
@@ -168,7 +168,7 @@ struct MpsGraphManagerTraits {
 // =============================================================================
 
 class MpsGraphManager {
-  using Core = ::orteaf::internal::execution::base::BasePoolManagerCore<
+  using Core = ::orteaf::internal::execution::base::PoolManager<
       MpsGraphManagerTraits>;
 
 public:

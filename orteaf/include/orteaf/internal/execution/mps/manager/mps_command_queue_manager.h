@@ -6,10 +6,10 @@
 #include <cstdint>
 
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/execution/base/lease/control_block/weak.h"
-#include "orteaf/internal/execution/base/lease/weak_lease.h"
-#include "orteaf/internal/execution/base/manager/base_pool_manager_core.h"
-#include "orteaf/internal/execution/base/pool/slot_pool.h"
+#include "orteaf/internal/base/lease/control_block/weak.h"
+#include "orteaf/internal/base/lease/weak_lease.h"
+#include "orteaf/internal/base/manager/pool_manager.h"
+#include "orteaf/internal/base/pool/slot_pool.h"
 #include "orteaf/internal/execution/mps/platform/mps_slow_ops.h"
 #include "orteaf/internal/execution/mps/platform/wrapper/mps_command_queue.h"
 
@@ -75,7 +75,7 @@ using CommandQueueControlBlock =
         CommandQueuePayloadPool>;
 
 // =============================================================================
-// Manager Traits for BasePoolManagerCore
+// Manager Traits for PoolManager
 // =============================================================================
 
 struct MpsCommandQueueManagerTraits {
@@ -99,7 +99,7 @@ public:
   using CommandQueueType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsCommandQueue_t;
 
-  using Core = ::orteaf::internal::execution::base::BasePoolManagerCore<
+  using Core = ::orteaf::internal::execution::base::PoolManager<
       MpsCommandQueueManagerTraits>;
   using ControlBlock = Core::ControlBlock;
   using ControlBlockHandle = Core::ControlBlockHandle;

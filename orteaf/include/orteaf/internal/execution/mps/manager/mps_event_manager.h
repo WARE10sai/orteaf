@@ -6,10 +6,10 @@
 #include <cstdint>
 
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/execution/base/lease/control_block/strong.h"
-#include "orteaf/internal/execution/base/lease/strong_lease.h"
-#include "orteaf/internal/execution/base/manager/base_pool_manager_core.h"
-#include "orteaf/internal/execution/base/pool/slot_pool.h"
+#include "orteaf/internal/base/lease/control_block/strong.h"
+#include "orteaf/internal/base/lease/strong_lease.h"
+#include "orteaf/internal/base/manager/pool_manager.h"
+#include "orteaf/internal/base/pool/slot_pool.h"
 #include "orteaf/internal/execution/mps/platform/mps_slow_ops.h"
 #include "orteaf/internal/execution/mps/platform/wrapper/mps_event.h"
 
@@ -62,7 +62,7 @@ using EventPayloadPool =
     ::orteaf::internal::execution::base::pool::SlotPool<EventPayloadPoolTraits>;
 
 // =============================================================================
-// ControlBlock (using default pool traits via BasePoolManagerCore)
+// ControlBlock (using default pool traits via PoolManager)
 // =============================================================================
 
 struct EventControlBlockTag {};
@@ -73,7 +73,7 @@ using EventControlBlock = ::orteaf::internal::execution::base::StrongControlBloc
     EventPayloadPool>;
 
 // =============================================================================
-// Manager Traits for BasePoolManagerCore
+// Manager Traits for PoolManager
 // =============================================================================
 
 struct MpsEventManagerTraits {
@@ -97,7 +97,7 @@ public:
   using EventType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsEvent_t;
 
-  using Core = ::orteaf::internal::execution::base::BasePoolManagerCore<
+  using Core = ::orteaf::internal::execution::base::PoolManager<
       MpsEventManagerTraits>;
   using ControlBlock = Core::ControlBlock;
   using ControlBlockHandle = Core::ControlBlockHandle;

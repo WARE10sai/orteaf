@@ -4,7 +4,7 @@
 #include <cstdint>
 
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/execution/base/pool/slot_pool.h"
+#include "orteaf/internal/base/pool/slot_pool.h"
 
 namespace orteaf::internal::execution::base::pool {
 

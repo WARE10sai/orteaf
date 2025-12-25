@@ -1,52 +1,58 @@
 #pragma once
 
 #include <atomic>
+#include <concepts>
 #include <cstdint>
-#include <cstdio>
+#include <type_traits>
+#include <utility>
 
-#include <orteaf/internal/execution/base/lease/category.h>
+#include <orteaf/internal/base/lease/category.h>
 
 namespace orteaf::internal::execution::base {
 
 /**
- * @brief Weak-only control block with handle/payload/pool binding.
+ * @brief Shared + weak control block with handle/payload/pool binding.
  *
- * This control block tracks only weak references and does not own the payload.
- * It is intended for resources whose lifetime is managed externally (system-
- * or device-owned objects). The control block can still safely expose access
- * metadata (handle/pointer/pool) and validate that weak references remain.
+ * This control block tracks both strong and weak reference counts. When the
+ * strong count reaches zero, it attempts to release the payload back to the
+ * pool. The control block can only be shut down when both counts reach zero.
  *
  * Payload binding is explicit and can only occur when no references exist.
- * The control block does not create/destroy payloads directly and does not
- * release payloads on weak count transition; it only tracks weak lifetime.
+ * The control block does not create/destroy payloads directly; it only
+ * coordinates release to the pool. Payload lifetime rules are enforced by the
+ * manager and/or pool implementation.
  *
  * Thread-safety: reference counts use atomics. Payload binding methods are not
  * synchronized and must be externally serialized.
  *
  * @tparam HandleT Handle type with Handle::invalid() and isValid().
  * @tparam PayloadT Payload type stored in the pool.
- * @tparam PoolT Pool type providing release(handle) -> bool (unused here).
+ * @tparam PoolT Pool type providing release(handle) -> bool.
  */
 template <typename HandleT, typename PayloadT, typename PoolT>
-class WeakControlBlock {
+class SharedControlBlock {
 public:
-  using Category = lease_category::Weak;
+  using Category = lease_category::Shared;
   using Handle = HandleT;
   using Payload = PayloadT;
   using Pool = PoolT;
 
-  WeakControlBlock() = default;
-  WeakControlBlock(const WeakControlBlock &) = delete;
-  WeakControlBlock &operator=(const WeakControlBlock &) = delete;
-  WeakControlBlock(WeakControlBlock &&other) noexcept {
+  SharedControlBlock() = default;
+  SharedControlBlock(const SharedControlBlock &) = delete;
+  SharedControlBlock &operator=(const SharedControlBlock &) = delete;
+  SharedControlBlock(SharedControlBlock &&other) noexcept {
+    strong_count_.store(other.strong_count_.load(std::memory_order_relaxed),
+                        std::memory_order_relaxed);
     weak_count_.store(other.weak_count_.load(std::memory_order_relaxed),
                       std::memory_order_relaxed);
     payload_handle_ = other.payload_handle_;
     payload_ptr_ = other.payload_ptr_;
     payload_pool_ = other.payload_pool_;
   }
-  WeakControlBlock &operator=(WeakControlBlock &&other) noexcept {
+  SharedControlBlock &operator=(SharedControlBlock &&other) noexcept {
     if (this != &other) {
+      strong_count_.store(other.strong_count_.load(std::memory_order_relaxed),
+                          std::memory_order_relaxed);
       weak_count_.store(other.weak_count_.load(std::memory_order_relaxed),
                         std::memory_order_relaxed);
       payload_handle_ = other.payload_handle_;
@@ -55,16 +61,16 @@ public:
     }
     return *this;
   }
-  ~WeakControlBlock() = default;
+  ~SharedControlBlock() = default;
 
   /**
    * @brief Returns true if payload binding is allowed.
    *
-   * Binding is only allowed when there is no payload currently bound and the
-   * weak reference count is zero.
+   * Binding is only allowed when there is no payload currently bound and both
+   * strong and weak reference counts are zero.
    */
   bool canBindPayload() const noexcept {
-    return payload_ptr_ == nullptr && weakCount() == 0;
+    return payload_ptr_ == nullptr && count() == 0 && weakCount() == 0;
   }
 
   /**
@@ -110,6 +116,44 @@ public:
   const Pool *payloadPool() const noexcept { return payload_pool_; }
 
   /**
+   * @brief Increments the strong reference count.
+   */
+  void acquire() noexcept {
+    strong_count_.fetch_add(1, std::memory_order_relaxed);
+  }
+
+  /**
+   * @brief Decrements the strong reference count.
+   *
+   * When the count reaches zero, attempts to release the payload back to the
+   * pool. Returns true if this call observed the transition to zero.
+   *
+   * @return True when this call drops the count from 1 to 0.
+   */
+  bool release() noexcept {
+    auto current = strong_count_.load(std::memory_order_acquire);
+    while (current > 0) {
+      if (strong_count_.compare_exchange_weak(current, current - 1,
+                                              std::memory_order_acq_rel,
+                                              std::memory_order_relaxed)) {
+        if (current == 1) {
+          tryReleasePayload();
+          return true;
+        }
+        return false;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * @brief Returns the current strong reference count.
+   */
+  std::uint32_t count() const noexcept {
+    return strong_count_.load(std::memory_order_acquire);
+  }
+
+  /**
    * @brief Increments the weak reference count.
    */
   void acquireWeak() noexcept {
@@ -128,7 +172,9 @@ public:
                                             std::memory_order_acq_rel,
                                             std::memory_order_relaxed)) {
         if (current == 1) {
-          clearPayload();
+          if (canShutdown()) {
+            clearPayload();
+          }
           return true;
         }
         return false;
@@ -145,19 +191,57 @@ public:
   }
 
   /**
+   * @brief Attempts to promote a weak reference to a strong reference.
+   *
+   * Promotion succeeds only if the strong count is non-zero at the time of
+   * the CAS loop. This does not validate payload creation; that is managed by
+   * higher-level systems.
+   */
+  bool tryPromote() noexcept {
+    std::uint32_t current = strong_count_.load(std::memory_order_acquire);
+    while (current > 0) {
+      if (strong_count_.compare_exchange_weak(current, current + 1,
+                                              std::memory_order_acquire,
+                                              std::memory_order_relaxed)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * @brief Returns true if the control block can be torn down.
    *
-   * For WeakControlBlock, this is equivalent to weak count == 0.
+   * For SharedControlBlock, this is equivalent to strong count == 0.
    */
-  bool canTeardown() const noexcept { return weakCount() == 0; }
+  bool canTeardown() const noexcept { return count() == 0; }
   /**
    * @brief Returns true if the control block can be safely shutdown.
    *
-   * For WeakControlBlock, this is equivalent to weak count == 0.
+   * Requires both strong and weak counts to be zero.
    */
-  bool canShutdown() const noexcept { return weakCount() == 0; }
+  bool canShutdown() const noexcept { return count() == 0 && weakCount() == 0; }
 
 private:
+  /**
+   * @brief Attempts to release the payload back to the pool.
+   *
+   * If the pool is null or the handle is invalid, no action is taken. When
+   * Pool::release returns true, the payload binding is cleared.
+   */
+  void tryReleasePayload() noexcept {
+    if (!payload_handle_.isValid()) {
+      return;
+    }
+    if (payload_pool_ == nullptr) {
+      clearPayload();
+      return;
+    }
+    if (payload_pool_->release(payload_handle_)) {
+      clearPayload();
+    }
+  }
+
   /**
    * @brief Binds payload metadata without validation.
    *
@@ -178,6 +262,7 @@ private:
     payload_pool_ = nullptr;
   }
 
+  std::atomic<std::uint32_t> strong_count_{0};
   std::atomic<std::uint32_t> weak_count_{0};
   Handle payload_handle_{Handle::invalid()};
   Payload *payload_ptr_{nullptr};

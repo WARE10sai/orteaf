@@ -6,10 +6,10 @@
 #include <cstdint>
 
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/execution/base/lease/control_block/strong.h"
-#include "orteaf/internal/execution/base/lease/strong_lease.h"
-#include "orteaf/internal/execution/base/manager/base_pool_manager_core.h"
-#include "orteaf/internal/execution/base/pool/slot_pool.h"
+#include "orteaf/internal/base/lease/control_block/strong.h"
+#include "orteaf/internal/base/lease/strong_lease.h"
+#include "orteaf/internal/base/manager/pool_manager.h"
+#include "orteaf/internal/base/pool/slot_pool.h"
 #include "orteaf/internal/execution/mps/platform/mps_slow_ops.h"
 #include "orteaf/internal/execution/mps/platform/wrapper/mps_fence.h"
 
@@ -62,7 +62,7 @@ using FencePayloadPool =
     ::orteaf::internal::execution::base::pool::SlotPool<FencePayloadPoolTraits>;
 
 // =============================================================================
-// ControlBlock (using default pool traits via BasePoolManagerCore)
+// ControlBlock (using default pool traits via PoolManager)
 // =============================================================================
 
 struct FenceControlBlockTag {};
@@ -73,7 +73,7 @@ using FenceControlBlock = ::orteaf::internal::execution::base::StrongControlBloc
     FencePayloadPool>;
 
 // =============================================================================
-// Manager Traits for BasePoolManagerCore
+// Manager Traits for PoolManager
 // =============================================================================
 
 struct MpsFenceManagerTraits {
@@ -97,7 +97,7 @@ public:
   using FenceType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsFence_t;
 
-  using Core = ::orteaf::internal::execution::base::BasePoolManagerCore<
+  using Core = ::orteaf::internal::execution::base::PoolManager<
       MpsFenceManagerTraits>;
   using ControlBlock = Core::ControlBlock;
   using ControlBlockHandle = Core::ControlBlockHandle;
