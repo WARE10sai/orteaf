@@ -14,7 +14,7 @@ template <typename Pool>
 concept PoolTypeConcept = requires {
   typename Pool::Payload;
   typename Pool::Handle;
-  typename Pool::SlotRef;
+  // SlotRef removed - use Handle and get(handle) instead
 };
 
 // =============================================================================
@@ -78,16 +78,16 @@ concept PayloadAccessConcept =
 template <typename Pool>
 concept CreatedSlotAcquirableConcept =
     PoolTypeConcept<Pool> && requires(Pool &pool) {
-      { pool.tryAcquireCreated() } -> std::same_as<typename Pool::SlotRef>;
-      { pool.acquireCreated() } -> std::same_as<typename Pool::SlotRef>;
+      { pool.tryAcquireCreated() } -> std::same_as<typename Pool::Handle>;
+      { pool.acquireCreated() } -> std::same_as<typename Pool::Handle>;
     };
 
 /// @brief 未作成スロットの予約をサポート
 template <typename Pool>
 concept UncreatedSlotReservableConcept =
     PoolTypeConcept<Pool> && requires(Pool &pool) {
-      { pool.tryReserveUncreated() } -> std::same_as<typename Pool::SlotRef>;
-      { pool.reserveUncreated() } -> std::same_as<typename Pool::SlotRef>;
+      { pool.tryReserveUncreated() } -> std::same_as<typename Pool::Handle>;
+      { pool.reserveUncreated() } -> std::same_as<typename Pool::Handle>;
     };
 
 // =============================================================================

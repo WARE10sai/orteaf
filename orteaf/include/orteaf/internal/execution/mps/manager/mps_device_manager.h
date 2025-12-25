@@ -227,9 +227,7 @@ public:
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
 
-  using DeviceLease =
-      ::orteaf::internal::base::WeakLease<ControlBlockHandle, ControlBlock,
-                                          ControlBlockPool, MpsDeviceManager>;
+  using DeviceLease = Core::WeakLeaseType;
 
   struct Config {
     SlowOps *ops{nullptr};

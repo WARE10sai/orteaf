@@ -33,7 +33,7 @@ public:
   using ControlBlockHandle = ControlBlockHandleT;
   using Handle = typename Base::Handle;
   using Config = typename Base::Config;
-  using SlotRef = typename Base::SlotRef;
+  // SlotRef removed - use Handle and get(handle) instead
 
   // ===========================================================================
   // Lifecycle

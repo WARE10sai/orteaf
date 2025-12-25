@@ -132,53 +132,7 @@ void MpsDeviceManager::shutdown() {
 }
 
 MpsDeviceManager::DeviceLease MpsDeviceManager::acquire(DeviceHandle handle) {
-  core_.ensureConfigured();
-  if (!core_.payloadPool().isValid(handle)) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-        "MPS device handle is invalid");
-  }
-  if (!core_.payloadPool().isCreated(handle)) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS device is unavailable");
-  }
-  auto *payload_ptr = core_.payloadPool().get(handle);
-  if (payload_ptr == nullptr) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS device payload is unavailable");
-  }
-
-  // Check if this payload already has a bound control block
-  if (core_.payloadPool().hasBoundControlBlock(handle)) {
-    auto existing_cb_handle = core_.payloadPool().getBoundControlBlock(handle);
-    auto *cb_ptr = core_.getControlBlock(existing_cb_handle);
-    if (cb_ptr != nullptr) {
-      // Reuse existing CB by acquiring weak reference
-      cb_ptr->acquireWeak();
-      return DeviceLease{cb_ptr, core_.controlBlockPoolForLease(),
-                         existing_cb_handle};
-    }
-    // CB was released/invalid, unbind it
-    core_.payloadPool().unbindControlBlock(handle);
-  }
-
-  // Create new CB and bind to payload
-  auto cb_ref = core_.acquireControlBlock();
-  if (!cb_ref.payload_ptr->tryBindPayload(handle, payload_ptr,
-                                          &core_.payloadPool())) {
-    core_.releaseControlBlock(cb_ref.handle);
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS device control block binding failed");
-  }
-
-  // Store CB handle in payload pool for future lookups
-  core_.payloadPool().bindControlBlock(handle, cb_ref.handle);
-
-  return DeviceLease{cb_ref.payload_ptr, core_.controlBlockPoolForLease(),
-                     cb_ref.handle};
+  return core_.acquireWeakLease(handle);
 }
 
 ::orteaf::internal::architecture::Architecture
