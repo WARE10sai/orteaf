@@ -59,7 +59,7 @@ struct CommandQueuePayloadPoolTraits {
 };
 
 using CommandQueuePayloadPool =
-    ::orteaf::internal::execution::base::pool::SlotPool<
+    ::orteaf::internal::base::pool::SlotPool<
         CommandQueuePayloadPoolTraits>;
 
 // =============================================================================
@@ -69,7 +69,7 @@ using CommandQueuePayloadPool =
 struct CommandQueueControlBlockTag {};
 
 using CommandQueueControlBlock =
-    ::orteaf::internal::execution::base::WeakControlBlock<
+    ::orteaf::internal::base::WeakControlBlock<
         ::orteaf::internal::base::CommandQueueHandle,
         ::orteaf::internal::execution::mps::platform::wrapper::MpsCommandQueue_t,
         CommandQueuePayloadPool>;
@@ -99,13 +99,13 @@ public:
   using CommandQueueType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsCommandQueue_t;
 
-  using Core = ::orteaf::internal::execution::base::PoolManager<
+  using Core = ::orteaf::internal::base::PoolManager<
       MpsCommandQueueManagerTraits>;
   using ControlBlock = Core::ControlBlock;
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
 
-  using CommandQueueLease = ::orteaf::internal::execution::base::WeakLease<
+  using CommandQueueLease = ::orteaf::internal::base::WeakLease<
       ControlBlockHandle, ControlBlock, ControlBlockPool,
       MpsCommandQueueManager>;
 

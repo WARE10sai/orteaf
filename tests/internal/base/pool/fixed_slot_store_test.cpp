@@ -53,9 +53,9 @@ struct DestroyOnReleaseTraits {
 };
 
 using Store =
-    ::orteaf::internal::execution::base::pool::FixedSlotStore<DummyTraits>;
+    ::orteaf::internal::base::pool::FixedSlotStore<DummyTraits>;
 using DestroyOnReleaseStore =
-    ::orteaf::internal::execution::base::pool::FixedSlotStore<
+    ::orteaf::internal::base::pool::FixedSlotStore<
         DestroyOnReleaseTraits>;
 
 Store makeStore(std::size_t capacity) {

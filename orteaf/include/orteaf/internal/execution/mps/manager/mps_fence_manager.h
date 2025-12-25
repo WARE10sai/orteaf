@@ -59,7 +59,7 @@ struct FencePayloadPoolTraits {
 };
 
 using FencePayloadPool =
-    ::orteaf::internal::execution::base::pool::SlotPool<FencePayloadPoolTraits>;
+    ::orteaf::internal::base::pool::SlotPool<FencePayloadPoolTraits>;
 
 // =============================================================================
 // ControlBlock (using default pool traits via PoolManager)
@@ -67,7 +67,7 @@ using FencePayloadPool =
 
 struct FenceControlBlockTag {};
 
-using FenceControlBlock = ::orteaf::internal::execution::base::StrongControlBlock<
+using FenceControlBlock = ::orteaf::internal::base::StrongControlBlock<
     ::orteaf::internal::base::FenceHandle,
     ::orteaf::internal::execution::mps::platform::wrapper::MpsFence_t,
     FencePayloadPool>;
@@ -97,13 +97,13 @@ public:
   using FenceType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsFence_t;
 
-  using Core = ::orteaf::internal::execution::base::PoolManager<
+  using Core = ::orteaf::internal::base::PoolManager<
       MpsFenceManagerTraits>;
   using ControlBlock = Core::ControlBlock;
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
 
-  using FenceLease = ::orteaf::internal::execution::base::StrongLease<
+  using FenceLease = ::orteaf::internal::base::StrongLease<
       ControlBlockHandle, ControlBlock, ControlBlockPool, MpsFenceManager>;
 
 private:

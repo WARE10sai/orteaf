@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <type_traits>
 
-namespace orteaf::internal::execution::base {
+namespace orteaf::internal::base {
 
 // =============================================================================
 // Base ControlBlock Concept
@@ -82,4 +82,4 @@ concept PayloadConcept =
     std::is_default_constructible_v<P> && std::is_move_constructible_v<P> &&
     std::is_move_assignable_v<P>;
 
-} // namespace orteaf::internal::execution::base
+} // namespace orteaf::internal::base

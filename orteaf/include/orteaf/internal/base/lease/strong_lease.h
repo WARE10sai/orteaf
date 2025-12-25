@@ -5,7 +5,7 @@
 
 #include "orteaf/internal/base/lease/category.h"
 
-namespace orteaf::internal::execution::base {
+namespace orteaf::internal::base {
 
 template <class HandleT, class ControlBlockT, class PoolT, class ManagerT>
 class StrongLease;
@@ -336,4 +336,4 @@ private:
   HandleT handle_{};                      ///< Control block handle.
 };
 
-} // namespace orteaf::internal::execution::base
+} // namespace orteaf::internal::base

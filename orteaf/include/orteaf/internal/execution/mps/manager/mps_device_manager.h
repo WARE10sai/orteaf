@@ -169,7 +169,7 @@ struct DevicePayloadPoolTraits {
 };
 
 using DevicePayloadPool =
-    ::orteaf::internal::execution::base::pool::FixedSlotStore<
+    ::orteaf::internal::base::pool::FixedSlotStore<
         DevicePayloadPoolTraits>;
 
 // =============================================================================
@@ -178,7 +178,7 @@ using DevicePayloadPool =
 
 struct DeviceControlBlockTag {};
 
-using DeviceControlBlock = ::orteaf::internal::execution::base::WeakControlBlock<
+using DeviceControlBlock = ::orteaf::internal::base::WeakControlBlock<
     ::orteaf::internal::base::DeviceHandle, MpsDeviceResource,
     DevicePayloadPool>;
 
@@ -205,13 +205,13 @@ public:
   using DeviceType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsDevice_t;
 
-  using Core = ::orteaf::internal::execution::base::PoolManager<
+  using Core = ::orteaf::internal::base::PoolManager<
       MpsDeviceManagerTraits>;
   using ControlBlock = Core::ControlBlock;
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
 
-  using DeviceLease = ::orteaf::internal::execution::base::WeakLease<
+  using DeviceLease = ::orteaf::internal::base::WeakLease<
       ControlBlockHandle, ControlBlock, ControlBlockPool, MpsDeviceManager>;
 
   struct Config {

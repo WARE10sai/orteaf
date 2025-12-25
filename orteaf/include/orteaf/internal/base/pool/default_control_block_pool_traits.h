@@ -6,7 +6,7 @@
 #include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/base/pool/slot_pool.h"
 
-namespace orteaf::internal::execution::base::pool {
+namespace orteaf::internal::base::pool {
 
 // =============================================================================
 // Default ControlBlock Handle
@@ -83,4 +83,4 @@ template <typename ControlBlockType, typename HandleTag>
 using ControlBlockPool =
     SlotPool<DefaultControlBlockPoolTraits<ControlBlockType, HandleTag>>;
 
-} // namespace orteaf::internal::execution::base::pool
+} // namespace orteaf::internal::base::pool

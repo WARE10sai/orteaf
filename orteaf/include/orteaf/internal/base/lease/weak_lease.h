@@ -6,7 +6,7 @@
 #include "orteaf/internal/base/lease/category.h"
 #include "orteaf/internal/base/lease/strong_lease.h"
 
-namespace orteaf::internal::execution::base {
+namespace orteaf::internal::base {
 
 /**
  * @brief Weak lease providing non-owning reference to a resource via control
@@ -63,7 +63,8 @@ public:
   using PoolType = PoolT;
   /// @brief Manager type that creates leases.
   using ManagerType = ManagerT;
-  /// @brief Category tag indicating this lease is compatible with shared leases.
+  /// @brief Category tag indicating this lease is compatible with shared
+  /// leases.
   using CompatibleCategory = lease_category::Shared;
   /// @brief The corresponding strong lease type for promotion.
   using StrongLeaseType = StrongLease<HandleT, ControlBlockT, PoolT, ManagerT>;
@@ -358,4 +359,4 @@ private:
   HandleT handle_{};                      ///< Control block handle.
 };
 
-} // namespace orteaf::internal::execution::base
+} // namespace orteaf::internal::base

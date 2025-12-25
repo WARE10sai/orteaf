@@ -8,7 +8,7 @@
 
 #include <orteaf/internal/base/lease/category.h>
 
-namespace orteaf::internal::execution::base {
+namespace orteaf::internal::base {
 
 /**
  * @brief Shared + weak control block with handle/payload/pool binding.
@@ -269,4 +269,4 @@ private:
   Pool *payload_pool_{nullptr};
 };
 
-} // namespace orteaf::internal::execution::base
+} // namespace orteaf::internal::base

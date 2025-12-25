@@ -139,7 +139,7 @@ struct GraphPayloadPoolTraits {
 };
 
 using GraphPayloadPool =
-    ::orteaf::internal::execution::base::pool::FixedSlotStore<
+    ::orteaf::internal::base::pool::FixedSlotStore<
         GraphPayloadPoolTraits>;
 
 // =============================================================================
@@ -148,7 +148,7 @@ using GraphPayloadPool =
 
 struct GraphControlBlockTag {};
 
-using GraphControlBlock = ::orteaf::internal::execution::base::StrongControlBlock<
+using GraphControlBlock = ::orteaf::internal::base::StrongControlBlock<
     ::orteaf::internal::base::GraphHandle, MpsGraphResource, GraphPayloadPool>;
 
 // =============================================================================
@@ -168,7 +168,7 @@ struct MpsGraphManagerTraits {
 // =============================================================================
 
 class MpsGraphManager {
-  using Core = ::orteaf::internal::execution::base::PoolManager<
+  using Core = ::orteaf::internal::base::PoolManager<
       MpsGraphManagerTraits>;
 
 public:
@@ -180,7 +180,7 @@ public:
       ::orteaf::internal::execution::mps::platform::wrapper::MpsGraphExecutable_t;
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
-  using GraphLease = ::orteaf::internal::execution::base::StrongLease<
+  using GraphLease = ::orteaf::internal::base::StrongLease<
       ControlBlockHandle, GraphControlBlock, ControlBlockPool,
       MpsGraphManager>;
   using CompileFn = std::function<ExecutableType(

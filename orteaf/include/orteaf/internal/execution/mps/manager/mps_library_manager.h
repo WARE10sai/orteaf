@@ -102,11 +102,11 @@ struct LibraryPayloadPoolTraits {
 };
 
 using LibraryPayloadPool =
-    ::orteaf::internal::execution::base::pool::FixedSlotStore<
+    ::orteaf::internal::base::pool::FixedSlotStore<
         LibraryPayloadPoolTraits>;
 
 // ControlBlock type using WeakControlBlock
-using LibraryControlBlock = ::orteaf::internal::execution::base::WeakControlBlock<
+using LibraryControlBlock = ::orteaf::internal::base::WeakControlBlock<
     ::orteaf::internal::base::LibraryHandle, MpsLibraryResource,
     LibraryPayloadPool>;
 
@@ -121,7 +121,7 @@ struct MpsLibraryManagerTraits {
 
 class MpsLibraryManager {
 public:
-  using Core = ::orteaf::internal::execution::base::PoolManager<
+  using Core = ::orteaf::internal::base::PoolManager<
       MpsLibraryManagerTraits>;
   using SlowOps = ::orteaf::internal::execution::mps::platform::MpsSlowOps;
   using DeviceType =
@@ -130,7 +130,7 @@ public:
   using LibraryHandle = ::orteaf::internal::base::LibraryHandle;
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
-  using LibraryLease = ::orteaf::internal::execution::base::WeakLease<
+  using LibraryLease = ::orteaf::internal::base::WeakLease<
       ControlBlockHandle, LibraryControlBlock, ControlBlockPool,
       MpsLibraryManager>;
 

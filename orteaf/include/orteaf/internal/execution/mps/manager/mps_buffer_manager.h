@@ -112,7 +112,7 @@ template <typename ResourceT> struct BufferPayloadPoolTraitsT {
 // PayloadPool type alias
 // ============================================================================
 template <typename ResourceT>
-using BufferPayloadPoolT = ::orteaf::internal::execution::base::pool::SlotPool<
+using BufferPayloadPoolT = ::orteaf::internal::base::pool::SlotPool<
     BufferPayloadPoolTraitsT<ResourceT>>;
 
 // ============================================================================
@@ -120,7 +120,7 @@ using BufferPayloadPoolT = ::orteaf::internal::execution::base::pool::SlotPool<
 // ============================================================================
 template <typename ResourceT>
 using BufferControlBlockT =
-    ::orteaf::internal::execution::base::SharedControlBlock<
+    ::orteaf::internal::base::SharedControlBlock<
         ::orteaf::internal::base::BufferHandle,
         ::orteaf::internal::execution::allocator::Buffer,
         BufferPayloadPoolT<ResourceT>>;
@@ -142,7 +142,7 @@ template <typename ResourceT> struct MpsBufferManagerTraitsT {
 template <typename ResourceT> class MpsBufferManagerT {
 public:
   using Traits = MpsBufferManagerTraitsT<ResourceT>;
-  using Core = ::orteaf::internal::execution::base::PoolManager<Traits>;
+  using Core = ::orteaf::internal::base::PoolManager<Traits>;
   using Buffer = ::orteaf::internal::execution::allocator::Buffer;
   using BufferHandle = ::orteaf::internal::base::BufferHandle;
   using SegregatePool = MpsBufferPoolT<ResourceT>;
@@ -157,9 +157,9 @@ public:
   using PayloadPool = typename Core::PayloadPool;
 
   // Lease types
-  using StrongBufferLease = ::orteaf::internal::execution::base::StrongLease<
+  using StrongBufferLease = ::orteaf::internal::base::StrongLease<
       ControlBlockHandle, ControlBlock, ControlBlockPool, MpsBufferManagerT>;
-  using WeakBufferLease = ::orteaf::internal::execution::base::WeakLease<
+  using WeakBufferLease = ::orteaf::internal::base::WeakLease<
       ControlBlockHandle, ControlBlock, ControlBlockPool, MpsBufferManagerT>;
   // Legacy alias for compatibility
   using BufferLease = StrongBufferLease;

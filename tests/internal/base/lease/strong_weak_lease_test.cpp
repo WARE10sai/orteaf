@@ -25,13 +25,13 @@ struct DummyPool {
   std::size_t release_calls{0};
 };
 
-using ControlBlock = ::orteaf::internal::execution::base::SharedControlBlock<
+using ControlBlock = ::orteaf::internal::base::SharedControlBlock<
     ControlBlockHandle, int, DummyPool>;
 
 struct DummyManager {
-  using StrongLease = ::orteaf::internal::execution::base::StrongLease<
+  using StrongLease = ::orteaf::internal::base::StrongLease<
       ControlBlockHandle, ControlBlock, DummyPool, DummyManager>;
-  using WeakLease = ::orteaf::internal::execution::base::WeakLease<
+  using WeakLease = ::orteaf::internal::base::WeakLease<
       ControlBlockHandle, ControlBlock, DummyPool, DummyManager>;
 
   static StrongLease makeStrong(ControlBlock *control_block, DummyPool *pool,
