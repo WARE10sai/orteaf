@@ -92,10 +92,12 @@ struct GraphPayloadPoolTraits {
       ::orteaf::internal::execution::mps::platform::wrapper::MpsDevice_t;
   using SlowOps = ::orteaf::internal::execution::mps::platform::MpsSlowOps;
 
-  using CompileFn = std::function<
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsGraphExecutable_t(
-          ::orteaf::internal::execution::mps::platform::wrapper::MpsGraph_t graph,
-          DeviceType device, SlowOps *slow_ops)>;
+  using CompileFn =
+      std::function<::orteaf::internal::execution::mps::platform::wrapper::
+                        MpsGraphExecutable_t(
+                            ::orteaf::internal::execution::mps::platform::
+                                wrapper::MpsGraph_t graph,
+                            DeviceType device, SlowOps *slow_ops)>;
 
   struct Request {
     const CompileFn *compile_fn{nullptr};
@@ -139,8 +141,7 @@ struct GraphPayloadPoolTraits {
 };
 
 using GraphPayloadPool =
-    ::orteaf::internal::base::pool::FixedSlotStore<
-        GraphPayloadPoolTraits>;
+    ::orteaf::internal::base::pool::FixedSlotStore<GraphPayloadPoolTraits>;
 
 // =============================================================================
 // ControlBlock
@@ -168,21 +169,18 @@ struct MpsGraphManagerTraits {
 // =============================================================================
 
 class MpsGraphManager {
-  using Core = ::orteaf::internal::base::PoolManager<
-      MpsGraphManagerTraits>;
+  using Core = ::orteaf::internal::base::PoolManager<MpsGraphManagerTraits>;
 
 public:
   using SlowOps = ::orteaf::internal::execution::mps::platform::MpsSlowOps;
   using DeviceType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsDevice_t;
   using GraphHandle = ::orteaf::internal::base::GraphHandle;
-  using ExecutableType =
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsGraphExecutable_t;
+  using ExecutableType = ::orteaf::internal::execution::mps::platform::wrapper::
+      MpsGraphExecutable_t;
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
-  using GraphLease = ::orteaf::internal::base::StrongLease<
-      ControlBlockHandle, GraphControlBlock, ControlBlockPool,
-      MpsGraphManager>;
+  using GraphLease = Core::StrongLeaseType;
   using CompileFn = std::function<ExecutableType(
       ::orteaf::internal::execution::mps::platform::wrapper::MpsGraph_t graph,
       DeviceType device, SlowOps *slow_ops)>;
@@ -242,7 +240,6 @@ public:
 
 private:
   void validateKey(const GraphKey &key) const;
-  GraphLease buildLease(GraphHandle handle, MpsGraphResource *payload_ptr);
   GraphPayloadPoolTraits::Context makePayloadContext() const noexcept;
 
   std::unordered_map<GraphKey, std::size_t, GraphKeyHasher> key_to_index_{};

@@ -54,8 +54,8 @@ struct FunctionKeyHasher {
 struct MpsPipelineResource {
   ::orteaf::internal::execution::mps::platform::wrapper::MpsFunction_t function{
       nullptr};
-  ::orteaf::internal::execution::mps::platform::wrapper::MpsComputePipelineState_t
-      pipeline_state{nullptr};
+  ::orteaf::internal::execution::mps::platform::wrapper::
+      MpsComputePipelineState_t pipeline_state{nullptr};
 };
 
 struct PipelinePayloadPoolTraits {
@@ -112,15 +112,13 @@ struct PipelinePayloadPoolTraits {
 };
 
 using PipelinePayloadPool =
-    ::orteaf::internal::base::pool::FixedSlotStore<
-        PipelinePayloadPoolTraits>;
+    ::orteaf::internal::base::pool::FixedSlotStore<PipelinePayloadPoolTraits>;
 
 struct PipelineControlBlockTag {};
 
-using PipelineControlBlock =
-    ::orteaf::internal::base::WeakControlBlock<
-        ::orteaf::internal::base::FunctionHandle, MpsPipelineResource,
-        PipelinePayloadPool>;
+using PipelineControlBlock = ::orteaf::internal::base::WeakControlBlock<
+    ::orteaf::internal::base::FunctionHandle, MpsPipelineResource,
+    PipelinePayloadPool>;
 
 struct MpsComputePipelineStateManagerTraits {
   using PayloadPool = PipelinePayloadPool;
@@ -145,9 +143,7 @@ public:
       MpsComputePipelineState_t;
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
-  using PipelineLease = ::orteaf::internal::base::WeakLease<
-      ControlBlockHandle, PipelineControlBlock, ControlBlockPool,
-      MpsComputePipelineStateManager>;
+  using PipelineLease = Core::WeakLeaseType;
 
   MpsComputePipelineStateManager() = default;
   MpsComputePipelineStateManager(const MpsComputePipelineStateManager &) =
@@ -216,8 +212,6 @@ private:
   friend PipelineLease;
 
   void validateKey(const FunctionKey &key) const;
-  PipelineLease buildLease(FunctionHandle handle,
-                           MpsPipelineResource *payload_ptr);
   PipelinePayloadPoolTraits::Context makePayloadContext() const noexcept;
 
   std::unordered_map<FunctionKey, std::size_t, FunctionKeyHasher> key_to_index_{};

@@ -97,14 +97,12 @@ public:
   using EventType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsEvent_t;
 
-  using Core = ::orteaf::internal::base::PoolManager<
-      MpsEventManagerTraits>;
+  using Core = ::orteaf::internal::base::PoolManager<MpsEventManagerTraits>;
   using ControlBlock = Core::ControlBlock;
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
 
-  using EventLease = ::orteaf::internal::base::StrongLease<
-      ControlBlockHandle, ControlBlock, ControlBlockPool, MpsEventManager>;
+  using EventLease = Core::StrongLeaseType;
 
 private:
   friend EventLease;
@@ -162,8 +160,6 @@ public:
 
 private:
   EventPayloadPoolTraits::Context makePayloadContext() const noexcept;
-  EventLease buildLease(ControlBlock &cb, EventHandle payload_handle,
-                        ControlBlockHandle cb_handle);
 
   DeviceType device_{nullptr};
   SlowOps *ops_{nullptr};

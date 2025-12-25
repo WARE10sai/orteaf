@@ -158,7 +158,7 @@ MpsHeapManager::acquire(const HeapDescriptorKey &key) {
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
           "Cached heap index is invalid");
     }
-    return buildLease(handle, payload_ptr);
+    return core_.acquireWeakLease(handle);
   }
 
   // Reserve an uncreated slot and create the heap
@@ -183,7 +183,7 @@ MpsHeapManager::acquire(const HeapDescriptorKey &key) {
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "Heap payload is unavailable");
   }
-  return buildLease(handle, payload_ptr);
+  return core_.acquireWeakLease(handle);
 }
 
 MpsHeapManager::BufferManager *
@@ -226,23 +226,6 @@ void MpsHeapManager::validateKey(const HeapDescriptorKey &key) const {
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "Heap size must be > 0");
   }
-}
-
-MpsHeapManager::HeapLease
-MpsHeapManager::buildLease(HeapHandle handle, MpsHeapResource *payload_ptr) {
-  // Acquire control block
-  auto cb_handle = core_.acquireControlBlock();
-  auto *cb = core_.getControlBlock(cb_handle);
-
-  // Bind payload to control block
-  if (!cb->tryBindPayload(handle, payload_ptr, &core_.payloadPool())) {
-    core_.releaseControlBlock(cb_handle);
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "Failed to bind heap payload to control block");
-  }
-
-  return HeapLease{cb, core_.controlBlockPoolForLease(), cb_handle};
 }
 
 HeapPayloadPoolTraits::Context

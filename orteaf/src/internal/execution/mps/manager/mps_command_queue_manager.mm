@@ -105,27 +105,7 @@ MpsCommandQueueManager::CommandQueueLease MpsCommandQueueManager::acquire() {
         ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
         "MPS command queue manager has no available slots");
   }
-
-  auto cb_handle = core_.acquireControlBlock();
-  auto *cb = core_.getControlBlock(cb_handle);
-  if (cb == nullptr) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS command queue control block is unavailable");
-  }
-
-  auto *payload_ptr = core_.payloadPool().get(handle);
-  if (payload_ptr == nullptr) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS command queue payload is unavailable");
-  }
-  if (!cb->tryBindPayload(handle, payload_ptr, &core_.payloadPool())) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS command queue control block binding failed");
-  }
-  return CommandQueueLease{cb, core_.controlBlockPoolForLease(), cb_handle};
+  return core_.acquireWeakLease(handle);
 }
 
 MpsCommandQueueManager::CommandQueueLease
@@ -144,21 +124,7 @@ MpsCommandQueueManager::acquire(CommandQueueHandle handle) {
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "Command queue handle does not exist");
   }
-
-  auto cb_handle = core_.acquireControlBlock();
-  auto *cb = core_.getControlBlock(cb_handle);
-  if (cb == nullptr) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS command queue control block is unavailable");
-  }
-
-  if (!cb->tryBindPayload(handle, payload_ptr, &core_.payloadPool())) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS command queue control block binding failed");
-  }
-  return CommandQueueLease{cb, core_.controlBlockPoolForLease(), cb_handle};
+  return core_.acquireWeakLease(handle);
 }
 
 } // namespace orteaf::internal::execution::mps::manager

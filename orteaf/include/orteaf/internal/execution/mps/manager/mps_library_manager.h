@@ -78,8 +78,8 @@ struct LibraryPayloadPoolTraits {
     if (context.ops == nullptr || context.device == nullptr) {
       return false;
     }
-    payload.library =
-        context.ops->createLibraryWithName(context.device, request.key.identifier);
+    payload.library = context.ops->createLibraryWithName(
+        context.device, request.key.identifier);
     if (payload.library == nullptr) {
       return false;
     }
@@ -102,8 +102,7 @@ struct LibraryPayloadPoolTraits {
 };
 
 using LibraryPayloadPool =
-    ::orteaf::internal::base::pool::FixedSlotStore<
-        LibraryPayloadPoolTraits>;
+    ::orteaf::internal::base::pool::FixedSlotStore<LibraryPayloadPoolTraits>;
 
 // ControlBlock type using WeakControlBlock
 using LibraryControlBlock = ::orteaf::internal::base::WeakControlBlock<
@@ -121,8 +120,7 @@ struct MpsLibraryManagerTraits {
 
 class MpsLibraryManager {
 public:
-  using Core = ::orteaf::internal::base::PoolManager<
-      MpsLibraryManagerTraits>;
+  using Core = ::orteaf::internal::base::PoolManager<MpsLibraryManagerTraits>;
   using SlowOps = ::orteaf::internal::execution::mps::platform::MpsSlowOps;
   using DeviceType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsDevice_t;
@@ -130,9 +128,7 @@ public:
   using LibraryHandle = ::orteaf::internal::base::LibraryHandle;
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
-  using LibraryLease = ::orteaf::internal::base::WeakLease<
-      ControlBlockHandle, LibraryControlBlock, ControlBlockPool,
-      MpsLibraryManager>;
+  using LibraryLease = Core::WeakLeaseType;
 
   MpsLibraryManager() = default;
   MpsLibraryManager(const MpsLibraryManager &) = delete;
@@ -196,7 +192,6 @@ private:
   friend LibraryLease;
 
   void validateKey(const LibraryKey &key) const;
-  LibraryLease buildLease(LibraryHandle handle, MpsLibraryResource *payload_ptr);
   LibraryPayloadPoolTraits::Context makePayloadContext() const noexcept;
 
   std::unordered_map<LibraryKey, std::size_t, LibraryKeyHasher> key_to_index_{};

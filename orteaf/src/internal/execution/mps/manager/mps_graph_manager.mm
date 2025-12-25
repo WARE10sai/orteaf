@@ -107,7 +107,7 @@ MpsGraphManager::acquire(const GraphKey &key, const CompileFn &compile_fn) {
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
           "MPS graph cache is invalid");
     }
-    return buildLease(handle, payload_ptr);
+    return core_.acquireStrongLease(handle);
   }
 
   if (next_index_ >= core_.payloadPool().size()) {
@@ -137,7 +137,7 @@ MpsGraphManager::acquire(const GraphKey &key, const CompileFn &compile_fn) {
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS graph payload is unavailable");
   }
-  return buildLease(handle, payload_ptr);
+  return core_.acquireStrongLease(handle);
 }
 
 void MpsGraphManager::validateKey(const GraphKey &key) const {
@@ -157,29 +157,6 @@ void MpsGraphManager::validateKey(const GraphKey &key) const {
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "Graph target tensor count must be > 0");
   }
-}
-
-MpsGraphManager::GraphLease
-MpsGraphManager::buildLease(GraphHandle handle, MpsGraphResource *payload_ptr) {
-  auto cb_handle = core_.acquireControlBlock();
-  auto *cb = core_.getControlBlock(cb_handle);
-  if (cb == nullptr) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS graph control block is unavailable");
-  }
-  if (cb->hasPayload()) {
-    if (cb->payloadHandle() != handle) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          "MPS graph control block payload mismatch");
-    }
-  } else if (!cb->tryBindPayload(handle, payload_ptr, &core_.payloadPool())) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS graph control block binding failed");
-  }
-  return GraphLease{cb, core_.controlBlockPoolForLease(), cb_handle};
 }
 
 GraphPayloadPoolTraits::Context

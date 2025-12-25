@@ -97,14 +97,12 @@ public:
   using FenceType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsFence_t;
 
-  using Core = ::orteaf::internal::base::PoolManager<
-      MpsFenceManagerTraits>;
+  using Core = ::orteaf::internal::base::PoolManager<MpsFenceManagerTraits>;
   using ControlBlock = Core::ControlBlock;
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
 
-  using FenceLease = ::orteaf::internal::base::StrongLease<
-      ControlBlockHandle, ControlBlock, ControlBlockPool, MpsFenceManager>;
+  using FenceLease = Core::StrongLeaseType;
 
 private:
   friend FenceLease;
@@ -162,8 +160,6 @@ public:
 
 private:
   FencePayloadPoolTraits::Context makePayloadContext() const noexcept;
-  FenceLease buildLease(ControlBlock &cb, FenceHandle payload_handle,
-                        ControlBlockHandle cb_handle);
 
   DeviceType device_{nullptr};
   SlowOps *ops_{nullptr};

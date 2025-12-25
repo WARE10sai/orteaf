@@ -104,44 +104,12 @@ MpsFenceManager::FenceLease MpsFenceManager::acquire() {
         ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
         "MPS fence manager has no available slots");
   }
-
-  auto cb_handle = core_.acquireControlBlock();
-  auto *cb = core_.getControlBlock(cb_handle);
-  if (cb == nullptr) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS fence control block is unavailable");
-  }
-  return buildLease(*cb, handle, cb_handle);
+  return core_.acquireStrongLease(handle);
 }
 
 FencePayloadPoolTraits::Context
 MpsFenceManager::makePayloadContext() const noexcept {
   return FencePayloadPoolTraits::Context{device_, ops_};
-}
-
-MpsFenceManager::FenceLease
-MpsFenceManager::buildLease(ControlBlock &cb, FenceHandle payload_handle,
-                            ControlBlockHandle cb_handle) {
-  auto *payload_ptr = core_.payloadPool().get(payload_handle);
-  if (payload_ptr == nullptr) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS fence payload is unavailable");
-  }
-  if (cb.hasPayload()) {
-    if (cb.payloadHandle() != payload_handle) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          "MPS fence control block payload mismatch");
-    }
-  } else if (!cb.tryBindPayload(payload_handle, payload_ptr,
-                                &core_.payloadPool())) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS fence control block binding failed");
-  }
-  return FenceLease{&cb, core_.controlBlockPoolForLease(), cb_handle};
 }
 
 } // namespace orteaf::internal::execution::mps::manager

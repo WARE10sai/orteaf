@@ -34,11 +34,11 @@ struct HeapDescriptorKey {
       cpu_cache_mode{::orteaf::internal::execution::mps::platform::wrapper::
                          kMPSCPUCacheModeDefaultCache};
   ::orteaf::internal::execution::mps::platform::wrapper::MpsHazardTrackingMode_t
-      hazard_tracking_mode{::orteaf::internal::execution::mps::platform::wrapper::
-                               kMPSHazardTrackingModeDefault};
-  ::orteaf::internal::execution::mps::platform::wrapper::MpsHeapType_t heap_type{
-      ::orteaf::internal::execution::mps::platform::wrapper::
-          kMPSHeapTypeAutomatic};
+      hazard_tracking_mode{::orteaf::internal::execution::mps::platform::
+                               wrapper::kMPSHazardTrackingModeDefault};
+  ::orteaf::internal::execution::mps::platform::wrapper::MpsHeapType_t
+      heap_type{::orteaf::internal::execution::mps::platform::wrapper::
+                    kMPSHeapTypeAutomatic};
 
   static HeapDescriptorKey Sized(std::size_t size) {
     HeapDescriptorKey key{};
@@ -71,7 +71,8 @@ struct HeapDescriptorKeyHasher {
 // =============================================================================
 
 struct MpsHeapResource {
-  ::orteaf::internal::execution::mps::platform::wrapper::MpsHeap_t heap{nullptr};
+  ::orteaf::internal::execution::mps::platform::wrapper::MpsHeap_t heap{
+      nullptr};
   MpsBufferManagerT<
       ::orteaf::internal::execution::allocator::resource::mps::MpsResource>
       buffer_manager{};
@@ -108,8 +109,8 @@ struct HeapPayloadPoolTraits {
                       const Context &context);
 };
 
-using HeapPayloadPool = ::orteaf::internal::base::pool::FixedSlotStore<
-    HeapPayloadPoolTraits>;
+using HeapPayloadPool =
+    ::orteaf::internal::base::pool::FixedSlotStore<HeapPayloadPoolTraits>;
 
 // =============================================================================
 // ControlBlock type using WeakControlBlock
@@ -135,8 +136,7 @@ struct MpsHeapManagerTraits {
 // =============================================================================
 
 class MpsHeapManager {
-  using Core = ::orteaf::internal::base::PoolManager<
-      MpsHeapManagerTraits>;
+  using Core = ::orteaf::internal::base::PoolManager<MpsHeapManagerTraits>;
 
 public:
   using SlowOps = ::orteaf::internal::execution::mps::platform::MpsSlowOps;
@@ -149,8 +149,7 @@ public:
       ::orteaf::internal::execution::allocator::resource::mps::MpsResource>;
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
-  using HeapLease = ::orteaf::internal::base::WeakLease<
-      ControlBlockHandle, HeapControlBlock, ControlBlockPool, MpsHeapManager>;
+  using HeapLease = Core::WeakLeaseType;
 
   MpsHeapManager() = default;
   MpsHeapManager(const MpsHeapManager &) = delete;
@@ -218,7 +217,6 @@ private:
   friend HeapLease;
 
   void validateKey(const HeapDescriptorKey &key) const;
-  HeapLease buildLease(HeapHandle handle, MpsHeapResource *payload_ptr);
   HeapPayloadPoolTraits::Context makePayloadContext() const noexcept;
   HeapType createHeap(const HeapDescriptorKey &key);
 

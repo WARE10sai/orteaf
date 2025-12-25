@@ -104,7 +104,7 @@ MpsLibraryManager::acquire(const LibraryKey &key) {
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
           "MPS library cache is invalid");
     }
-    return buildLease(handle, payload_ptr);
+    return core_.acquireWeakLease(handle);
   }
 
   // Reserve an uncreated slot and create the library
@@ -130,7 +130,7 @@ MpsLibraryManager::acquire(const LibraryKey &key) {
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS library payload is unavailable");
   }
-  return buildLease(handle, payload_ptr);
+  return core_.acquireWeakLease(handle);
 }
 
 MpsLibraryManager::LibraryLease
@@ -147,7 +147,7 @@ MpsLibraryManager::acquire(LibraryHandle handle) {
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "Library handle does not exist");
   }
-  return buildLease(handle, payload_ptr);
+  return core_.acquireWeakLease(handle);
 }
 
 void MpsLibraryManager::validateKey(const LibraryKey &key) const {
@@ -156,30 +156,6 @@ void MpsLibraryManager::validateKey(const LibraryKey &key) const {
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "Library identifier cannot be empty");
   }
-}
-
-MpsLibraryManager::LibraryLease
-MpsLibraryManager::buildLease(LibraryHandle handle,
-                              MpsLibraryResource *payload_ptr) {
-  auto cb_handle = core_.acquireControlBlock();
-  auto *cb = core_.getControlBlock(cb_handle);
-  if (cb == nullptr) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS library control block is unavailable");
-  }
-  if (cb->hasPayload()) {
-    if (cb->payloadHandle() != handle) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          "MPS library control block payload mismatch");
-    }
-  } else if (!cb->tryBindPayload(handle, payload_ptr, &core_.payloadPool())) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS library control block binding failed");
-  }
-  return LibraryLease{cb, core_.controlBlockPoolForLease(), cb_handle};
 }
 
 LibraryPayloadPoolTraits::Context

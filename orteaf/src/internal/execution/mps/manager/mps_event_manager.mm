@@ -104,44 +104,12 @@ MpsEventManager::EventLease MpsEventManager::acquire() {
         ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
         "MPS event manager has no available slots");
   }
-
-  auto cb_handle = core_.acquireControlBlock();
-  auto *cb = core_.getControlBlock(cb_handle);
-  if (cb == nullptr) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS event control block is unavailable");
-  }
-  return buildLease(*cb, handle, cb_handle);
+  return core_.acquireStrongLease(handle);
 }
 
 EventPayloadPoolTraits::Context
 MpsEventManager::makePayloadContext() const noexcept {
   return EventPayloadPoolTraits::Context{device_, ops_};
-}
-
-MpsEventManager::EventLease
-MpsEventManager::buildLease(ControlBlock &cb, EventHandle payload_handle,
-                            ControlBlockHandle cb_handle) {
-  auto *payload_ptr = core_.payloadPool().get(payload_handle);
-  if (payload_ptr == nullptr) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS event payload is unavailable");
-  }
-  if (cb.hasPayload()) {
-    if (cb.payloadHandle() != payload_handle) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          "MPS event control block payload mismatch");
-    }
-  } else if (!cb.tryBindPayload(payload_handle, payload_ptr,
-                                &core_.payloadPool())) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS event control block binding failed");
-  }
-  return EventLease{&cb, core_.controlBlockPoolForLease(), cb_handle};
 }
 
 } // namespace orteaf::internal::execution::mps::manager

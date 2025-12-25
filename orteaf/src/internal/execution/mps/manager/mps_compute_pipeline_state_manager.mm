@@ -104,7 +104,7 @@ MpsComputePipelineStateManager::acquire(const FunctionKey &key) {
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
           "MPS compute pipeline state cache is invalid");
     }
-    return buildLease(handle, payload_ptr);
+    return core_.acquireWeakLease(handle);
   }
 
   // Reserve an uncreated slot and create the pipeline state
@@ -129,7 +129,7 @@ MpsComputePipelineStateManager::acquire(const FunctionKey &key) {
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "MPS compute pipeline state payload is unavailable");
   }
-  return buildLease(handle, payload_ptr);
+  return core_.acquireWeakLease(handle);
 }
 
 void MpsComputePipelineStateManager::validateKey(const FunctionKey &key) const {
@@ -138,30 +138,6 @@ void MpsComputePipelineStateManager::validateKey(const FunctionKey &key) const {
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "Function identifier cannot be empty");
   }
-}
-
-MpsComputePipelineStateManager::PipelineLease
-MpsComputePipelineStateManager::buildLease(FunctionHandle handle,
-                                           MpsPipelineResource *payload_ptr) {
-  auto cb_handle = core_.acquireControlBlock();
-  auto *cb = core_.getControlBlock(cb_handle);
-  if (cb == nullptr) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS compute pipeline state control block is unavailable");
-  }
-  if (cb->hasPayload()) {
-    if (cb->payloadHandle() != handle) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          "MPS compute pipeline state control block payload mismatch");
-    }
-  } else if (!cb->tryBindPayload(handle, payload_ptr, &core_.payloadPool())) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "MPS compute pipeline state control block binding failed");
-  }
-  return PipelineLease{cb, core_.controlBlockPoolForLease(), cb_handle};
 }
 
 PipelinePayloadPoolTraits::Context
