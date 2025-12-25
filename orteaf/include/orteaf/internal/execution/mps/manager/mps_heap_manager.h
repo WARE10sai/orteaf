@@ -108,14 +108,14 @@ struct HeapPayloadPoolTraits {
                       const Context &context);
 };
 
-using HeapPayloadPool = ::orteaf::internal::execution::base::pool::FixedSlotStore<
+using HeapPayloadPool = ::orteaf::internal::base::pool::FixedSlotStore<
     HeapPayloadPoolTraits>;
 
 // =============================================================================
 // ControlBlock type using WeakControlBlock
 // =============================================================================
 
-using HeapControlBlock = ::orteaf::internal::execution::base::WeakControlBlock<
+using HeapControlBlock = ::orteaf::internal::base::WeakControlBlock<
     ::orteaf::internal::base::HeapHandle, MpsHeapResource, HeapPayloadPool>;
 
 // =============================================================================
@@ -135,7 +135,7 @@ struct MpsHeapManagerTraits {
 // =============================================================================
 
 class MpsHeapManager {
-  using Core = ::orteaf::internal::execution::base::PoolManager<
+  using Core = ::orteaf::internal::base::PoolManager<
       MpsHeapManagerTraits>;
 
 public:
@@ -149,7 +149,7 @@ public:
       ::orteaf::internal::execution::allocator::resource::mps::MpsResource>;
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
-  using HeapLease = ::orteaf::internal::execution::base::WeakLease<
+  using HeapLease = ::orteaf::internal::base::WeakLease<
       ControlBlockHandle, HeapControlBlock, ControlBlockPool, MpsHeapManager>;
 
   MpsHeapManager() = default;

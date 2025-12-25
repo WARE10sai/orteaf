@@ -5,10 +5,10 @@
 #include <cstdint>
 #include <string>
 
-#include <orteaf/internal/diagnostics/error/error.h>
 #include <orteaf/internal/base/pool/default_control_block_pool_traits.h>
+#include <orteaf/internal/diagnostics/error/error.h>
 
-namespace orteaf::internal::execution::base {
+namespace orteaf::internal::base {
 
 // =============================================================================
 // Pool Manager Traits Concept
@@ -286,8 +286,9 @@ public:
    * @return 取得できなければ invalid な SlotRef
    */
   template <typename Request, typename Context>
-  typename PayloadPool::SlotRef acquirePayloadOrGrowAndCreate(
-      std::size_t grow_by, const Request &request, const Context &context)
+  typename PayloadPool::SlotRef
+  acquirePayloadOrGrowAndCreate(std::size_t grow_by, const Request &request,
+                                const Context &context)
     requires requires(PayloadPool &pool, const Request &req,
                       const Context &ctx) {
       {
@@ -316,8 +317,9 @@ public:
    * @return 取得できなければ invalid な SlotRef
    */
   template <typename Request, typename Context>
-  typename PayloadPool::SlotRef reserveUncreatedPayloadOrGrow(
-      std::size_t grow_by, const Request &request, const Context &context)
+  typename PayloadPool::SlotRef
+  reserveUncreatedPayloadOrGrow(std::size_t grow_by, const Request &request,
+                                const Context &context)
     requires requires(PayloadPool &pool, const Request &req,
                       const Context &ctx) {
       {
@@ -400,4 +402,4 @@ private:
   ControlBlockPool control_block_pool_{};
 };
 
-} // namespace orteaf::internal::execution::base
+} // namespace orteaf::internal::base

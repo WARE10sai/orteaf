@@ -59,7 +59,7 @@ struct EventPayloadPoolTraits {
 };
 
 using EventPayloadPool =
-    ::orteaf::internal::execution::base::pool::SlotPool<EventPayloadPoolTraits>;
+    ::orteaf::internal::base::pool::SlotPool<EventPayloadPoolTraits>;
 
 // =============================================================================
 // ControlBlock (using default pool traits via PoolManager)
@@ -67,7 +67,7 @@ using EventPayloadPool =
 
 struct EventControlBlockTag {};
 
-using EventControlBlock = ::orteaf::internal::execution::base::StrongControlBlock<
+using EventControlBlock = ::orteaf::internal::base::StrongControlBlock<
     ::orteaf::internal::base::EventHandle,
     ::orteaf::internal::execution::mps::platform::wrapper::MpsEvent_t,
     EventPayloadPool>;
@@ -97,13 +97,13 @@ public:
   using EventType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsEvent_t;
 
-  using Core = ::orteaf::internal::execution::base::PoolManager<
+  using Core = ::orteaf::internal::base::PoolManager<
       MpsEventManagerTraits>;
   using ControlBlock = Core::ControlBlock;
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
 
-  using EventLease = ::orteaf::internal::execution::base::StrongLease<
+  using EventLease = ::orteaf::internal::base::StrongLease<
       ControlBlockHandle, ControlBlock, ControlBlockPool, MpsEventManager>;
 
 private:

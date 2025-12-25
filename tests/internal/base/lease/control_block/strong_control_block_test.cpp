@@ -25,7 +25,7 @@ struct DummyPool {
   }
 };
 
-using StrongCB = ::orteaf::internal::execution::base::StrongControlBlock<
+using StrongCB = ::orteaf::internal::base::StrongControlBlock<
     PayloadHandle, DummyPayload, DummyPool>;
 
 TEST(StrongControlBlock, BindPayloadStoresHandlePtrAndPool) {

@@ -1,80 +1,82 @@
 #pragma once
 
-#include <cstddef>
-#include <variant>
+#include <utility>
 
-#include "orteaf/internal/execution/execution.h"
-#include "orteaf/internal/execution/allocator/buffer_resource.h"
+#include <orteaf/internal/base/handle.h>
+#include <orteaf/internal/execution/cpu/resource/cpu_buffer_view.h>
+#include <orteaf/internal/execution/execution.h>
+
+#if ORTEAF_ENABLE_CUDA
+#include <orteaf/internal/execution/cuda/resource/cuda_buffer_view.h>
+#endif // ORTEAF_ENABLE_CUDA
+
+#if ORTEAF_ENABLE_MPS
+#include <orteaf/internal/execution/mps/resource/mps_buffer_view.h>
+#include <orteaf/internal/execution/mps/resource/mps_fence_token.h>
+#endif // ORTEAF_ENABLE_MPS
 
 namespace orteaf::internal::execution::allocator {
+struct CpuFenceToken {};
 
-// Type-erased wrapper around execution-specific BufferResource.
-class Buffer {
-  using CpuResource = BufferResource<::orteaf::internal::execution::Execution::Cpu>;
+template <execution::Execution B> struct ResourceBufferType {
+  using view = ::orteaf::internal::execution::cpu::resource::CpuBufferView;
+  using fence_token = CpuFenceToken;
+};
+
 #if ORTEAF_ENABLE_CUDA
-  using CudaResource =
-      BufferResource<::orteaf::internal::execution::Execution::Cuda>;
-#endif
+template <> struct ResourceBufferType<execution::Execution::Cuda> {
+  using view = ::orteaf::internal::execution::cuda::resource::CudaBufferView;
+};
+#endif // ORTEAF_ENABLE_CUDA
+
 #if ORTEAF_ENABLE_MPS
-  using MpsResource = BufferResource<::orteaf::internal::execution::Execution::Mps>;
-#endif
+template <> struct ResourceBufferType<execution::Execution::Mps> {
+  using view = ::orteaf::internal::execution::mps::resource::MpsBufferView;
+  using fence_token =
+      ::orteaf::internal::execution::mps::resource::MpsFenceToken;
+};
+#endif // ORTEAF_ENABLE_MPS
 
-  using ResourceVariant = std::variant<CpuResource
-#if ORTEAF_ENABLE_CUDA
-                                       ,
-                                       CudaResource
-#endif
-#if ORTEAF_ENABLE_MPS
-                                       ,
-                                       MpsResource
-#endif
-                                       >;
+// Lightweight pair of buffer view and handle (no fence tracking).
+template <execution::Execution B> struct ExecutionBufferBlock {
+  using BufferView = typename ResourceBufferType<B>::view;
+  using BufferViewHandle = ::orteaf::internal::base::BufferViewHandle;
 
-public:
-  Buffer() = default;
+  BufferViewHandle handle{};
+  BufferView view{};
 
-  // Move-only (BufferResource is not copyable)
-  Buffer(const Buffer &) = delete;
-  Buffer &operator=(const Buffer &) = delete;
-  Buffer(Buffer &&) = default;
-  Buffer &operator=(Buffer &&) = default;
+  ExecutionBufferBlock() = default;
+  ExecutionBufferBlock(BufferViewHandle h, BufferView v)
+      : handle(h), view(std::move(v)) {}
 
-  template <::orteaf::internal::execution::Execution B>
-  explicit Buffer(BufferResource<B> res, std::size_t size_bytes = 0,
-                  std::size_t alignment_bytes = 0)
-      : execution_(B), resource_(std::move(res)), size_(size_bytes),
-        alignment_(alignment_bytes) {}
+  bool valid() const { return handle.isValid() && static_cast<bool>(view); }
+};
 
-  ::orteaf::internal::execution::Execution execution() const noexcept {
-    return execution_;
-  }
-  std::size_t size() const noexcept { return size_; }
-  std::size_t alignment() const noexcept { return alignment_; }
+// Non-owning view of a buffer with an associated strong ID.
+template <execution::Execution B> struct ExecutionBuffer {
+  using BufferView = typename ResourceBufferType<B>::view;
+  using BufferViewHandle = ::orteaf::internal::base::BufferViewHandle;
+  using FenceToken = typename ResourceBufferType<B>::fence_token;
 
-  bool valid() const {
-    return std::visit([](const auto &r) { return r.valid(); }, resource_);
-  }
+  BufferViewHandle handle{};
+  BufferView view{};
+  FenceToken fence_token{};
 
-  template <::orteaf::internal::execution::Execution B>
-  BufferResource<B> &asResource() {
-    auto *r = std::get_if<BufferResource<B>>(&resource_);
-    static BufferResource<B> empty{};
-    return (r && execution_ == B) ? *r : empty;
+  ExecutionBuffer() = default;
+  ExecutionBuffer(BufferViewHandle handle, BufferView view)
+      : handle(handle), view(std::move(view)) {}
+
+  // Convert to ExecutionBufferBlock (discards fence_token)
+  ExecutionBufferBlock<B> toBlock() const {
+    return ExecutionBufferBlock<B>{handle, view};
   }
 
-  template <::orteaf::internal::execution::Execution B>
-  const BufferResource<B> &asResource() const {
-    const auto *r = std::get_if<BufferResource<B>>(&resource_);
-    static const BufferResource<B> empty{};
-    return (r && execution_ == B) ? *r : empty;
+  // Construct from ExecutionBufferBlock (fence_token is default-initialized)
+  static ExecutionBuffer fromBlock(const ExecutionBufferBlock<B> &block) {
+    return ExecutionBuffer{block.handle, block.view};
   }
 
-private:
-  ::orteaf::internal::execution::Execution execution_{
-      ::orteaf::internal::execution::Execution::Cpu};
-  ResourceVariant resource_{};
-  std::size_t size_{0};
-  std::size_t alignment_{0};
+  bool valid() const { return handle.isValid() && static_cast<bool>(view); }
 };
 
 } // namespace orteaf::internal::execution::allocator

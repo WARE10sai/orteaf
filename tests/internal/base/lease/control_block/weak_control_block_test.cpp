@@ -17,7 +17,7 @@ struct DummyPool {
   int marker{0};
 };
 
-using WeakCB = ::orteaf::internal::execution::base::WeakControlBlock<
+using WeakCB = ::orteaf::internal::base::WeakControlBlock<
     PayloadHandle, DummyPayload, DummyPool>;
 
 TEST(WeakControlBlock, BindPayloadStoresHandlePtrAndPool) {

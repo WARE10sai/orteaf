@@ -3,7 +3,7 @@
 #include <concepts>
 #include <cstddef>
 
-namespace orteaf::internal::execution::base::pool {
+namespace orteaf::internal::base::pool {
 
 /**
  * @brief PayloadPoolの共通APIを定義するConcept
@@ -75,4 +75,4 @@ concept UncreatedSlotReservable =
       } -> std::same_as<typename Pool::SlotRef>;
     };
 
-} // namespace orteaf::internal::execution::base::pool
+} // namespace orteaf::internal::base::pool

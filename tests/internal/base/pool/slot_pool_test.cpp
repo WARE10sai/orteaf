@@ -48,9 +48,9 @@ struct DestroyOnReleaseTraits {
   }
 };
 
-using Pool = ::orteaf::internal::execution::base::pool::SlotPool<DummyTraits>;
+using Pool = ::orteaf::internal::base::pool::SlotPool<DummyTraits>;
 using DestroyOnReleasePool =
-    ::orteaf::internal::execution::base::pool::SlotPool<DestroyOnReleaseTraits>;
+    ::orteaf::internal::base::pool::SlotPool<DestroyOnReleaseTraits>;
 
 Pool makePool(std::size_t capacity) {
   Pool pool;

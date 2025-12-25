@@ -9,7 +9,7 @@
 #include "orteaf/internal/base/runtime_block_vector.h"
 #include "orteaf/internal/diagnostics/error/error.h"
 
-namespace orteaf::internal::execution::base::pool {
+namespace orteaf::internal::base::pool {
 
 /**
  * @brief Fixed array storage without freelist reuse.
@@ -545,4 +545,4 @@ private:
   std::size_t next_uncreated_index_{0};
 };
 
-} // namespace orteaf::internal::execution::base::pool
+} // namespace orteaf::internal::base::pool

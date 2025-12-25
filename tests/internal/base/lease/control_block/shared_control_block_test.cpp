@@ -25,7 +25,7 @@ struct DummyPool {
   }
 };
 
-using SharedCB = ::orteaf::internal::execution::base::SharedControlBlock<
+using SharedCB = ::orteaf::internal::base::SharedControlBlock<
     PayloadHandle, DummyPayload, DummyPool>;
 
 TEST(SharedControlBlock, BindPayloadStoresHandlePtrAndPool) {

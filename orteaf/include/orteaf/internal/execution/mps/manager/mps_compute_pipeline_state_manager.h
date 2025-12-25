@@ -112,13 +112,13 @@ struct PipelinePayloadPoolTraits {
 };
 
 using PipelinePayloadPool =
-    ::orteaf::internal::execution::base::pool::FixedSlotStore<
+    ::orteaf::internal::base::pool::FixedSlotStore<
         PipelinePayloadPoolTraits>;
 
 struct PipelineControlBlockTag {};
 
 using PipelineControlBlock =
-    ::orteaf::internal::execution::base::WeakControlBlock<
+    ::orteaf::internal::base::WeakControlBlock<
         ::orteaf::internal::base::FunctionHandle, MpsPipelineResource,
         PipelinePayloadPool>;
 
@@ -131,7 +131,7 @@ struct MpsComputePipelineStateManagerTraits {
 };
 
 class MpsComputePipelineStateManager {
-  using Core = ::orteaf::internal::execution::base::PoolManager<
+  using Core = ::orteaf::internal::base::PoolManager<
       MpsComputePipelineStateManagerTraits>;
 
 public:
@@ -145,7 +145,7 @@ public:
       MpsComputePipelineState_t;
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
-  using PipelineLease = ::orteaf::internal::execution::base::WeakLease<
+  using PipelineLease = ::orteaf::internal::base::WeakLease<
       ControlBlockHandle, PipelineControlBlock, ControlBlockPool,
       MpsComputePipelineStateManager>;
 
