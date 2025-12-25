@@ -85,6 +85,7 @@ public:
     std::size_t control_block_capacity{0};
     std::size_t control_block_block_size{0};
     std::size_t growth_chunk_size{1};
+    std::size_t payload_growth_chunk_size{1};
   };
 
   // ===========================================================================
@@ -135,6 +136,7 @@ public:
   void configure(const Config &config) {
     applyControlBlockConfig(config);
     setGrowthChunkSize(config.growth_chunk_size);
+    setPayloadGrowthChunkSize(config.payload_growth_chunk_size);
   }
 
   /**
@@ -180,6 +182,27 @@ public:
           std::string(managerName()) + " growth chunk size must be > 0");
     }
     growth_chunk_size_ = size;
+  }
+
+  /**
+   * @brief Payload Pool拡張時のチャンクサイズを取得
+   */
+  std::size_t payloadGrowthChunkSize() const noexcept {
+    return payload_growth_chunk_size_;
+  }
+
+  /**
+   * @brief Payload Pool拡張時のチャンクサイズを設定
+   *
+   * @param size チャンクサイズ（0より大きい必要がある）
+   */
+  void setPayloadGrowthChunkSize(std::size_t size) {
+    if (size == 0) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+          std::string(managerName()) + " payload growth chunk size must be > 0");
+    }
+    payload_growth_chunk_size_ = size;
   }
 
   // ===========================================================================
@@ -285,8 +308,7 @@ public:
    * @return 取得できなければ invalid な Handle
    */
   template <typename Request, typename Context>
-  PayloadHandle acquirePayloadOrGrowAndCreate(std::size_t grow_by,
-                                              const Request &request,
+  PayloadHandle acquirePayloadOrGrowAndCreate(const Request &request,
                                               const Context &context)
     requires requires(PayloadPool &pool) {
       { pool.tryAcquireCreated() } -> std::same_as<PayloadHandle>;
@@ -296,7 +318,8 @@ public:
     if (handle.isValid()) {
       return handle;
     }
-    if (!growPayloadPoolByAndCreate(grow_by, request, context)) {
+    if (!growPayloadPoolByAndCreate(payload_growth_chunk_size_, request,
+                                    context)) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
           std::string(managerName()) + " failed to create payloads");
@@ -310,16 +333,16 @@ public:
    * @param grow_by 追加で確保するスロット数
    * @return 取得できなければ invalid な Handle
    */
-  PayloadHandle reserveUncreatedPayloadOrGrow(std::size_t grow_by)
+  PayloadHandle reserveUncreatedPayloadOrGrow()
     requires requires(PayloadPool &pool) {
       { pool.tryReserveUncreated() } -> std::same_as<PayloadHandle>;
     }
   {
     auto handle = payload_pool_.tryReserveUncreated();
-    if (handle.isValid() || grow_by == 0) {
+    if (handle.isValid()) {
       return handle;
     }
-    growPayloadPoolBy(grow_by);
+    growPayloadPoolBy(payload_growth_chunk_size_);
     return payload_pool_.tryReserveUncreated();
   }
 
@@ -623,6 +646,7 @@ private:
 
   bool configured_{false};
   std::size_t growth_chunk_size_{1};
+  std::size_t payload_growth_chunk_size_{1};
   std::size_t control_block_block_size_{0};
   PayloadPool payload_pool_{};
   ControlBlockPool control_block_pool_{};
