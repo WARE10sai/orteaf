@@ -55,13 +55,15 @@ using DestroyOnReleasePool =
 
 Pool makePool(std::size_t capacity) {
   Pool pool;
-  pool.configure(typename Pool::Config{capacity, capacity});
+  pool.setBlockSize(capacity);
+  pool.resize(capacity);
   return pool;
 }
 
 DestroyOnReleasePool makeDestroyOnReleasePool(std::size_t capacity) {
   DestroyOnReleasePool pool;
-  pool.configure(typename DestroyOnReleasePool::Config{capacity, capacity});
+  pool.setBlockSize(capacity);
+  pool.resize(capacity);
   return pool;
 }
 
@@ -260,7 +262,8 @@ TEST(SlotPool, GrowAddsUncreatedSlots) {
   DummyTraits::Request req{};
   DummyTraits::Context ctx{};
 
-  pool.configure(typename Pool::Config{3, 3});
+  pool.setBlockSize(3);
+  pool.resize(3);
 
   EXPECT_EQ(pool.size(), 3u);
   EXPECT_EQ(pool.available(), 3u);
@@ -279,7 +282,8 @@ TEST(SlotPool, GrowAndCreateCreatesNewSlots) {
   EXPECT_TRUE(pool.emplace(reserved, req, ctx));
   EXPECT_TRUE(pool.release(reserved));
 
-  const std::size_t old_capacity = pool.configure(typename Pool::Config{3, 3});
+  pool.setBlockSize(3);
+  const std::size_t old_capacity = pool.resize(3);
   EXPECT_TRUE(pool.createRange(old_capacity, pool.size(), req, ctx));
   EXPECT_FALSE(pool.tryReserveUncreated().isValid());
 
@@ -316,7 +320,8 @@ TEST(SlotPool, InitializeAndCreateCreatesAllSlots) {
   DummyTraits::Request req{};
   DummyTraits::Context ctx{};
 
-  pool.configure(typename Pool::Config{2, 2});
+  pool.setBlockSize(2);
+  pool.resize(2);
   EXPECT_TRUE(pool.createAll(req, ctx));
   EXPECT_EQ(pool.size(), 2u);
   EXPECT_EQ(pool.available(), 2u);

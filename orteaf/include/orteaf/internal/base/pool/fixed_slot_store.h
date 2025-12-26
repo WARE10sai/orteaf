@@ -36,11 +36,6 @@ public:
   using Request = typename Traits::Request;
   using Context = typename Traits::Context;
 
-  struct Config {
-    std::size_t size{0};
-    std::size_t block_size{0};
-  };
-
   // SlotRef removed - use Handle and get(handle) instead
 
   FixedSlotStore() = default;
@@ -51,17 +46,15 @@ public:
   ~FixedSlotStore() = default;
 
   /**
-   * @brief Applies configuration to the store, growing storage if needed.
+   * @brief Sets the payload block size, rebuilding storage if needed.
    *
-   * This method does not reset existing state. Call shutdown() first when
-   * reinitialization is required. Configuration changes are restricted to
-   * size growth and a fixed block size.
-   *
-   * @param config Configuration containing size and block size.
-   * @return The previous size before applying the configuration.
-   * @throws OrteafErrc::InvalidArgument if size exceeds handle range.
+   * @param block_size New block size (must be > 0).
+   * @return The previous block size.
+   * @throws OrteafErrc::InvalidArgument if block_size is 0.
    */
-  std::size_t configure(const Config &config) { return applyConfig(config); }
+  std::size_t setBlockSize(std::size_t block_size) {
+    return applyBlockSize(block_size);
+  }
 
   /**
    * @brief Returns the number of slots in the store.
@@ -456,24 +449,17 @@ private:
     return Handle{idx};
   }
 
-  std::size_t applyConfig(const Config &config) {
-    const std::size_t desired_size = config.size;
-    if (desired_size > static_cast<std::size_t>(Handle::invalid_index())) {
+  std::size_t applyBlockSize(std::size_t block_size) {
+    if (block_size == 0) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-          "FixedSlotStore size exceeds handle range");
+          "FixedSlotStore block size must be > 0");
     }
-    const std::size_t desired_block_size = config.block_size;
-    if (desired_block_size == 0) {
-      if (desired_size != 0 && payloads_.blockSize() == 0) {
-        ::orteaf::internal::diagnostics::error::throwError(
-            ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-            "FixedSlotStore requires non-zero block size when size > 0");
-      }
-    } else if (payloads_.blockSize() != desired_block_size) {
-      payloads_.resizeBlocks(desired_block_size);
+    const std::size_t old_block_size = payloads_.blockSize();
+    if (old_block_size != block_size) {
+      payloads_.resizeBlocks(block_size);
     }
-    return resizeStorage(desired_size);
+    return old_block_size;
   }
 
   void reserveStorage(std::size_t new_capacity) {

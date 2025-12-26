@@ -85,7 +85,10 @@ protected:
   DummyTraits::Request req{};
   DummyTraits::Context ctx{};
 
-  void SetUp() override { pool.configure(BoundSlotPool::Config{3, 3}); }
+  void SetUp() override {
+    pool.setBlockSize(3);
+    pool.resize(3);
+  }
 };
 
 TEST_F(BoundSlotPoolTest, ConfigureInitializesBoundControlBlocks) {
@@ -146,7 +149,10 @@ protected:
   DummyTraits::Request req{};
   DummyTraits::Context ctx{};
 
-  void SetUp() override { store.configure(BoundFixedSlotStore::Config{3, 3}); }
+  void SetUp() override {
+    store.setBlockSize(3);
+    store.resize(3);
+  }
 };
 
 TEST_F(BoundFixedSlotStoreTest, ConfigureInitializesBoundControlBlocks) {

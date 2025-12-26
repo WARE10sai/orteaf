@@ -32,7 +32,6 @@ public:
   using Base = BasePool;
   using ControlBlockHandle = ControlBlockHandleT;
   using Handle = typename Base::Handle;
-  using Config = typename Base::Config;
   // SlotRef removed - use Handle and get(handle) instead
 
   // ===========================================================================
@@ -49,15 +48,6 @@ public:
   // ===========================================================================
   // Configuration (Override to sync bound_control_blocks_)
   // ===========================================================================
-
-  /**
-   * @brief Poolを設定し、バインディング配列を初期化
-   */
-  std::size_t configure(const Config &config) {
-    const std::size_t old_size = Base::configure(config);
-    syncBoundControlBlocks();
-    return old_size;
-  }
 
   /**
    * @brief Poolをリサイズし、バインディング配列も拡張

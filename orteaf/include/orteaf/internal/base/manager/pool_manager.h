@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <type_traits>
 
 #include <orteaf/internal/base/lease/concepts.h>
 #include <orteaf/internal/base/lease/strong_lease.h>
@@ -105,7 +106,8 @@ public:
     if (config.payload_growth_chunk_size == 0) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-          std::string(managerName()) + " payload growth chunk size must be > 0");
+          std::string(managerName()) +
+              " payload growth chunk size must be > 0");
     }
     if (config.payload_capacity != 0 && config.payload_block_size == 0) {
       ::orteaf::internal::diagnostics::error::throwError(
@@ -157,45 +159,47 @@ public:
   template <typename Request, typename Context>
   void configure(const Config &config, const Request &request,
                  const Context &context)
-    requires requires(PayloadPool &pool, const typename PayloadPool::Config &cfg,
-                      const Request &req, const Context &ctx) {
-      pool.configure(cfg);
+    requires requires(PayloadPool &pool, std::size_t capacity,
+                      std::size_t block_size, const Request &req,
+                      const Context &ctx) {
+      pool.setBlockSize(block_size);
+      pool.resize(capacity);
       pool.shutdown(req, ctx);
     }
   {
     validateConfig(config);
-    const typename PayloadPool::Config payload_config{
-        config.payload_capacity, config.payload_block_size};
-    if constexpr (requires { payload_config.block_size; }) {
-      const std::size_t new_block_size = payload_config.block_size;
-      if (configured_ && payload_block_size_ != new_block_size) {
-        checkCanShutdownOrThrow();
-        shutdownPayloadPool(request, context);
-      }
-      payload_block_size_ = new_block_size;
+    const std::size_t new_block_size = config.payload_block_size;
+    if (configured_ && payload_block_size_ != new_block_size) {
+      checkCanShutdownOrThrow();
+      shutdownPayloadPool(request, context);
     }
-    payload_pool_.configure(payload_config);
+    payload_block_size_ = new_block_size;
+    if (new_block_size != 0) {
+      payload_pool_.setBlockSize(new_block_size);
+    }
+    payload_pool_.resize(config.payload_capacity);
     applyControlBlockConfig(config);
     setControlBlockGrowthChunkSize(config.control_block_growth_chunk_size);
     setPayloadGrowthChunkSize(config.payload_growth_chunk_size);
   }
 
   void configureCheckedNoShutdown(const Config &config)
-    requires requires(PayloadPool &pool, const typename PayloadPool::Config &cfg) {
-      pool.configure(cfg);
+    requires requires(PayloadPool &pool, std::size_t capacity,
+                      std::size_t block_size) {
+      pool.setBlockSize(block_size);
+      pool.resize(capacity);
     }
   {
     validateConfig(config);
-    const typename PayloadPool::Config payload_config{
-        config.payload_capacity, config.payload_block_size};
-    if constexpr (requires { payload_config.block_size; }) {
-      const std::size_t new_block_size = payload_config.block_size;
-      if (configured_ && payload_block_size_ != new_block_size) {
-        checkCanShutdownOrThrow();
-      }
-      payload_block_size_ = new_block_size;
+    const std::size_t new_block_size = config.payload_block_size;
+    if (configured_ && payload_block_size_ != new_block_size) {
+      checkCanShutdownOrThrow();
     }
-    payload_pool_.configure(payload_config);
+    payload_block_size_ = new_block_size;
+    if (new_block_size != 0) {
+      payload_pool_.setBlockSize(new_block_size);
+    }
+    payload_pool_.resize(config.payload_capacity);
     applyControlBlockConfig(config);
     setControlBlockGrowthChunkSize(config.control_block_growth_chunk_size);
     setPayloadGrowthChunkSize(config.payload_growth_chunk_size);
@@ -265,7 +269,8 @@ public:
     if (size == 0) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-          std::string(managerName()) + " payload growth chunk size must be > 0");
+          std::string(managerName()) +
+              " payload growth chunk size must be > 0");
     }
     payload_growth_chunk_size_ = size;
   }
@@ -430,57 +435,7 @@ public:
   WeakLeaseType acquireWeakLease(PayloadHandle handle)
     requires WeakControlBlockConcept<ControlBlock>
   {
-    ensureConfigured();
-
-    // Validate handle
-    if (!payload_pool_.isValid(handle)) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-          std::string(managerName()) + " handle is invalid");
-    }
-    if (!payload_pool_.isCreated(handle)) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          std::string(managerName()) + " payload is unavailable");
-    }
-
-    auto *payload_ptr = payload_pool_.get(handle);
-    if (payload_ptr == nullptr) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          std::string(managerName()) + " payload pointer is null");
-    }
-
-    // Check for existing bound CB (if pool supports binding)
-    if constexpr (pool::ControlBlockBindableConcept<PayloadPool>) {
-      if (payload_pool_.hasBoundControlBlock(handle)) {
-        auto existing_cb_handle = payload_pool_.getBoundControlBlock(handle);
-        auto *cb_ptr = control_block_pool_.get(existing_cb_handle);
-        if (cb_ptr != nullptr) {
-          cb_ptr->acquireWeak();
-          return WeakLeaseType{cb_ptr, &control_block_pool_,
-                               existing_cb_handle};
-        }
-        payload_pool_.unbindControlBlock(handle);
-      }
-    }
-
-    // Acquire new CB
-    auto cb_handle = acquireControlBlock();
-    auto *cb_ptr = getControlBlock(cb_handle);
-    if (!cb_ptr->tryBindPayload(handle, payload_ptr, &payload_pool_)) {
-      releaseControlBlock(cb_handle);
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          std::string(managerName()) + " control block binding failed");
-    }
-
-    // Bind CB handle to payload (if pool supports binding)
-    if constexpr (pool::ControlBlockBindableConcept<PayloadPool>) {
-      payload_pool_.bindControlBlock(handle, cb_handle);
-    }
-
-    return WeakLeaseType{cb_ptr, &control_block_pool_, cb_handle};
+    return acquireLeaseImpl<WeakLeaseType>(handle);
   }
 
   /**
@@ -495,57 +450,7 @@ public:
   StrongLeaseType acquireStrongLease(PayloadHandle handle)
     requires StrongControlBlockConcept<ControlBlock>
   {
-    ensureConfigured();
-
-    // Validate handle
-    if (!payload_pool_.isValid(handle)) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-          std::string(managerName()) + " handle is invalid");
-    }
-    if (!payload_pool_.isCreated(handle)) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          std::string(managerName()) + " payload is unavailable");
-    }
-
-    auto *payload_ptr = payload_pool_.get(handle);
-    if (payload_ptr == nullptr) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          std::string(managerName()) + " payload pointer is null");
-    }
-
-    // Check for existing bound CB (if pool supports binding)
-    if constexpr (pool::ControlBlockBindableConcept<PayloadPool>) {
-      if (payload_pool_.hasBoundControlBlock(handle)) {
-        auto existing_cb_handle = payload_pool_.getBoundControlBlock(handle);
-        auto *cb_ptr = control_block_pool_.get(existing_cb_handle);
-        if (cb_ptr != nullptr) {
-          cb_ptr->acquireStrong();
-          return StrongLeaseType{cb_ptr, &control_block_pool_,
-                                 existing_cb_handle};
-        }
-        payload_pool_.unbindControlBlock(handle);
-      }
-    }
-
-    // Acquire new CB
-    auto cb_handle = acquireControlBlock();
-    auto *cb_ptr = getControlBlock(cb_handle);
-    if (!cb_ptr->tryBindPayload(handle, payload_ptr, &payload_pool_)) {
-      releaseControlBlock(cb_handle);
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          std::string(managerName()) + " control block binding failed");
-    }
-
-    // Bind CB handle to payload (if pool supports binding)
-    if constexpr (pool::ControlBlockBindableConcept<PayloadPool>) {
-      payload_pool_.bindControlBlock(handle, cb_handle);
-    }
-
-    return StrongLeaseType{cb_ptr, &control_block_pool_, cb_handle};
+    return acquireLeaseImpl<StrongLeaseType>(handle);
   }
 #if ORTEAF_ENABLE_TEST
   // ===========================================================================
@@ -672,6 +577,73 @@ private:
     control_block_pool_.release(handle);
   }
 
+  /**
+   * @brief Lease取得の共通実装
+   *
+   * @tparam LeaseType WeakLeaseType または StrongLeaseType
+   * @param handle Payload handle
+   * @return LeaseType
+   * @throws InvalidArgument handleが無効な場合
+   * @throws InvalidState payloadが利用不可の場合
+   */
+  template <typename LeaseType>
+  LeaseType acquireLeaseImpl(PayloadHandle handle) {
+    ensureConfigured();
+
+    // Validate handle
+    if (!payload_pool_.isValid(handle)) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+          std::string(managerName()) + " handle is invalid");
+    }
+    if (!payload_pool_.isCreated(handle)) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+          std::string(managerName()) + " payload is unavailable");
+    }
+
+    auto *payload_ptr = payload_pool_.get(handle);
+    if (payload_ptr == nullptr) {
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+          std::string(managerName()) + " payload pointer is null");
+    }
+
+    // Check for existing bound CB (if pool supports binding)
+    if constexpr (pool::ControlBlockBindableConcept<PayloadPool>) {
+      if (payload_pool_.hasBoundControlBlock(handle)) {
+        auto existing_cb_handle = payload_pool_.getBoundControlBlock(handle);
+        auto *cb_ptr = control_block_pool_.get(existing_cb_handle);
+        if (cb_ptr != nullptr) {
+          if constexpr (std::is_same_v<LeaseType, WeakLeaseType>) {
+            cb_ptr->acquireWeak();
+          } else {
+            cb_ptr->acquireStrong();
+          }
+          return LeaseType{cb_ptr, &control_block_pool_, existing_cb_handle};
+        }
+        payload_pool_.unbindControlBlock(handle);
+      }
+    }
+
+    // Acquire new CB
+    auto cb_handle = acquireControlBlock();
+    auto *cb_ptr = getControlBlock(cb_handle);
+    if (!cb_ptr->tryBindPayload(handle, payload_ptr, &payload_pool_)) {
+      releaseControlBlock(cb_handle);
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+          std::string(managerName()) + " control block binding failed");
+    }
+
+    // Bind CB handle to payload (if pool supports binding)
+    if constexpr (pool::ControlBlockBindableConcept<PayloadPool>) {
+      payload_pool_.bindControlBlock(handle, cb_handle);
+    }
+
+    return LeaseType{cb_ptr, &control_block_pool_, cb_handle};
+  }
+
   void applyControlBlockConfig(const Config &config) {
     const std::size_t capacity = config.control_block_capacity;
     const std::size_t block_size = config.control_block_block_size;
@@ -688,8 +660,8 @@ private:
     control_block_block_size_ = block_size;
     typename ControlBlockPoolTraits::Request request{};
     typename ControlBlockPoolTraits::Context context{};
-    const std::size_t old_capacity = control_block_pool_.configure(
-        typename ControlBlockPool::Config{capacity, block_size});
+    control_block_pool_.setBlockSize(block_size);
+    const std::size_t old_capacity = control_block_pool_.resize(capacity);
     if (!control_block_pool_.createRange(
             old_capacity, control_block_pool_.size(), request, context)) {
       ::orteaf::internal::diagnostics::error::throwError(

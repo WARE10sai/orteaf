@@ -21,14 +21,11 @@ concept PoolTypeConcept = requires {
 // 設定 Concept
 // =============================================================================
 
-/// @brief configure/shutdown/resize操作をサポート
+/// @brief setBlockSize/shutdown/resize操作をサポート
 template <typename Pool>
 concept PoolConfigurableConcept =
     PoolTypeConcept<Pool> && requires(Pool &pool, std::size_t n) {
-      typename Pool::Config;
-      {
-        pool.configure(typename Pool::Config{})
-      } -> std::convertible_to<std::size_t>;
+      { pool.setBlockSize(n) } -> std::convertible_to<std::size_t>;
       { pool.shutdown() };
       { pool.resize(n) } -> std::convertible_to<std::size_t>;
     };
