@@ -203,7 +203,7 @@ public:
     return core_.payloadGrowthChunkSize();
   }
   std::size_t controlBlockGrowthChunkSizeForTest() const noexcept {
-    return core_.growthChunkSize();
+    return core_.controlBlockGrowthChunkSize();
   }
   bool payloadCreatedForTest(HeapHandle handle) const noexcept {
     return core_.payloadCreatedForTest(handle);
@@ -227,7 +227,6 @@ private:
   MpsLibraryManager *library_manager_{nullptr};
   SlowOps *ops_{nullptr};
   BufferManager::Config buffer_config_{};
-  std::size_t payload_block_size_{0};
   Core core_{};
 };
 

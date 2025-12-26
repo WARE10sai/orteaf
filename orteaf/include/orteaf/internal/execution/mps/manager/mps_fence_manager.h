@@ -154,7 +154,7 @@ public:
     return core_.payloadGrowthChunkSize();
   }
   std::size_t controlBlockGrowthChunkSizeForTest() const noexcept {
-    return core_.growthChunkSize();
+    return core_.controlBlockGrowthChunkSize();
   }
 #endif
 
@@ -164,7 +164,6 @@ private:
   DeviceType device_{nullptr};
   SlowOps *ops_{nullptr};
   Core core_{};
-  std::size_t payload_block_size_{0};
 };
 
 } // namespace orteaf::internal::execution::mps::manager

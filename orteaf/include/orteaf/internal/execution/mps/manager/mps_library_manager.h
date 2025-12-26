@@ -178,7 +178,7 @@ public:
     return core_.payloadGrowthChunkSize();
   }
   std::size_t controlBlockGrowthChunkSizeForTest() const noexcept {
-    return core_.growthChunkSize();
+    return core_.controlBlockGrowthChunkSize();
   }
   bool payloadCreatedForTest(LibraryHandle handle) const noexcept {
     return core_.payloadCreatedForTest(handle);
@@ -197,7 +197,6 @@ private:
   std::unordered_map<LibraryKey, std::size_t, LibraryKeyHasher> key_to_index_{};
   DeviceType device_{nullptr};
   SlowOps *ops_{nullptr};
-  std::size_t payload_block_size_{0};
   MpsComputePipelineStateManager::Config pipeline_config_{};
   Core core_{};
 };

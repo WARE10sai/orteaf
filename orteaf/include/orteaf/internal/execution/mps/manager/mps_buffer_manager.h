@@ -247,19 +247,18 @@ public:
     pool_cfg.freelist.resource = segregate_pool_.resource();
     segregate_pool_.initialize(pool_cfg);
 
-    // Configure PoolManager
+    // Configure PoolManager + PayloadPool
     typename Core::Config core_cfg{};
     core_cfg.control_block_capacity = config.control_block_capacity;
     core_cfg.control_block_block_size = config.control_block_block_size;
-    core_cfg.growth_chunk_size = config.control_block_growth_chunk_size;
+    core_cfg.control_block_growth_chunk_size =
+        config.control_block_growth_chunk_size;
     core_cfg.payload_growth_chunk_size = config.payload_growth_chunk_size;
-    core_.configure(core_cfg);
-
-    // Configure PayloadPool
-    typename PayloadPool::Config payload_cfg{};
-    payload_cfg.size = config.payload_capacity;
-    payload_cfg.block_size = config.payload_block_size;
-    core_.configurePayloadPool(payload_cfg);
+    core_cfg.payload_capacity = config.payload_capacity;
+    core_cfg.payload_block_size = config.payload_block_size;
+    typename BufferPayloadPoolTraitsT<ResourceT>::Request request{};
+    auto context = makePayloadContext();
+    core_.configure(core_cfg, request, context);
 
     core_.setConfigured(true);
   }
@@ -340,7 +339,7 @@ public:
     return core_.payloadGrowthChunkSize();
   }
   std::size_t controlBlockGrowthChunkSizeForTest() const noexcept {
-    return core_.growthChunkSize();
+    return core_.controlBlockGrowthChunkSize();
   }
   const ControlBlock *controlBlockForTest(ControlBlockHandle handle) const {
     return core_.controlBlockForTest(handle);

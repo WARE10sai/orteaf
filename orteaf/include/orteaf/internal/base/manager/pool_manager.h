@@ -50,7 +50,7 @@ concept PoolManagerTraitsConcept = requires {
  * - shutdown時の全ControlBlock canShutdown チェック
  * - ControlBlock Pool の grow
  * - isAlive() 判定
- * - growth_chunk_size_ 管理
+ * - control_block_growth_chunk_size_ 管理
  *
  * Managerはこのクラスをコンポジションで使用し、共通処理を委譲する。
  *
@@ -84,8 +84,10 @@ public:
   struct Config {
     std::size_t control_block_capacity{0};
     std::size_t control_block_block_size{0};
-    std::size_t growth_chunk_size{1};
+    std::size_t control_block_growth_chunk_size{1};
     std::size_t payload_growth_chunk_size{1};
+    std::size_t payload_capacity{0};
+    std::size_t payload_block_size{0};
   };
 
   // ===========================================================================
@@ -128,14 +130,48 @@ public:
   // ControlBlock Pool Operations
   // ===========================================================================
 
-  /**
-   * @brief Core設定を適用
-   *
-   * @param config Core全体の設定
-   */
-  void configure(const Config &config) {
+  template <typename Request, typename Context>
+  void configure(const Config &config, const Request &request,
+                 const Context &context)
+    requires requires(PayloadPool &pool, const typename PayloadPool::Config &cfg,
+                      const Request &req, const Context &ctx) {
+      pool.configure(cfg);
+      pool.shutdown(req, ctx);
+    }
+  {
+    const typename PayloadPool::Config payload_config{
+        config.payload_capacity, config.payload_block_size};
+    if constexpr (requires { payload_config.block_size; }) {
+      const std::size_t new_block_size = payload_config.block_size;
+      if (configured_ && payload_block_size_ != new_block_size) {
+        checkCanShutdownOrThrow();
+        shutdownPayloadPool(request, context);
+      }
+      payload_block_size_ = new_block_size;
+    }
+    payload_pool_.configure(payload_config);
     applyControlBlockConfig(config);
-    setGrowthChunkSize(config.growth_chunk_size);
+    setControlBlockGrowthChunkSize(config.control_block_growth_chunk_size);
+    setPayloadGrowthChunkSize(config.payload_growth_chunk_size);
+  }
+
+  void configureCheckedNoShutdown(const Config &config)
+    requires requires(PayloadPool &pool, const typename PayloadPool::Config &cfg) {
+      pool.configure(cfg);
+    }
+  {
+    const typename PayloadPool::Config payload_config{
+        config.payload_capacity, config.payload_block_size};
+    if constexpr (requires { payload_config.block_size; }) {
+      const std::size_t new_block_size = payload_config.block_size;
+      if (configured_ && payload_block_size_ != new_block_size) {
+        checkCanShutdownOrThrow();
+      }
+      payload_block_size_ = new_block_size;
+    }
+    payload_pool_.configure(payload_config);
+    applyControlBlockConfig(config);
+    setControlBlockGrowthChunkSize(config.control_block_growth_chunk_size);
     setPayloadGrowthChunkSize(config.payload_growth_chunk_size);
   }
 
@@ -162,26 +198,29 @@ public:
   void shutdownControlBlockPool() { control_block_pool_.shutdown(); }
 
   // ===========================================================================
-  // Growth Chunk Size Configuration
+  // ControlBlock Growth Chunk Size Configuration
   // ===========================================================================
 
   /**
    * @brief Pool拡張時のチャンクサイズを取得
    */
-  std::size_t growthChunkSize() const noexcept { return growth_chunk_size_; }
+  std::size_t controlBlockGrowthChunkSize() const noexcept {
+    return control_block_growth_chunk_size_;
+  }
 
   /**
    * @brief Pool拡張時のチャンクサイズを設定
    *
    * @param size チャンクサイズ（0より大きい必要がある）
    */
-  void setGrowthChunkSize(std::size_t size) {
+  void setControlBlockGrowthChunkSize(std::size_t size) {
     if (size == 0) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-          std::string(managerName()) + " growth chunk size must be > 0");
+          std::string(managerName()) +
+              " control block growth chunk size must be > 0");
     }
-    growth_chunk_size_ = size;
+    control_block_growth_chunk_size_ = size;
   }
 
   /**
@@ -208,18 +247,6 @@ public:
   // ===========================================================================
   // Payload Pool Operations
   // ===========================================================================
-
-  /**
-   * @brief Payload Poolを設定
-   */
-  template <typename Config>
-  void configurePayloadPool(const Config &config)
-    requires requires(PayloadPool &pool, const Config &cfg) {
-      pool.configure(cfg);
-    }
-  {
-    payload_pool_.configure(config);
-  }
 
   /**
    * @brief Payload Poolをshutdown
@@ -552,7 +579,7 @@ public:
 
 private:
   /**
-   * @brief ControlBlock Pool を growth_chunk_size_ 分拡張
+   * @brief ControlBlock Pool を control_block_growth_chunk_size_ 分拡張
    */
   void growControlBlockPool() {
     if (control_block_block_size_ == 0) {
@@ -560,7 +587,8 @@ private:
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
           std::string(managerName()) + " control block size is not set");
     }
-    const std::size_t desired = control_block_pool_.size() + growth_chunk_size_;
+    const std::size_t desired =
+        control_block_pool_.size() + control_block_growth_chunk_size_;
     typename ControlBlockPoolTraits::Request request{};
     typename ControlBlockPoolTraits::Context context{};
     const std::size_t old_capacity = control_block_pool_.resize(desired);
@@ -645,9 +673,10 @@ private:
   }
 
   bool configured_{false};
-  std::size_t growth_chunk_size_{1};
+  std::size_t control_block_growth_chunk_size_{1};
   std::size_t payload_growth_chunk_size_{1};
   std::size_t control_block_block_size_{0};
+  std::size_t payload_block_size_{0};
   PayloadPool payload_pool_{};
   ControlBlockPool control_block_pool_{};
 };

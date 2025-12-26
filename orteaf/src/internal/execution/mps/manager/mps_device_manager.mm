@@ -13,7 +13,7 @@ void MpsDeviceManager::configure(const Config &config) {
         "MPS device manager requires valid ops");
   }
   ops_ = config.ops;
-  core_.setGrowthChunkSize(config.control_block_growth_chunk_size);
+  core_.setControlBlockGrowthChunkSize(config.control_block_growth_chunk_size);
 
   const int device_count = ops_->getDeviceCount();
   const std::size_t device_count_size =
@@ -79,17 +79,7 @@ void MpsDeviceManager::configure(const Config &config) {
     graph_config.control_block_block_size =
         graph_config.payload_capacity == 0 ? 1u : graph_config.payload_capacity;
   }
-  if (device_count <= 0) {
-    core_.configurePayloadPool(DevicePayloadPool::Config{0, 0});
-    core_.configure(MpsDeviceManager::Core::Config{
-        /*control_block_capacity=*/0,
-        /*control_block_block_size=*/control_block_block_size,
-        /*growth_chunk_size=*/core_.growthChunkSize()});
-    core_.setConfigured(true);
-    return;
-  }
-
-  const auto capacity = device_count_size;
+  const DevicePayloadPoolTraits::Request payload_request{};
   const auto payload_context =
       DevicePayloadPoolTraits::Context{ops_,
                                        command_queue_config,
@@ -98,14 +88,29 @@ void MpsDeviceManager::configure(const Config &config) {
                                        config.heap_initial_capacity,
                                        config.library_initial_capacity,
                                        graph_config};
-  const DevicePayloadPoolTraits::Request payload_request{};
-  core_.configurePayloadPool(DevicePayloadPool::Config{capacity, capacity});
-  core_.createAllPayloads(payload_request, payload_context);
+  if (device_count <= 0) {
+    MpsDeviceManager::Core::Config core_cfg{};
+    core_cfg.control_block_capacity = 0;
+    core_cfg.control_block_block_size = control_block_block_size;
+    core_cfg.control_block_growth_chunk_size = core_.controlBlockGrowthChunkSize();
+    core_cfg.payload_growth_chunk_size = 1;
+    core_cfg.payload_capacity = 0;
+    core_cfg.payload_block_size = 0;
+    core_.configure(core_cfg, payload_request, payload_context);
+    core_.setConfigured(true);
+    return;
+  }
 
-  core_.configure(MpsDeviceManager::Core::Config{
-      /*control_block_capacity=*/control_block_size,
-      /*control_block_block_size=*/control_block_block_size,
-      /*growth_chunk_size=*/core_.growthChunkSize()});
+  const auto capacity = device_count_size;
+  MpsDeviceManager::Core::Config core_cfg{};
+  core_cfg.control_block_capacity = control_block_size;
+  core_cfg.control_block_block_size = control_block_block_size;
+  core_cfg.control_block_growth_chunk_size = core_.controlBlockGrowthChunkSize();
+  core_cfg.payload_growth_chunk_size = 1;
+  core_cfg.payload_capacity = capacity;
+  core_cfg.payload_block_size = capacity;
+  core_.configure(core_cfg, payload_request, payload_context);
+  core_.createAllPayloads(payload_request, payload_context);
   core_.setConfigured(true);
 }
 

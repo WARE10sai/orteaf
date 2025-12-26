@@ -57,23 +57,25 @@ void MpsEventManager::configure(const Config &config) {
   }
   device_ = config.device;
   ops_ = config.ops;
-  payload_block_size_ = config.payload_block_size;
+  // payload block size managed by core_
   // payload growth chunk size configured via core_
 
-  core_.configurePayloadPool(
-      EventPayloadPool::Config{payload_capacity, config.payload_block_size});
   const EventPayloadPoolTraits::Request payload_request{};
   const auto payload_context = makePayloadContext();
+  MpsEventManager::Core::Config core_cfg{};
+  core_cfg.control_block_capacity = control_block_capacity;
+  core_cfg.control_block_block_size = config.control_block_block_size;
+  core_cfg.control_block_growth_chunk_size =
+      config.control_block_growth_chunk_size;
+  core_cfg.payload_growth_chunk_size = config.payload_growth_chunk_size;
+  core_cfg.payload_capacity = payload_capacity;
+  core_cfg.payload_block_size = config.payload_block_size;
+  core_.configure(core_cfg, payload_request, payload_context);
   if (!core_.createAllPayloads(payload_request, payload_context)) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
         "Failed to create MPS events");
   }
-  core_.configure(MpsEventManager::Core::Config{
-      /*control_block_capacity=*/control_block_capacity,
-      /*control_block_block_size=*/config.control_block_block_size,
-      /*growth_chunk_size=*/config.control_block_growth_chunk_size,
-      /*payload_growth_chunk_size=*/config.payload_growth_chunk_size});
   core_.setConfigured(true);
 }
 

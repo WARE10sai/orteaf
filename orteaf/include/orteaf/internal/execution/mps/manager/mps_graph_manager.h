@@ -234,7 +234,7 @@ public:
     return core_.payloadGrowthChunkSize();
   }
   std::size_t controlBlockGrowthChunkSizeForTest() const noexcept {
-    return core_.growthChunkSize();
+    return core_.controlBlockGrowthChunkSize();
   }
 #endif
 
@@ -245,7 +245,6 @@ private:
   std::unordered_map<GraphKey, std::size_t, GraphKeyHasher> key_to_index_{};
   DeviceType device_{nullptr};
   SlowOps *ops_{nullptr};
-  std::size_t payload_block_size_{0};
   Core core_{};
 };
 

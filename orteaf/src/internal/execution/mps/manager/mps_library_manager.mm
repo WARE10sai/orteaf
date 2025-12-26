@@ -59,17 +59,21 @@ void MpsLibraryManager::configure(const Config &config) {
   device_ = config.device;
   ops_ = config.ops;
   pipeline_config_ = config.pipeline_config;
-  payload_block_size_ = payload_block_size;
+  // payload block size managed by core_
   // payload growth chunk size configured via core_
   key_to_index_.clear();
 
-  core_.configurePayloadPool(
-      LibraryPayloadPool::Config{payload_capacity, payload_block_size_});
-  core_.configure(MpsLibraryManager::Core::Config{
-      /*control_block_capacity=*/control_block_capacity,
-      /*control_block_block_size=*/control_block_block_size,
-      /*growth_chunk_size=*/config.control_block_growth_chunk_size,
-      /*payload_growth_chunk_size=*/config.payload_growth_chunk_size});
+  const LibraryPayloadPoolTraits::Request payload_request{};
+  const auto payload_context = makePayloadContext();
+  MpsLibraryManager::Core::Config core_cfg{};
+  core_cfg.control_block_capacity = control_block_capacity;
+  core_cfg.control_block_block_size = control_block_block_size;
+  core_cfg.control_block_growth_chunk_size =
+      config.control_block_growth_chunk_size;
+  core_cfg.payload_growth_chunk_size = config.payload_growth_chunk_size;
+  core_cfg.payload_capacity = payload_capacity;
+  core_cfg.payload_block_size = payload_block_size;
+  core_.configure(core_cfg, payload_request, payload_context);
   core_.setConfigured(true);
 }
 

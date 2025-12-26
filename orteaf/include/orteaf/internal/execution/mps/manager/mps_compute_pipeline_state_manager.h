@@ -195,7 +195,7 @@ public:
     return core_.payloadGrowthChunkSize();
   }
   std::size_t controlBlockGrowthChunkSizeForTest() const noexcept {
-    return core_.growthChunkSize();
+    return core_.controlBlockGrowthChunkSize();
   }
 
   bool payloadCreatedForTest(FunctionHandle handle) const noexcept {
@@ -218,7 +218,6 @@ private:
   LibraryType library_{nullptr};
   DeviceType device_{nullptr};
   SlowOps *ops_{nullptr};
-  std::size_t payload_block_size_{0};
   Core core_{};
 };
 

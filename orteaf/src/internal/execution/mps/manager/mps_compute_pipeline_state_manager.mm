@@ -60,17 +60,21 @@ void MpsComputePipelineStateManager::configure(const Config &config) {
   device_ = config.device;
   library_ = config.library;
   ops_ = config.ops;
-  payload_block_size_ = payload_block_size;
+  // payload block size managed by core_
   // payload growth chunk size configured via core_
   key_to_index_.clear();
 
-  core_.configurePayloadPool(
-      PipelinePayloadPool::Config{payload_capacity, payload_block_size_});
-  core_.configure(MpsComputePipelineStateManager::Core::Config{
-      /*control_block_capacity=*/control_block_capacity,
-      /*control_block_block_size=*/control_block_block_size,
-      /*growth_chunk_size=*/config.control_block_growth_chunk_size,
-      /*payload_growth_chunk_size=*/config.payload_growth_chunk_size});
+  const PipelinePayloadPoolTraits::Request payload_request{};
+  const auto payload_context = makePayloadContext();
+  MpsComputePipelineStateManager::Core::Config core_cfg{};
+  core_cfg.control_block_capacity = control_block_capacity;
+  core_cfg.control_block_block_size = control_block_block_size;
+  core_cfg.control_block_growth_chunk_size =
+      config.control_block_growth_chunk_size;
+  core_cfg.payload_growth_chunk_size = config.payload_growth_chunk_size;
+  core_cfg.payload_capacity = payload_capacity;
+  core_cfg.payload_block_size = payload_block_size;
+  core_.configure(core_cfg, payload_request, payload_context);
   core_.setConfigured(true);
 }
 
