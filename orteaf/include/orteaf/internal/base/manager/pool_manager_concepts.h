@@ -34,6 +34,19 @@ concept ManagerStateQueryConcept =
     };
 
 // =============================================================================
+// Configuration Concept
+// =============================================================================
+
+/// @brief configure(config, request, context) をサポート
+template <typename Manager, typename Request, typename Context>
+concept ManagerConfigurableConcept =
+    PoolManagerTypeConcept<Manager> &&
+    requires(Manager &m, const typename Manager::Config &cfg,
+             const Request &req, const Context &ctx) {
+      { m.configure(cfg, req, ctx) };
+    };
+
+// =============================================================================
 // Shutdown Concept
 // =============================================================================
 
@@ -99,6 +112,45 @@ concept ManagerPayloadAliveCheckConcept =
     };
 
 // =============================================================================
+// Payload 操作 Concept
+// =============================================================================
+
+/// @brief Payload 全作成をサポート
+template <typename Manager, typename Request, typename Context>
+concept ManagerPayloadCreateAllConcept =
+    PoolManagerTypeConcept<Manager> &&
+    requires(Manager &m, const Request &req, const Context &ctx) {
+      { m.createAllPayloads(req, ctx) } -> std::convertible_to<bool>;
+    };
+
+/// @brief Payload の emplace をサポート
+template <typename Manager, typename Request, typename Context>
+concept ManagerPayloadEmplaceConcept =
+    PoolManagerTypeConcept<Manager> &&
+    requires(Manager &m, typename Manager::PayloadHandle h,
+             const Request &req, const Context &ctx) {
+      { m.emplacePayload(h, req, ctx) } -> std::convertible_to<bool>;
+    };
+
+/// @brief Payload の acquire をサポート
+template <typename Manager, typename Request, typename Context>
+concept ManagerPayloadAcquirableConcept =
+    PoolManagerTypeConcept<Manager> &&
+    requires(Manager &m, const Request &req, const Context &ctx) {
+      {
+        m.acquirePayloadOrGrowAndCreate(req, ctx)
+      } -> std::same_as<typename Manager::PayloadHandle>;
+    };
+
+/// @brief Payload の reserve をサポート
+template <typename Manager>
+concept ManagerPayloadReservableConcept =
+    PoolManagerTypeConcept<Manager> && requires(Manager &m) {
+      { m.reserveUncreatedPayloadOrGrow() } -> std::same_as<
+          typename Manager::PayloadHandle>;
+    };
+
+// =============================================================================
 // Lease 取得 Concept
 // =============================================================================
 
@@ -132,10 +184,15 @@ concept FullPoolManagerConcept =
     PoolManagerTypeConcept<Manager> &&
     ManagerStateQueryConcept<Manager> &&
     ManagerShutdownableConcept<Manager, Request, Context> &&
+    ManagerConfigurableConcept<Manager, Request, Context> &&
     ManagerBlockSizeSettableConcept<Manager> &&
     ManagerResizableConcept<Manager> &&
     ManagerGrowthChunkSettableConcept<Manager> &&
     ManagerPayloadAliveCheckConcept<Manager> &&
+    ManagerPayloadCreateAllConcept<Manager, Request, Context> &&
+    ManagerPayloadEmplaceConcept<Manager, Request, Context> &&
+    ManagerPayloadAcquirableConcept<Manager, Request, Context> &&
+    ManagerPayloadReservableConcept<Manager> &&
     ManagerWeakLeaseAcquirableConcept<Manager> &&
     ManagerStrongLeaseAcquirableConcept<Manager>;
 
