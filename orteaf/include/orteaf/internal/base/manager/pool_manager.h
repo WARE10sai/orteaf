@@ -103,7 +103,7 @@ public:
   ~PoolManager() = default;
 
   // ===========================================================================
-  // Initialization State
+  // Configuration State
   // ===========================================================================
 
   /**
@@ -122,6 +122,21 @@ public:
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
           std::string(managerName()) + " has not been configured");
     }
+  }
+
+  // ===========================================================================
+  // Payload Alive Check
+  // ===========================================================================
+
+  /**
+   * @brief Payload Handleが有効で作成済みかを判定
+   *
+   * @param handle チェック対象のHandle
+   * @return 初期化済み && valid && created であればtrue
+   */
+  bool isAlive(PayloadHandle handle) const noexcept {
+    return isConfigured() && payload_pool_.isValid(handle) &&
+           payload_pool_.isCreated(handle);
   }
 
   // ===========================================================================
@@ -304,21 +319,6 @@ public:
               " payload growth chunk size must be > 0");
     }
     payload_growth_chunk_size_ = size;
-  }
-
-  // ===========================================================================
-  // Payload Alive Check
-  // ===========================================================================
-
-  /**
-   * @brief Payload Handleが有効で作成済みかを判定
-   *
-   * @param handle チェック対象のHandle
-   * @return 初期化済み && valid && created であればtrue
-   */
-  bool isAlive(PayloadHandle handle) const noexcept {
-    return isConfigured() && payload_pool_.isValid(handle) &&
-           payload_pool_.isCreated(handle);
   }
 
   // ===========================================================================

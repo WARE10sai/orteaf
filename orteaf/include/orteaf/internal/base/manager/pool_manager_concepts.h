@@ -34,6 +34,18 @@ concept ManagerStateQueryConcept =
     };
 
 // =============================================================================
+// Payload 状態確認 Concept
+// =============================================================================
+
+/// @brief Payload の生存状態確認をサポート
+template <typename Manager>
+concept ManagerPayloadAliveCheckConcept =
+    PoolManagerTypeConcept<Manager> &&
+    requires(const Manager &m, typename Manager::PayloadHandle h) {
+      { m.isAlive(h) } -> std::convertible_to<bool>;
+    };
+
+// =============================================================================
 // Configuration Concept
 // =============================================================================
 
@@ -97,18 +109,6 @@ concept ManagerGrowthChunkSettableConcept =
       { m.setControlBlockGrowthChunkSize(n) };
       { cm.payloadGrowthChunkSize() } -> std::convertible_to<std::size_t>;
       { m.setPayloadGrowthChunkSize(n) };
-    };
-
-// =============================================================================
-// Payload 状態確認 Concept
-// =============================================================================
-
-/// @brief Payload の生存状態確認をサポート
-template <typename Manager>
-concept ManagerPayloadAliveCheckConcept =
-    PoolManagerTypeConcept<Manager> &&
-    requires(const Manager &m, typename Manager::PayloadHandle h) {
-      { m.isAlive(h) } -> std::convertible_to<bool>;
     };
 
 // =============================================================================
