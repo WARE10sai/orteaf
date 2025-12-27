@@ -34,15 +34,17 @@ concept ManagerStateQueryConcept =
     };
 
 // =============================================================================
-// Shutdown チェック Concept
+// Shutdown Concept
 // =============================================================================
 
-/// @brief canShutdown/canTeardownチェックをサポート
-template <typename Manager>
-concept ManagerShutdownCheckConcept =
-    PoolManagerTypeConcept<Manager> && requires(const Manager &m) {
-      { m.checkCanShutdownOrThrow() };
-      { m.checkCanTeardownOrThrow() };
+/// @brief shutdown(request, context)をサポート
+/// PoolManager の shutdown は checkCanTeardown → payload clear →
+/// checkCanShutdown → control block clear の流れで行う
+template <typename Manager, typename Request, typename Context>
+concept ManagerShutdownableConcept =
+    PoolManagerTypeConcept<Manager> &&
+    requires(Manager &m, const Request &req, const Context &ctx) {
+      { m.shutdown(req, ctx) };
     };
 
 // =============================================================================
@@ -124,14 +126,13 @@ concept ManagerStrongLeaseAcquirableConcept =
 // 組み合わせ Concept
 // =============================================================================
 
-/// @brief PoolManager の基本機能（configure 以外）
+/// @brief PoolManager の基本機能（shutdown/configure 以外）
 template <typename Manager>
-concept BasePoolManagerConcept =
-    ManagerStateQueryConcept<Manager> && ManagerShutdownCheckConcept<Manager> &&
-    ManagerBlockSizeSettableConcept<Manager> &&
-    ManagerResizableConcept<Manager> &&
-    ManagerGrowthChunkSettableConcept<Manager> &&
-    ManagerPayloadAliveCheckConcept<Manager>;
+concept BasePoolManagerConcept = ManagerStateQueryConcept<Manager> &&
+                                 ManagerBlockSizeSettableConcept<Manager> &&
+                                 ManagerResizableConcept<Manager> &&
+                                 ManagerGrowthChunkSettableConcept<Manager> &&
+                                 ManagerPayloadAliveCheckConcept<Manager>;
 
 /// @brief WeakLease を使う PoolManager
 template <typename Manager>
@@ -144,5 +145,17 @@ template <typename Manager>
 concept StrongLeasePoolManagerConcept =
     BasePoolManagerConcept<Manager> &&
     ManagerStrongLeaseAcquirableConcept<Manager>;
+
+/// @brief shutdown 込みの WeakLease PoolManager
+template <typename Manager, typename Request, typename Context>
+concept WeakLeasePoolManagerWithShutdownConcept =
+    WeakLeasePoolManagerConcept<Manager> &&
+    ManagerShutdownableConcept<Manager, Request, Context>;
+
+/// @brief shutdown 込みの StrongLease PoolManager
+template <typename Manager, typename Request, typename Context>
+concept StrongLeasePoolManagerWithShutdownConcept =
+    StrongLeasePoolManagerConcept<Manager> &&
+    ManagerShutdownableConcept<Manager, Request, Context>;
 
 } // namespace orteaf::internal::base

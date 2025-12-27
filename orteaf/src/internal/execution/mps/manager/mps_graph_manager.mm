@@ -30,11 +30,9 @@ void MpsGraphManager::shutdown() {
   if (!core_.isConfigured()) {
     return;
   }
-  core_.checkCanShutdownOrThrow();
   const GraphPayloadPoolTraits::Request payload_request{};
   const auto payload_context = makePayloadContext();
-  core_.shutdownPayloadPool(payload_request, payload_context);
-  core_.shutdownControlBlockPool();
+  core_.shutdown(payload_request, payload_context);
   key_to_index_.clear();
   device_ = nullptr;
   ops_ = nullptr;

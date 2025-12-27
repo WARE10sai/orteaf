@@ -35,11 +35,9 @@ void MpsLibraryManager::shutdown() {
     return;
   }
 
-  core_.checkCanShutdownOrThrow();
   const LibraryPayloadPoolTraits::Request payload_request{};
   const auto payload_context = makePayloadContext();
-  core_.shutdownPayloadPool(payload_request, payload_context);
-  core_.shutdownControlBlockPool();
+  core_.shutdown(payload_request, payload_context);
 
   key_to_index_.clear();
   device_ = nullptr;

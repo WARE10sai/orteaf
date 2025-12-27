@@ -206,49 +206,21 @@ public:
     setPayloadGrowthChunkSize(config.payload_growth_chunk_size);
   }
 
-  /**
-   * @brief 全ControlBlockに対してcanShutdownチェック
-   *
-   * 一つでもcanShutdown() == falseのCBがあれば例外をスロー
-   */
-  void checkCanShutdownOrThrow() const {
-    control_block_pool_.forEachCreated([&](std::size_t,
-                                           const ControlBlock &cb) {
-      if (!cb.canShutdown()) {
-        ::orteaf::internal::diagnostics::error::throwError(
-            ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-            std::string(managerName()) +
-                " shutdown aborted due to active leases");
-      }
-    });
-  }
-
-  /**
-   * @brief 全ControlBlockに対してcanTeardownチェック
-   *
-   * Payload を破棄可能かどうかをチェック。
-   * 一つでもcanTeardown() == falseのCBがあれば例外をスロー
-   */
-  void checkCanTeardownOrThrow() const {
-    control_block_pool_.forEachCreated([&](std::size_t,
-                                           const ControlBlock &cb) {
-      if (!cb.canTeardown()) {
-        ::orteaf::internal::diagnostics::error::throwError(
-            ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-            std::string(managerName()) +
-                " teardown aborted due to active strong references");
-      }
-    });
-  }
+  // ===========================================================================
+  // Shutdown
+  // ===========================================================================
 
   /**
    * @brief Manager全体をshutdown
    *
-   * Payload PoolとControlBlock Poolをshutdownし、configured_をfalseに設定。
-   * shutdown前にcheckCanShutdownOrThrow()を呼び出す必要がある。
+   * 以下の順序で安全にshutdownを行う:
+   * 1. checkCanTeardownOrThrow() - Payload解放可能かチェック
+   * 2. payload_pool_.clear() - Payload Pool クリア
+   * 3. checkCanShutdownOrThrow() - ControlBlock解放可能かチェック
+   * 4. control_block_pool_.clear() - ControlBlock Pool クリア
    *
-   * @param request Payload shutdown用のリクエスト
-   * @param context Payload shutdown用のコンテキスト
+   * @param request Payload clear用のリクエスト
+   * @param context Payload clear用のコンテキスト
    */
   template <typename Request, typename Context>
   void shutdown(const Request &request, const Context &context)
@@ -258,14 +230,19 @@ public:
     if (!isConfigured()) {
       return;
     }
+
+    // Payload 解放可能かチェック
+    checkCanTeardownOrThrow();
+
+    // Payload Pool クリア
     payload_pool_.clear(request, context);
+
+    // ControlBlock 解放可能かチェック
+    checkCanShutdownOrThrow();
+
+    // ControlBlock Pool クリア
     control_block_pool_.clear();
   }
-
-  /**
-   * @brief ControlBlock Poolをshutdown
-   */
-  void shutdownControlBlockPool() { control_block_pool_.clear(); }
 
   // ===========================================================================
   // Block Size Setters
@@ -616,6 +593,69 @@ public:
 #endif
 
 private:
+  // ===========================================================================
+  // Private: Shutdown Helpers
+  // ===========================================================================
+
+  /**
+   * @brief 全ControlBlockに対してcanShutdownチェック
+   *
+   * 一つでもcanShutdown() == falseのCBがあれば例外をスロー
+   */
+  void checkCanShutdownOrThrow() const {
+    control_block_pool_.forEachCreated([&](std::size_t,
+                                           const ControlBlock &cb) {
+      if (!cb.canShutdown()) {
+        ::orteaf::internal::diagnostics::error::throwError(
+            ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+            std::string(managerName()) +
+                " shutdown aborted due to active leases");
+      }
+    });
+  }
+
+  /**
+   * @brief 全ControlBlockに対してcanTeardownチェック
+   *
+   * Payload を破棄可能かどうかをチェック。
+   * 一つでもcanTeardown() == falseのCBがあれば例外をスロー
+   */
+  void checkCanTeardownOrThrow() const {
+    control_block_pool_.forEachCreated([&](std::size_t,
+                                           const ControlBlock &cb) {
+      if (!cb.canTeardown()) {
+        ::orteaf::internal::diagnostics::error::throwError(
+            ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+            std::string(managerName()) +
+                " teardown aborted due to active strong references");
+      }
+    });
+  }
+
+  // ===========================================================================
+  // Private: Pool Clear Helpers
+  // ===========================================================================
+
+  /**
+   * @brief Payload Poolをclear
+   */
+  template <typename Request, typename Context>
+  void clearPayloadPool(const Request &request, const Context &context)
+    requires requires(PayloadPool &pool, const Request &req,
+                      const Context &ctx) { pool.clear(req, ctx); }
+  {
+    payload_pool_.clear(request, context);
+  }
+
+  /**
+   * @brief ControlBlock Poolをclear
+   */
+  void clearControlBlockPool() { control_block_pool_.clear(); }
+
+  // ===========================================================================
+  // Private: ControlBlock Pool Growth
+  // ===========================================================================
+
   /**
    * @brief ControlBlock Pool を control_block_growth_chunk_size_ 分拡張
    */

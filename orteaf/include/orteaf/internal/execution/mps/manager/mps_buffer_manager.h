@@ -253,15 +253,10 @@ public:
       return;
     }
 
-    core_.checkCanShutdownOrThrow();
-
-    // Destroy all payloads
+    // Shutdown PoolManager (includes check and clear for both pools)
     auto context = makePayloadContext();
     typename BufferPayloadPoolTraitsT<ResourceT>::Request request{};
-    core_.shutdownPayloadPool(request, context);
-
-    // Shutdown ControlBlock pool
-    core_.shutdownControlBlockPool();
+    core_.shutdown(request, context);
 
     // Shutdown SegregatePool
     segregate_pool_.~SegregatePool();

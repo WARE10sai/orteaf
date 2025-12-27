@@ -113,15 +113,13 @@ void MpsHeapManager::shutdown() {
     return;
   }
 
-  core_.checkCanShutdownOrThrow();
 
   // Destroy all payloads
   auto context = makePayloadContext();
   HeapPayloadPoolTraits::Request request{};
-  core_.shutdownPayloadPool(request, context);
+  core_.shutdown(request, context);
 
   // Shutdown control block pool
-  core_.shutdownControlBlockPool();
 
   key_to_index_.clear();
   device_ = nullptr;

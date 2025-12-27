@@ -36,12 +36,10 @@ void MpsEventManager::shutdown() {
     return;
   }
   // Check canShutdown on all created control blocks
-  core_.checkCanShutdownOrThrow();
 
   const EventPayloadPoolTraits::Request payload_request{};
   const auto payload_context = makePayloadContext();
-  core_.shutdownPayloadPool(payload_request, payload_context);
-  core_.shutdownControlBlockPool();
+  core_.shutdown(payload_request, payload_context);
 
   device_ = nullptr;
   ops_ = nullptr;

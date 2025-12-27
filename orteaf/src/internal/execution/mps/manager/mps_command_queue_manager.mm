@@ -38,12 +38,10 @@ void MpsCommandQueueManager::shutdown() {
     return;
   }
   // Check canShutdown on all created control blocks
-  core_.checkCanShutdownOrThrow();
 
   const CommandQueuePayloadPoolTraits::Request payload_request{};
   const CommandQueuePayloadPoolTraits::Context payload_context{device_, ops_};
-  core_.shutdownPayloadPool(payload_request, payload_context);
-  core_.shutdownControlBlockPool();
+  core_.shutdown(payload_request, payload_context);
 
   device_ = nullptr;
   ops_ = nullptr;
