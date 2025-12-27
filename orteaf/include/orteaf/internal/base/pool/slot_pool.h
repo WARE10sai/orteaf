@@ -97,13 +97,13 @@ public:
    *
    * This method iterates over all slots and calls Traits::destroy for any
    * slot marked as created before clearing internal storage. Callers should
-   * verify canShutdown at the manager layer before calling this method.
+   * verify canTeardown at the manager layer before calling this method.
    *
    * @param request Request details forwarded to Traits::destroy.
    * @param context Context details forwarded to Traits::destroy.
    */
-  void shutdown(const Request &request = {},
-                const Context &context = {}) noexcept {
+  void clear(const Request &request = {},
+             const Context &context = {}) noexcept {
     // Destroy all created payloads before clearing storage
     for (std::size_t idx = 0; idx < size(); ++idx) {
       if (created_[idx] != 0) {

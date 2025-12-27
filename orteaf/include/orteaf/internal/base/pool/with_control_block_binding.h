@@ -59,10 +59,10 @@ public:
   }
 
   /**
-   * @brief Poolをシャットダウンし、バインディング配列をクリア
+   * @brief Poolをクリアし、バインディング配列もクリア
    */
-  template <typename... Args> void shutdown(Args &&...args) {
-    Base::shutdown(std::forward<Args>(args)...);
+  template <typename... Args> void clear(Args &&...args) {
+    Base::clear(std::forward<Args>(args)...);
     bound_control_blocks_.clear();
   }
 

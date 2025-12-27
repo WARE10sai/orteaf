@@ -161,7 +161,7 @@ public:
                       const Context &ctx) {
       pool.setBlockSize(block_size);
       pool.resize(capacity);
-      pool.shutdown(req, ctx);
+      pool.clear(req, ctx);
     }
   {
     validateConfig(config);
@@ -253,19 +253,19 @@ public:
   template <typename Request, typename Context>
   void shutdown(const Request &request, const Context &context)
     requires requires(PayloadPool &pool, const Request &req,
-                      const Context &ctx) { pool.shutdown(req, ctx); }
+                      const Context &ctx) { pool.clear(req, ctx); }
   {
     if (!isConfigured()) {
       return;
     }
-    payload_pool_.shutdown(request, context);
-    control_block_pool_.shutdown();
+    payload_pool_.clear(request, context);
+    control_block_pool_.clear();
   }
 
   /**
    * @brief ControlBlock Poolをshutdown
    */
-  void shutdownControlBlockPool() { control_block_pool_.shutdown(); }
+  void shutdownControlBlockPool() { control_block_pool_.clear(); }
 
   // ===========================================================================
   // Block Size Setters
@@ -387,14 +387,14 @@ public:
   // ===========================================================================
 
   /**
-   * @brief Payload Poolをshutdown
+   * @brief Payload Poolをclear
    */
   template <typename Request, typename Context>
   void shutdownPayloadPool(const Request &request, const Context &context)
     requires requires(PayloadPool &pool, const Request &req,
-                      const Context &ctx) { pool.shutdown(req, ctx); }
+                      const Context &ctx) { pool.clear(req, ctx); }
   {
-    payload_pool_.shutdown(request, context);
+    payload_pool_.clear(request, context);
   }
 
   /**

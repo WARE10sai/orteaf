@@ -135,7 +135,7 @@ TEST_F(BoundSlotPoolTest, ShutdownClearsBoundControlBlocks) {
   CBHandle cb_handle{0, 1};
   pool.bindControlBlock(handle, cb_handle);
 
-  pool.shutdown(req, ctx);
+  pool.clear(req, ctx);
   EXPECT_EQ(pool.boundControlBlocksSize(), 0u);
 }
 

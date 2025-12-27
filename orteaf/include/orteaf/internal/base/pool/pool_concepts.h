@@ -21,13 +21,14 @@ concept PoolTypeConcept = requires {
 // 設定 Concept
 // =============================================================================
 
-/// @brief setBlockSize/shutdown/resize操作をサポート
+/// @brief setBlockSize/clear/resize操作をサポート
 template <typename Pool>
 concept PoolConfigurableConcept =
     PoolTypeConcept<Pool> && requires(Pool &pool, std::size_t n) {
       { pool.setBlockSize(n) } -> std::convertible_to<std::size_t>;
-      { pool.shutdown() };
+      { pool.clear() };
       { pool.resize(n) } -> std::convertible_to<std::size_t>;
+      { pool.empty() } -> std::convertible_to<bool>;
     };
 
 // =============================================================================
@@ -187,15 +188,15 @@ concept BoundPoolConcept =
     FullPoolConcept<Pool> && ControlBlockBindableConcept<Pool>;
 
 // =============================================================================
-// Payload Pool Shutdown Concept
+// Payload Pool Clear Concept
 // =============================================================================
 
-/// @brief shutdown(request, context)をサポート
+/// @brief clear(request, context)をサポート
 template <typename Pool, typename Request, typename Context>
-concept PoolShutdownableConcept =
+concept PoolClearableConcept =
     PoolTypeConcept<Pool> &&
     requires(Pool &pool, const Request &req, const Context &ctx) {
-      { pool.shutdown(req, ctx) };
+      { pool.clear(req, ctx) };
     };
 
 // =============================================================================
@@ -214,10 +215,10 @@ concept PayloadPoolForManagerConcept =
     BasePoolConcept<Pool> && CreatedSlotAcquirableConcept<Pool> &&
     UncreatedSlotReservableConcept<Pool> && SlotReleasableConcept<Pool>;
 
-/// @brief PoolManagerがshutdown込みで使用するPayloadPool
+/// @brief PoolManagerがclear込みで使用するPayloadPool
 template <typename Pool, typename Request, typename Context>
-concept PayloadPoolWithShutdownConcept =
+concept PayloadPoolWithClearConcept =
     PayloadPoolForManagerConcept<Pool> &&
-    PoolShutdownableConcept<Pool, Request, Context>;
+    PoolClearableConcept<Pool, Request, Context>;
 
 } // namespace orteaf::internal::base::pool
