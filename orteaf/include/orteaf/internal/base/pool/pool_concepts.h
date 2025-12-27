@@ -186,4 +186,38 @@ template <typename Pool>
 concept BoundPoolConcept =
     FullPoolConcept<Pool> && ControlBlockBindableConcept<Pool>;
 
+// =============================================================================
+// Payload Pool Shutdown Concept
+// =============================================================================
+
+/// @brief shutdown(request, context)をサポート
+template <typename Pool, typename Request, typename Context>
+concept PoolShutdownableConcept =
+    PoolTypeConcept<Pool> &&
+    requires(Pool &pool, const Request &req, const Context &ctx) {
+      { pool.shutdown(req, ctx) };
+    };
+
+// =============================================================================
+// PoolManager用 PayloadPool Concept
+// =============================================================================
+
+/// @brief PoolManagerが必要とするPayloadPoolの最小インターフェース
+///
+/// PoolManagerのconfigure/acquire操作に必要な機能:
+/// - 設定: setBlockSize, resize
+/// - 取得: tryAcquireCreated, tryReserveUncreated
+/// - 検証: isValid, isCreated
+/// - アクセス: get
+template <typename Pool>
+concept PayloadPoolForManagerConcept =
+    BasePoolConcept<Pool> && CreatedSlotAcquirableConcept<Pool> &&
+    UncreatedSlotReservableConcept<Pool> && SlotReleasableConcept<Pool>;
+
+/// @brief PoolManagerがshutdown込みで使用するPayloadPool
+template <typename Pool, typename Request, typename Context>
+concept PayloadPoolWithShutdownConcept =
+    PayloadPoolForManagerConcept<Pool> &&
+    PoolShutdownableConcept<Pool, Request, Context>;
+
 } // namespace orteaf::internal::base::pool
