@@ -138,6 +138,27 @@ public:
     bound_control_blocks_[idx] = ControlBlockHandle::invalid();
   }
 
+  // ===========================================================================
+  // Release Overrides (unbind on release)
+  // ===========================================================================
+
+  /**
+   * @brief Release a payload slot and unbind its control block.
+   */
+  bool release(Handle payload_handle) noexcept {
+    unbindControlBlock(payload_handle);
+    return Base::release(payload_handle);
+  }
+
+  /**
+   * @brief Release a payload slot with request/context and unbind its control block.
+   */
+  bool release(Handle payload_handle, const typename Base::Request &request,
+               const typename Base::Context &context) noexcept {
+    unbindControlBlock(payload_handle);
+    return Base::release(payload_handle, request, context);
+  }
+
 #if ORTEAF_ENABLE_TEST
   // ===========================================================================
   // Test Support

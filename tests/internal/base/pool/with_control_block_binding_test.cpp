@@ -139,6 +139,18 @@ TEST_F(BoundSlotPoolTest, ShutdownClearsBoundControlBlocks) {
   EXPECT_EQ(pool.boundControlBlocksSize(), 0u);
 }
 
+TEST_F(BoundSlotPoolTest, ReleaseUnbindsControlBlock) {
+  auto handle = pool.reserveUncreated();
+  ASSERT_TRUE(handle.isValid());
+
+  CBHandle cb_handle{2, 0};
+  pool.bindControlBlock(handle, cb_handle);
+  EXPECT_TRUE(pool.hasBoundControlBlock(handle));
+
+  EXPECT_TRUE(pool.release(handle));
+  EXPECT_FALSE(pool.hasBoundControlBlock(handle));
+}
+
 // =============================================================================
 // BoundFixedSlotStore Tests
 // =============================================================================
@@ -185,6 +197,18 @@ TEST_F(BoundFixedSlotStoreTest, MultiplePayloadsCanHaveDifferentCBs) {
 
   EXPECT_EQ(store.getBoundControlBlock(h0), cb0);
   EXPECT_EQ(store.getBoundControlBlock(h1), cb1);
+}
+
+TEST_F(BoundFixedSlotStoreTest, ReleaseUnbindsControlBlock) {
+  auto handle = store.reserveUncreated();
+  ASSERT_TRUE(handle.isValid());
+
+  CBHandle cb_handle{3, 1};
+  store.bindControlBlock(handle, cb_handle);
+  EXPECT_TRUE(store.hasBoundControlBlock(handle));
+
+  EXPECT_TRUE(store.release(handle));
+  EXPECT_FALSE(store.hasBoundControlBlock(handle));
 }
 
 } // namespace
