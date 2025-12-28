@@ -201,4 +201,44 @@ TEST(PoolManager, SetPayloadGrowthChunkSizeUpdatesValue) {
   EXPECT_EQ(manager.payloadGrowthChunkSize(), 4u);
 }
 
+TEST(PoolManager, IsAliveReturnsFalseWhenNotConfigured) {
+  PoolManager manager;
+  EXPECT_FALSE(manager.isAlive(PayloadHandle::invalid()));
+}
+
+TEST(PoolManager, IsAliveReturnsFalseForInvalidHandle) {
+  PoolManager manager;
+  auto config = makeBaseConfig();
+  DummyPayloadTraits::Request req{};
+  DummyPayloadTraits::Context ctx{};
+
+  manager.configure(config, req, ctx);
+  EXPECT_FALSE(manager.isAlive(PayloadHandle::invalid()));
+}
+
+TEST(PoolManager, IsAliveReturnsFalseForUncreatedPayload) {
+  PoolManager manager;
+  auto config = makeBaseConfig();
+  DummyPayloadTraits::Request req{};
+  DummyPayloadTraits::Context ctx{};
+
+  manager.configure(config, req, ctx);
+  auto handle = manager.reserveUncreatedPayloadOrGrow();
+  EXPECT_TRUE(handle.isValid());
+  EXPECT_FALSE(manager.isAlive(handle));
+}
+
+TEST(PoolManager, IsAliveReturnsTrueForCreatedPayload) {
+  PoolManager manager;
+  auto config = makeBaseConfig();
+  DummyPayloadTraits::Request req{};
+  DummyPayloadTraits::Context ctx{};
+
+  manager.configure(config, req, ctx);
+  auto handle = manager.reserveUncreatedPayloadOrGrow();
+  EXPECT_TRUE(handle.isValid());
+  EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
+  EXPECT_TRUE(manager.isAlive(handle));
+}
+
 } // namespace

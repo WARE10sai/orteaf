@@ -6,6 +6,7 @@
 - まずは副作用が少ない単体チェックから着手する
 - 依存が増える順に段階的に拡張する
 - 失敗系（例外）を先に固定してから成功系を増やす
+- acquire/lease 依存のテストは別枠で整理してから着手する
 
 ## 優先順（段階）
 1. **設定状態**
@@ -33,7 +34,11 @@
    - `acquireWeakLease()` / `acquireStrongLease()` の再利用・バインド
    - invalid handle / 未作成 payload / nullptr payload の例外
 
+## acquire/lease 依存のテスト整理
+- 対象 API: `isAlive()` / block size 変更 / `configure()`（block size 変更が絡む場合） / `acquireWeakLease()` / `acquireStrongLease()` / shutdown の active lease 判定
+- 事前に必要な準備: payload 作成、control block の取得、lease のライフサイクル制御
+- 影響範囲: block size 変更の可否、shutdown の可否
+
 ## 事前準備（必要なら）
 - テスト用の最小 `Traits` / `PayloadPool` / `ControlBlock` を用意
 - `#if ORTEAF_ENABLE_TEST` の `*ForTest()` を活用可能か確認
-
