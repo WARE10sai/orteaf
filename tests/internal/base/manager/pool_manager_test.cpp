@@ -241,4 +241,102 @@ TEST(PoolManager, IsAliveReturnsTrueForCreatedPayload) {
   EXPECT_TRUE(manager.isAlive(handle));
 }
 
+TEST(PoolManager, EmplacePayloadReturnsTrueAndCreatesPayload) {
+  PoolManager manager;
+  auto config = makeBaseConfig();
+  DummyPayloadTraits::Request req{};
+  DummyPayloadTraits::Context ctx{};
+
+  manager.configure(config, req, ctx);
+  auto handle = manager.reserveUncreatedPayloadOrGrow();
+  EXPECT_TRUE(handle.isValid());
+  EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
+  EXPECT_TRUE(manager.isAlive(handle));
+}
+
+TEST(PoolManager, EmplacePayloadReturnsFalseForInvalidHandle) {
+  PoolManager manager;
+  auto config = makeBaseConfig();
+  DummyPayloadTraits::Request req{};
+  DummyPayloadTraits::Context ctx{};
+
+  manager.configure(config, req, ctx);
+  EXPECT_FALSE(manager.emplacePayload(PayloadHandle::invalid(), req, ctx));
+}
+
+TEST(PoolManager, EmplacePayloadReturnsFalseWhenAlreadyCreated) {
+  PoolManager manager;
+  auto config = makeBaseConfig();
+  DummyPayloadTraits::Request req{};
+  DummyPayloadTraits::Context ctx{};
+
+  manager.configure(config, req, ctx);
+  auto handle = manager.reserveUncreatedPayloadOrGrow();
+  EXPECT_TRUE(handle.isValid());
+  EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
+  EXPECT_FALSE(manager.emplacePayload(handle, req, ctx));
+}
+
+TEST(PoolManager, CreateAllPayloadsCreatesAllSlots) {
+  PoolManager manager;
+  auto config = makeBaseConfig();
+  config.payload_capacity = 3;
+  config.payload_block_size = 3;
+  DummyPayloadTraits::Request req{};
+  DummyPayloadTraits::Context ctx{};
+
+  manager.configure(config, req, ctx);
+  EXPECT_TRUE(manager.createAllPayloads(req, ctx));
+
+  for (std::size_t i = 0; i < config.payload_capacity; ++i) {
+    auto handle =
+        PayloadHandle{static_cast<PayloadHandle::index_type>(i), 0};
+    EXPECT_TRUE(manager.isAlive(handle));
+  }
+}
+
+TEST(PoolManager, ReserveUncreatedPayloadOrGrowReturnsUncreatedHandle) {
+  PoolManager manager;
+  auto config = makeBaseConfig();
+  DummyPayloadTraits::Request req{};
+  DummyPayloadTraits::Context ctx{};
+
+  manager.configure(config, req, ctx);
+  auto handle = manager.reserveUncreatedPayloadOrGrow();
+  EXPECT_TRUE(handle.isValid());
+  EXPECT_FALSE(manager.isAlive(handle));
+}
+
+TEST(PoolManager, ReserveUncreatedPayloadOrGrowGrowsWhenExhausted) {
+  PoolManager manager;
+  auto config = makeBaseConfig();
+  config.payload_capacity = 1;
+  config.payload_growth_chunk_size = 2;
+  DummyPayloadTraits::Request req{};
+  DummyPayloadTraits::Context ctx{};
+
+  manager.configure(config, req, ctx);
+  auto first = manager.reserveUncreatedPayloadOrGrow();
+  EXPECT_TRUE(first.isValid());
+  auto second = manager.reserveUncreatedPayloadOrGrow();
+  EXPECT_TRUE(second.isValid());
+  EXPECT_NE(second.index, first.index);
+  EXPECT_FALSE(manager.isAlive(second));
+}
+
+TEST(PoolManager, AcquirePayloadOrGrowAndCreateCreatesPayload) {
+  PoolManager manager;
+  auto config = makeBaseConfig();
+  config.payload_capacity = 0;
+  config.payload_block_size = 1;
+  config.payload_growth_chunk_size = 1;
+  DummyPayloadTraits::Request req{};
+  DummyPayloadTraits::Context ctx{};
+
+  manager.configure(config, req, ctx);
+  auto handle = manager.acquirePayloadOrGrowAndCreate(req, ctx);
+  EXPECT_TRUE(handle.isValid());
+  EXPECT_TRUE(manager.isAlive(handle));
+}
+
 } // namespace
