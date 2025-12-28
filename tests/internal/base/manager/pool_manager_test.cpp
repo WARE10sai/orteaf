@@ -145,12 +145,22 @@ TEST(PoolManager, SetControlBlockBlockSizeRejectsZero) {
       [&manager] { manager.setControlBlockBlockSize(0); });
 }
 
+TEST(PoolManager, SetControlBlockBlockSizeAcceptsNonZero) {
+  PoolManager manager;
+  EXPECT_NO_THROW(manager.setControlBlockBlockSize(2));
+}
+
 TEST(PoolManager, SetPayloadBlockSizeRejectsZero) {
   PoolManager manager;
   ::orteaf::tests::ExpectErrorMessage(
       ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
       {"DummyManager", "payload block size must be > 0"},
       [&manager] { manager.setPayloadBlockSize(0); });
+}
+
+TEST(PoolManager, SetPayloadBlockSizeAcceptsNonZero) {
+  PoolManager manager;
+  EXPECT_NO_THROW(manager.setPayloadBlockSize(2));
 }
 
 } // namespace
