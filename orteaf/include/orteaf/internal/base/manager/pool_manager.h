@@ -125,21 +125,6 @@ public:
   }
 
   // ===========================================================================
-  // Payload Alive Check
-  // ===========================================================================
-
-  /**
-   * @brief Payload Handleが有効で作成済みかを判定
-   *
-   * @param handle チェック対象のHandle
-   * @return 初期化済み && valid && created であればtrue
-   */
-  bool isAlive(PayloadHandle handle) const noexcept {
-    return isConfigured() && payload_pool_.isValid(handle) &&
-           payload_pool_.isCreated(handle);
-  }
-
-  // ===========================================================================
   // Configuration
   // ===========================================================================
 
@@ -324,6 +309,17 @@ public:
   // ===========================================================================
   // Payload Operations
   // ===========================================================================
+
+  /**
+   * @brief Payload Handleが有効で作成済みかを判定
+   *
+   * @param handle チェック対象のHandle
+   * @return 初期化済み && valid && created であればtrue
+   */
+  bool isAlive(PayloadHandle handle) const noexcept {
+    return isConfigured() && payload_pool_.isValid(handle) &&
+           payload_pool_.isCreated(handle);
+  }
 
   /**
    * @brief Payload Poolの全作成
