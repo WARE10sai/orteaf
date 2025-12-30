@@ -37,11 +37,21 @@ TEST(MpsFenceResourceTest, DefaultConstructedIsReadyAndCompleted) {
   EXPECT_EQ(fence.commandQueueHandle(), base::CommandQueueHandle{});
 }
 
+TEST(MpsFenceResourceTest, SetCommandBufferRequiresFence) {
+  mps_res::MpsFence fence;
+  auto command_buffer = fakeCommandBuffer(0x9);
+
+  EXPECT_FALSE(fence.setCommandBuffer(command_buffer));
+  EXPECT_EQ(fence.commandBuffer(), nullptr);
+  EXPECT_TRUE(fence.isCompleted());
+}
+
 TEST(MpsFenceResourceTest, SetCommandBufferOnlyOnce) {
   mps_res::MpsFence fence;
   auto first = fakeCommandBuffer(0x1);
   auto second = fakeCommandBuffer(0x2);
 
+  ASSERT_TRUE(fence.setFence(reinterpret_cast<mps_wrapper::MpsFence_t>(0x10)));
   EXPECT_TRUE(fence.setCommandBuffer(first));
   EXPECT_EQ(fence.commandBuffer(), first);
   EXPECT_FALSE(fence.setCommandBuffer(second));
@@ -55,6 +65,7 @@ TEST(MpsFenceResourceTest, SetCommandQueueHandleBlockedAfterCommandBuffer) {
 
   EXPECT_TRUE(fence.setCommandQueueHandle(handle));
   EXPECT_EQ(fence.commandQueueHandle(), handle);
+  ASSERT_TRUE(fence.setFence(reinterpret_cast<mps_wrapper::MpsFence_t>(0x12)));
   EXPECT_TRUE(fence.setCommandBuffer(fakeCommandBuffer(0x3)));
   EXPECT_FALSE(fence.setCommandQueueHandle(base::CommandQueueHandle{9}));
   EXPECT_FALSE(fence.setCommandBuffer(fakeCommandBuffer(0x4)));
@@ -66,6 +77,7 @@ TEST(MpsFenceResourceTest, IsReadyUsesFastOpsAndNailsOnCompletion) {
   mps_res::MpsFence fence;
   auto command_buffer = fakeCommandBuffer(0x5);
 
+  ASSERT_TRUE(fence.setFence(reinterpret_cast<mps_wrapper::MpsFence_t>(0x13)));
   ASSERT_TRUE(fence.setCommandBuffer(command_buffer));
   EXPECT_FALSE((fence.isReady<FakeFastOpsNotCompleted>()));
   EXPECT_EQ(fence.commandBuffer(), command_buffer);
@@ -74,6 +86,18 @@ TEST(MpsFenceResourceTest, IsReadyUsesFastOpsAndNailsOnCompletion) {
   EXPECT_TRUE(fence.isReady<FakeFastOpsNotCompleted>());
   EXPECT_EQ(fence.commandBuffer(), nullptr);
   EXPECT_TRUE(fence.isCompleted());
+}
+
+TEST(MpsFenceResourceTest, SetFenceIsAllowedOnlyOnceAndBeforeCommandBuffer) {
+  mps_res::MpsFence fence;
+
+  auto fence_a = reinterpret_cast<mps_wrapper::MpsFence_t>(0x11);
+  auto fence_b = reinterpret_cast<mps_wrapper::MpsFence_t>(0x22);
+
+  EXPECT_TRUE(fence.setFence(fence_a));
+  EXPECT_FALSE(fence.setFence(fence_b));
+  EXPECT_TRUE(fence.hasFence());
+  EXPECT_EQ(fence.fence(), fence_a);
 }
 
 #endif // ORTEAF_ENABLE_MPS

@@ -42,7 +42,7 @@ public:
   }
 
   bool setCommandBuffer(CommandBufferType command_buffer) noexcept {
-    if (command_buffer_ != nullptr) {
+    if (fence_ == nullptr || command_buffer_ != nullptr) {
       return false;
     }
     command_buffer_ = command_buffer;
