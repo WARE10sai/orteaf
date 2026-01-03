@@ -351,4 +351,34 @@ TEST_F(MpsFenceLifetimeManagerTest,
   EXPECT_EQ(lifetime_manager_.headIndexForTest(), 1u);
 }
 
+#if ORTEAF_MPS_DEBUG_ENABLED
+TEST_F(MpsFenceLifetimeManagerTest,
+       ReleaseReadyThrowsWhenPrefixNotReadyInDebug) {
+  const base::CommandQueueHandle handle{13};
+  auto command_buffer_a = fakeCommandBuffer(0x80);
+  auto command_buffer_b = fakeCommandBuffer(0x81);
+  auto fence_b = reinterpret_cast<mps_wrapper::MpsFence_t>(0xC);
+
+  ASSERT_TRUE(lifetime_manager_.setFenceManager(&fence_manager_));
+  ASSERT_TRUE(lifetime_manager_.setCommandQueueHandle(handle));
+
+  EXPECT_CALL(ops_, createFence(device_))
+      .WillOnce(::testing::Return(fence_b));
+  EXPECT_CALL(ops_, destroyFence(fence_b)).Times(1);
+
+  (void)lifetime_manager_.acquire(command_buffer_a);
+  (void)lifetime_manager_.acquire(command_buffer_b);
+
+  CompletionTracker::markCompleted(command_buffer_b);
+
+  ::orteaf::tests::ExpectError(
+      ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+      [&] { (void)lifetime_manager_.releaseReady<FakeFastOpsControlled>(); });
+
+  EXPECT_EQ(lifetime_manager_.size(), 2u);
+  EXPECT_EQ(lifetime_manager_.storageSizeForTest(), 2u);
+  EXPECT_EQ(lifetime_manager_.headIndexForTest(), 0u);
+}
+#endif
+
 #endif // ORTEAF_ENABLE_MPS

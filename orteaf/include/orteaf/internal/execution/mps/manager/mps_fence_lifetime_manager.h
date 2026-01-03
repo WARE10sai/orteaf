@@ -8,6 +8,7 @@
 #include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/base/heap_vector.h"
 #include "orteaf/internal/diagnostics/error/error.h"
+#include "orteaf/internal/diagnostics/log/log_config.h"
 #include "orteaf/internal/execution/mps/manager/mps_fence_manager.h"
 #include "orteaf/internal/execution/mps/platform/mps_fast_ops.h"
 
@@ -118,7 +119,7 @@ public:
     for (std::size_t i = head_; i < ready_end; ++i) {
       auto *payload = hazards_[i].payloadPtr();
       if (payload != nullptr) {
-#if ORTEAF_ENABLE_TEST
+#if ORTEAF_MPS_DEBUG_ENABLED
         if (!payload->isReady<FastOps>()) {
           ::orteaf::internal::diagnostics::error::throwError(
               ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
