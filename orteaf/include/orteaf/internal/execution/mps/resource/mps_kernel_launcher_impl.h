@@ -331,11 +331,11 @@ public:
 
     // Acquire lock on command queue for safe access
     auto *queue_ptr = queue_lease.payloadPtr();
-    if (!queue_ptr || !*queue_ptr) {
+    if (!queue_ptr || !queue_ptr->hasQueue()) {
       return nullptr; // Invalid queue
     }
 
-    auto *command_buffer = FastOps::createCommandBuffer(*queue_ptr);
+    auto *command_buffer = FastOps::createCommandBuffer(queue_ptr->queue());
     auto *encoder = FastOps::createComputeCommandEncoder(command_buffer);
     auto *pipeline_payload = entry.pipelines[pipeline_index].payloadPtr();
     if (!pipeline_payload || !pipeline_payload->pipeline_state) {
