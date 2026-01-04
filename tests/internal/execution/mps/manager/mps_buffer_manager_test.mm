@@ -341,7 +341,7 @@ TEST_F(MpsBufferManagerIntegrationTest, BufferRecyclingReusesSlots) {
 
 // StubMpsResource-based MpsBufferManager
 using StubBufferManager =
-    mps_rt::MpsBufferManagerT<orteaf::tests::execution::mps::StubMpsResource>;
+    mps_rt::MpsBufferManager<orteaf::tests::execution::mps::StubMpsResource>;
 
 class MpsBufferManagerMockTest : public ::testing::Test {
 protected:

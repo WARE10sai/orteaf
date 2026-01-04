@@ -73,7 +73,7 @@ struct HeapDescriptorKeyHasher {
 struct MpsHeapResource {
   ::orteaf::internal::execution::mps::platform::wrapper::MpsHeap_t heap{
       nullptr};
-  MpsBufferManagerT<
+  MpsBufferManager<
       ::orteaf::internal::execution::allocator::resource::mps::MpsResource>
       buffer_manager{};
 };
@@ -88,7 +88,7 @@ struct HeapPayloadPoolTraits {
   using DeviceType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsDevice_t;
   using SlowOps = ::orteaf::internal::execution::mps::platform::MpsSlowOps;
-  using BufferManager = MpsBufferManagerT<
+  using BufferManager = MpsBufferManager<
       ::orteaf::internal::execution::allocator::resource::mps::MpsResource>;
 
   struct Request {
@@ -145,7 +145,7 @@ public:
   using HeapHandle = ::orteaf::internal::base::HeapHandle;
   using HeapType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsHeap_t;
-  using BufferManager = MpsBufferManagerT<
+  using BufferManager = MpsBufferManager<
       ::orteaf::internal::execution::allocator::resource::mps::MpsResource>;
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
