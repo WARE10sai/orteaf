@@ -24,7 +24,7 @@ namespace {
 
 class MpsBufferManagerSimpleTest : public ::testing::Test {
 protected:
-  using Manager = mps_rt::MpsBufferManager;
+  using Manager = mps_rt::MpsBufferManager<mps_rt::MpsResource>;
   using LaunchParams = typename Manager::LaunchParams;
 
   Manager &manager() { return manager_; }
@@ -99,7 +99,7 @@ namespace {
 
 class MpsBufferManagerIntegrationTest : public ::testing::Test {
 protected:
-  using Manager = mps_rt::MpsBufferManager;
+  using Manager = mps_rt::MpsBufferManager<mps_rt::MpsResource>;
   using Config = typename Manager::Config;
 
   void SetUp() override {

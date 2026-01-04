@@ -355,7 +355,6 @@ using MpsResource =
     ::orteaf::internal::execution::allocator::resource::mps::MpsResource;
 using MpsBufferPool = MpsBufferPoolT<MpsResource>;
 using MpsBufferManagerraits = MpsBufferManagerraitsT<MpsResource>;
-using MpsBufferManager = MpsBufferManager<MpsResource>;
 } // namespace orteaf::internal::execution::mps::manager
 
 #endif // ORTEAF_ENABLE_MPS
