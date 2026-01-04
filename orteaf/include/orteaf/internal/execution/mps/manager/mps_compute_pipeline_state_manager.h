@@ -10,8 +10,8 @@
 #include <utility>
 
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/base/lease/control_block/weak.h"
-#include "orteaf/internal/base/lease/weak_lease.h"
+#include "orteaf/internal/base/lease/control_block/strong.h"
+#include "orteaf/internal/base/manager/lease_lifetime_registry.h"
 #include "orteaf/internal/base/manager/pool_manager.h"
 #include "orteaf/internal/base/pool/fixed_slot_store.h"
 #include "orteaf/internal/execution/mps/platform/mps_slow_ops.h"
@@ -116,7 +116,7 @@ using PipelinePayloadPool =
 
 struct PipelineControlBlockTag {};
 
-using PipelineControlBlock = ::orteaf::internal::base::WeakControlBlock<
+using PipelineControlBlock = ::orteaf::internal::base::StrongControlBlock<
     ::orteaf::internal::base::FunctionHandle, MpsPipelineResource,
     PipelinePayloadPool>;
 
@@ -143,7 +143,10 @@ public:
       MpsComputePipelineState_t;
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
-  using PipelineLease = Core::WeakLeaseType;
+  using PipelineLease = Core::StrongLeaseType;
+  using LifetimeRegistry =
+      ::orteaf::internal::base::manager::LeaseLifetimeRegistry<FunctionHandle,
+                                                               PipelineLease>;
 
   MpsComputePipelineStateManager() = default;
   MpsComputePipelineStateManager(const MpsComputePipelineStateManager &) =
@@ -214,6 +217,7 @@ private:
   DeviceType device_{nullptr};
   SlowOps *ops_{nullptr};
   Core core_{};
+  LifetimeRegistry lifetime_{};
 };
 
 } // namespace orteaf::internal::execution::mps::manager
