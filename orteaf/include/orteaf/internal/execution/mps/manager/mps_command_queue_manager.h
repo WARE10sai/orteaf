@@ -161,6 +161,26 @@ public:
   /// @note Creates a new control block each time for speed
   CommandQueueLease acquire(CommandQueueHandle handle);
 
+  template <typename FastOps =
+                ::orteaf::internal::execution::mps::platform::MpsFastOps>
+  bool releaseReadyAndMaybeRelease(CommandQueueLease &lease) {
+    if (!lease) {
+      return false;
+    }
+    auto *payload = lease.payloadPtr();
+    if (payload == nullptr) {
+      lease.release();
+      return true;
+    }
+    auto &lifetime = payload->lifetime();
+    lifetime.releaseReady<FastOps>();
+    if (!lifetime.empty()) {
+      return false;
+    }
+    lease.release();
+    return true;
+  }
+
 #if ORTEAF_ENABLE_TEST
   bool isConfiguredForTest() const noexcept { return core_.isConfigured(); }
 
