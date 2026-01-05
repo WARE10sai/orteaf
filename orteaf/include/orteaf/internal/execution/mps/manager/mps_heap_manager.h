@@ -7,8 +7,8 @@
 #include <unordered_map>
 
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/base/lease/control_block/weak.h"
-#include "orteaf/internal/base/lease/weak_lease.h"
+#include "orteaf/internal/base/lease/control_block/strong.h"
+#include "orteaf/internal/base/manager/lease_lifetime_registry.h"
 #include "orteaf/internal/base/manager/pool_manager.h"
 #include "orteaf/internal/base/pool/fixed_slot_store.h"
 #include "orteaf/internal/execution/mps/manager/mps_buffer_manager.h"
@@ -113,10 +113,10 @@ using HeapPayloadPool =
     ::orteaf::internal::base::pool::FixedSlotStore<HeapPayloadPoolTraits>;
 
 // =============================================================================
-// ControlBlock type using WeakControlBlock
+// ControlBlock type using StrongControlBlock
 // =============================================================================
 
-using HeapControlBlock = ::orteaf::internal::base::WeakControlBlock<
+using HeapControlBlock = ::orteaf::internal::base::StrongControlBlock<
     ::orteaf::internal::base::HeapHandle, MpsHeapResource, HeapPayloadPool>;
 
 // =============================================================================
@@ -149,7 +149,10 @@ public:
       ::orteaf::internal::execution::allocator::resource::mps::MpsResource>;
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
-  using HeapLease = Core::WeakLeaseType;
+  using HeapLease = Core::StrongLeaseType;
+  using LifetimeRegistry =
+      ::orteaf::internal::base::manager::LeaseLifetimeRegistry<HeapHandle,
+                                                               HeapLease>;
 
   MpsHeapManager() = default;
   MpsHeapManager(const MpsHeapManager &) = delete;
@@ -223,6 +226,7 @@ private:
   SlowOps *ops_{nullptr};
   BufferManager::Config buffer_config_{};
   Core core_{};
+  LifetimeRegistry lifetime_{};
 };
 
 } // namespace orteaf::internal::execution::mps::manager

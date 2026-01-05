@@ -113,6 +113,7 @@ void MpsHeapManager::shutdown() {
     return;
   }
 
+  lifetime_.clear();
 
   // Destroy all payloads
   auto context = makePayloadContext();
@@ -143,7 +144,13 @@ MpsHeapManager::acquire(const HeapDescriptorKey &key) {
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
           "Cached heap index is invalid");
     }
-    return core_.acquireWeakLease(handle);
+    auto cached = lifetime_.get(handle);
+    if (cached) {
+      return cached;
+    }
+    auto lease = core_.acquireStrongLease(handle);
+    lifetime_.set(lease);
+    return lease;
   }
 
   // Reserve an uncreated slot and create the heap
@@ -162,7 +169,9 @@ MpsHeapManager::acquire(const HeapDescriptorKey &key) {
   }
 
   key_to_index_.emplace(key, static_cast<std::size_t>(handle.index));
-  return core_.acquireWeakLease(handle);
+  auto lease = core_.acquireStrongLease(handle);
+  lifetime_.set(lease);
+  return lease;
 }
 
 MpsHeapManager::BufferManager *
@@ -184,7 +193,11 @@ MpsHeapManager::bufferManager(const HeapDescriptorKey &key) {
     const auto index = it->second;
     const HeapHandle handle{
         static_cast<typename HeapHandle::index_type>(index)};
-    auto lease = core_.acquireWeakLease(handle);
+    auto lease = lifetime_.get(handle);
+    if (!lease) {
+      lease = core_.acquireStrongLease(handle);
+      lifetime_.set(lease);
+    }
     auto *payload = lease.payloadPtr();
     return payload ? &payload->buffer_manager : nullptr;
   }
