@@ -49,13 +49,13 @@ public:
   // =========================================================================
 
   /**
-   * @brief Initialize the CPU runtime.
+   * @brief Configure the CPU runtime.
    *
    * Creates or uses provided SlowOps and configures all managers.
    *
    * @param slow_ops Optional custom SlowOps instance (for testing)
    */
-  void initialize(std::unique_ptr<SlowOps> slow_ops = nullptr) {
+  void configure(std::unique_ptr<SlowOps> slow_ops = nullptr) {
     if (slow_ops) {
       slow_ops_ = std::move(slow_ops);
     } else if (!slow_ops_) {
@@ -77,9 +77,9 @@ public:
   }
 
   /**
-   * @brief Check if the runtime is initialized.
+   * @brief Check if the runtime is configured.
    */
-  bool isInitialized() const noexcept {
+  bool isConfigured() const noexcept {
 #if ORTEAF_ENABLE_TEST
     return slow_ops_ != nullptr && device_manager_.isConfiguredForTest();
 #else
