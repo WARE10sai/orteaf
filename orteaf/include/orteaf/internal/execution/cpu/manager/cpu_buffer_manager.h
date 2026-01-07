@@ -283,23 +283,6 @@ public:
    */
   void release(BufferLease &lease) noexcept { lease.release(); }
 
-  /**
-   * @brief Get buffer view for a handle.
-   *
-   * @param handle Buffer handle
-   * @return CpuBufferView for the buffer
-   */
-  BufferView getView(BufferHandle handle) {
-    core_.ensureConfigured();
-
-    auto *payload = core_.getPayload(handle);
-    if (payload == nullptr) {
-      return BufferView{};
-    }
-
-    return payload->view();
-  }
-
 #if ORTEAF_ENABLE_TEST
   bool isConfiguredForTest() const noexcept { return core_.isConfigured(); }
   std::size_t payloadPoolSizeForTest() const noexcept {
