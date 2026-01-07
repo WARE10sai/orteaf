@@ -19,7 +19,6 @@ public:
   using FenceManager =
       ::orteaf::internal::execution::mps::manager::MpsFenceManager;
   using StrongFenceLease = FenceManager::StrongFenceLease;
-  using WeakFenceLease = FenceManager::WeakFenceLease;
   using CommandQueueHandle = ::orteaf::internal::base::CommandQueueHandle;
   using CommandBufferType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsCommandBuffer_t;
@@ -48,7 +47,7 @@ public:
     return true;
   }
 
-  WeakFenceLease acquire(CommandBufferType command_buffer) {
+  StrongFenceLease acquire(CommandBufferType command_buffer) {
     if (fence_manager_ == nullptr) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
@@ -85,7 +84,7 @@ public:
           "MPS fence hazard failed to bind command buffer");
     }
     hazards_.pushBack(std::move(lease));
-    return WeakFenceLease{hazards_.back()};
+    return hazards_.back();
   }
 
   template <typename FastOps =

@@ -6,7 +6,7 @@
 #include <cstdint>
 
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/base/lease/control_block/shared.h"
+#include "orteaf/internal/base/lease/control_block/strong.h"
 #include "orteaf/internal/base/lease/strong_lease.h"
 #include "orteaf/internal/base/manager/pool_manager.h"
 #include "orteaf/internal/base/pool/slot_pool.h"
@@ -68,7 +68,7 @@ using FencePayloadPool =
 
 struct FenceControlBlockTag {};
 
-using FenceControlBlock = ::orteaf::internal::base::SharedControlBlock<
+using FenceControlBlock = ::orteaf::internal::base::StrongControlBlock<
     ::orteaf::internal::base::FenceHandle,
     ::orteaf::internal::execution::mps::resource::MpsFenceHazard,
     FencePayloadPool>;
@@ -104,7 +104,6 @@ public:
   using ControlBlockPool = Core::ControlBlockPool;
 
   using StrongFenceLease = Core::StrongLeaseType;
-  using WeakFenceLease = Core::WeakLeaseType;
 
 public:
   struct Config {
@@ -124,7 +123,6 @@ public:
   void shutdown();
 
   StrongFenceLease acquire();
-  WeakFenceLease acquireWeak(FenceHandle handle);
 
 #if ORTEAF_ENABLE_TEST
   bool isConfiguredForTest() const noexcept { return core_.isConfigured(); }

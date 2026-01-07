@@ -181,57 +181,6 @@ TYPED_TEST(MpsFenceManagerTypedTest, AcquireReturnsValidLease) {
   manager.shutdown();
 }
 
-TYPED_TEST(MpsFenceManagerTypedTest, AcquireWeakByHandleReturnsLease) {
-  auto &manager = this->manager();
-  const auto device = this->adapter().device();
-  if constexpr (TypeParam::is_mock) {
-    this->adapter().expectCreateFences({makeFence(0x305)},
-                                       ::testing::Eq(device));
-  }
-  manager.configure(makeConfig(device, this->getOps(), 1, 1, 1, 1, 1, 1));
-
-  auto strong_lease = manager.acquire();
-  ASSERT_TRUE(strong_lease);
-  EXPECT_EQ(strong_lease.strongCount(), 1u);
-
-  auto weak_lease = manager.acquireWeak(strong_lease.payloadHandle());
-  EXPECT_TRUE(weak_lease);
-  EXPECT_EQ(weak_lease.weakCount(), 1u);
-
-  auto locked = weak_lease.lock();
-  EXPECT_TRUE(locked);
-  EXPECT_EQ(locked.strongCount(), 2u);
-  locked.release();
-  EXPECT_EQ(strong_lease.strongCount(), 1u);
-
-  weak_lease.release();
-  strong_lease.release();
-
-  if constexpr (TypeParam::is_mock) {
-    this->adapter().expectDestroyFences({makeFence(0x305)});
-  }
-  manager.shutdown();
-}
-
-TYPED_TEST(MpsFenceManagerTypedTest, AcquireWeakRejectsInvalidHandle) {
-  auto &manager = this->manager();
-  const auto device = this->adapter().device();
-  if constexpr (TypeParam::is_mock) {
-    this->adapter().expectCreateFences({makeFence(0x306)},
-                                       ::testing::Eq(device));
-  }
-  manager.configure(makeConfig(device, this->getOps(), 1, 1, 1, 1, 1, 1));
-
-  using Handle = mps_rt::MpsFenceManager::FenceHandle;
-  ExpectError(diag_error::OrteafErrc::InvalidArgument,
-              [&] { (void)manager.acquireWeak(Handle::invalid()); });
-
-  if constexpr (TypeParam::is_mock) {
-    this->adapter().expectDestroyFences({makeFence(0x306)});
-  }
-  manager.shutdown();
-}
-
 // =============================================================================
 // Release Tests
 // =============================================================================
