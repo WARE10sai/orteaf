@@ -45,7 +45,7 @@ void MpsFenceManager::shutdown() {
   ops_ = nullptr;
 }
 
-MpsFenceManager::FenceLease MpsFenceManager::acquire() {
+MpsFenceManager::StrongFenceLease MpsFenceManager::acquire() {
   core_.ensureConfigured();
   const FencePayloadPoolTraits::Request request{};
   const auto context = makePayloadContext();
@@ -56,12 +56,6 @@ MpsFenceManager::FenceLease MpsFenceManager::acquire() {
         "MPS fence manager has no available slots");
   }
   return core_.acquireStrongLease(handle);
-}
-
-MpsFenceManager::FenceWeakLease
-MpsFenceManager::acquireWeak(FenceHandle handle) {
-  core_.ensureConfigured();
-  return core_.acquireWeakLease(handle);
 }
 
 FencePayloadPoolTraits::Context

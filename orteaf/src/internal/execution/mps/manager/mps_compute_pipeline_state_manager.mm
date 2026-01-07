@@ -34,6 +34,7 @@ void MpsComputePipelineStateManager::shutdown() {
     return;
   }
 
+  lifetime_.clear();
   const PipelinePayloadPoolTraits::Request payload_request{};
   const auto payload_context = makePayloadContext();
   core_.shutdown(payload_request, payload_context);
@@ -57,7 +58,13 @@ MpsComputePipelineStateManager::acquire(const FunctionKey &key) {
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
           "MPS compute pipeline state cache is invalid");
     }
-    return core_.acquireWeakLease(handle);
+    auto cached = lifetime_.get(handle);
+    if (cached) {
+      return cached;
+    }
+    auto lease = core_.acquireStrongLease(handle);
+    lifetime_.set(lease);
+    return lease;
   }
 
   // Reserve an uncreated slot and create the pipeline state
@@ -76,7 +83,9 @@ MpsComputePipelineStateManager::acquire(const FunctionKey &key) {
   }
 
   key_to_index_.emplace(key, static_cast<std::size_t>(handle.index));
-  return core_.acquireWeakLease(handle);
+  auto lease = core_.acquireStrongLease(handle);
+  lifetime_.set(lease);
+  return lease;
 }
 
 void MpsComputePipelineStateManager::validateKey(const FunctionKey &key) const {

@@ -6,11 +6,12 @@
 #include <cstdint>
 
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/base/lease/control_block/weak.h"
-#include "orteaf/internal/base/lease/weak_lease.h"
+#include "orteaf/internal/base/lease/control_block/strong.h"
+#include "orteaf/internal/base/manager/lease_lifetime_registry.h"
 #include "orteaf/internal/base/manager/pool_manager.h"
 #include "orteaf/internal/base/pool/slot_pool.h"
 #include "orteaf/internal/execution/mps/platform/mps_slow_ops.h"
+#include "orteaf/internal/execution/mps/platform/mps_fast_ops.h"
 #include "orteaf/internal/execution/mps/platform/wrapper/mps_command_queue.h"
 #include "orteaf/internal/execution/mps/resource/mps_command_queue_resource.h"
 
@@ -81,12 +82,12 @@ using CommandQueuePayloadPool =
     ::orteaf::internal::base::pool::SlotPool<CommandQueuePayloadPoolTraits>;
 
 // =============================================================================
-// ControlBlock (WeakControlBlock for non-owning references)
+// ControlBlock (StrongControlBlock for owning references)
 // =============================================================================
 
 struct CommandQueueControlBlockTag {};
 
-using CommandQueueControlBlock = ::orteaf::internal::base::WeakControlBlock<
+using CommandQueueControlBlock = ::orteaf::internal::base::StrongControlBlock<
     ::orteaf::internal::base::CommandQueueHandle,
     ::orteaf::internal::execution::mps::resource::MpsCommandQueueResource,
     CommandQueuePayloadPool>;
@@ -122,7 +123,10 @@ public:
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
 
-  using CommandQueueLease = Core::WeakLeaseType;
+  using CommandQueueLease = Core::StrongLeaseType;
+  using LifetimeRegistry =
+      ::orteaf::internal::base::manager::LeaseLifetimeRegistry<
+          CommandQueueHandle, CommandQueueLease>;
 
 private:
   friend CommandQueueLease;
@@ -157,9 +161,47 @@ public:
   /// @brief Acquire a new command queue (creates queue + control block)
   CommandQueueLease acquire();
 
-  /// @brief Acquire a weak reference to an existing queue by handle
-  /// @note Creates a new control block each time for speed
+  /// @brief Acquire a strong reference to an existing queue by handle
   CommandQueueLease acquire(CommandQueueHandle handle);
+
+  template <typename FastOps =
+                ::orteaf::internal::execution::mps::platform::MpsFastOps>
+  bool releaseReadyAndMaybeRelease(CommandQueueLease &lease) {
+    if (!lease) {
+      return false;
+    }
+    const auto handle = lease.payloadHandle();
+    auto *payload = lease.payloadPtr();
+    if (payload == nullptr) {
+      if (handle.isValid()) {
+        lifetime_.release(handle);
+      }
+      lease.release();
+      return true;
+    }
+    auto &fence_lifetime = payload->lifetime();
+    fence_lifetime.releaseReady<FastOps>();
+    if (!fence_lifetime.empty()) {
+      return false;
+    }
+    if (handle.isValid()) {
+      lifetime_.release(handle);
+    }
+    lease.release();
+    return true;
+  }
+
+  template <typename FastOps =
+                ::orteaf::internal::execution::mps::platform::MpsFastOps>
+  std::size_t maintenanceReleaseReady() {
+    std::size_t released = 0;
+    lifetime_.forEachActiveLease([this, &released](CommandQueueLease &lease) {
+      if (releaseReadyAndMaybeRelease<FastOps>(lease)) {
+        ++released;
+      }
+    });
+    return released;
+  }
 
 #if ORTEAF_ENABLE_TEST
   bool isConfiguredForTest() const noexcept { return core_.isConfigured(); }
@@ -193,6 +235,7 @@ private:
   SlowOps *ops_{nullptr};
   ::orteaf::internal::execution::mps::manager::MpsFenceManager
       *fence_manager_{nullptr};
+  LifetimeRegistry lifetime_{};
 };
 
 } // namespace orteaf::internal::execution::mps::manager

@@ -6,7 +6,7 @@
 #include <cstdint>
 
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/base/lease/control_block/shared.h"
+#include "orteaf/internal/base/lease/control_block/strong.h"
 #include "orteaf/internal/base/lease/strong_lease.h"
 #include "orteaf/internal/base/manager/pool_manager.h"
 #include "orteaf/internal/base/pool/slot_pool.h"
@@ -21,8 +21,7 @@ namespace orteaf::internal::execution::mps::manager {
 // =============================================================================
 
 struct FencePayloadPoolTraits {
-  using Payload =
-      ::orteaf::internal::execution::mps::resource::MpsFenceHazard;
+  using Payload = ::orteaf::internal::execution::mps::resource::MpsFenceHazard;
   using Handle = ::orteaf::internal::base::FenceHandle;
   using DeviceType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsDevice_t;
@@ -69,7 +68,7 @@ using FencePayloadPool =
 
 struct FenceControlBlockTag {};
 
-using FenceControlBlock = ::orteaf::internal::base::SharedControlBlock<
+using FenceControlBlock = ::orteaf::internal::base::StrongControlBlock<
     ::orteaf::internal::base::FenceHandle,
     ::orteaf::internal::execution::mps::resource::MpsFenceHazard,
     FencePayloadPool>;
@@ -104,8 +103,7 @@ public:
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
 
-  using FenceLease = Core::StrongLeaseType;
-  using FenceWeakLease = Core::WeakLeaseType;
+  using StrongFenceLease = Core::StrongLeaseType;
 
 public:
   struct Config {
@@ -124,8 +122,7 @@ public:
   void configure(const Config &config);
   void shutdown();
 
-  FenceLease acquire();
-  FenceWeakLease acquireWeak(FenceHandle handle);
+  StrongFenceLease acquire();
 
 #if ORTEAF_ENABLE_TEST
   bool isConfiguredForTest() const noexcept { return core_.isConfigured(); }

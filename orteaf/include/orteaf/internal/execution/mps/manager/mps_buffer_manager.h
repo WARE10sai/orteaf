@@ -7,13 +7,12 @@
 #include <utility>
 
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/base/lease/control_block/shared.h"
+#include "orteaf/internal/base/lease/control_block/strong.h"
 #include "orteaf/internal/base/lease/strong_lease.h"
-#include "orteaf/internal/base/lease/weak_lease.h"
 #include "orteaf/internal/base/manager/pool_manager.h"
 #include "orteaf/internal/base/pool/slot_pool.h"
 #include "orteaf/internal/diagnostics/error/error.h"
-#include "orteaf/internal/execution/allocator/buffer.h"
+#include "orteaf/internal/execution/allocator/execution_buffer.h"
 #include "orteaf/internal/execution/allocator/policies/chunk_locator/direct_chunk_locator.h"
 #include "orteaf/internal/execution/allocator/policies/fast_free/fast_free_policies.h"
 #include "orteaf/internal/execution/allocator/policies/freelist/host_stack_freelist_policy.h"
@@ -50,7 +49,7 @@ using MpsBufferPoolT =
             HostStackFreelistPolicy<ResourceT>>;
 
 // Forward declaration
-template <typename ResourceT> class MpsBufferManagerT;
+template <typename ResourceT> class MpsBufferManager;
 
 // ============================================================================
 // BufferPayloadPoolTraits - Defines Payload/Handle/Request/Context for SlotPool
@@ -117,21 +116,21 @@ using BufferPayloadPoolT = ::orteaf::internal::base::pool::SlotPool<
     BufferPayloadPoolTraitsT<ResourceT>>;
 
 // ============================================================================
-// ControlBlock type using SharedControlBlock
+// ControlBlock type using StrongControlBlock
 // ============================================================================
 template <typename ResourceT>
 using MpsBuffer =
     ::orteaf::internal::execution::allocator::ExecutionBuffer<Execution::Mps>;
 
 template <typename ResourceT>
-using BufferControlBlockT = ::orteaf::internal::base::SharedControlBlock<
+using BufferControlBlockT = ::orteaf::internal::base::StrongControlBlock<
     ::orteaf::internal::base::BufferHandle, MpsBuffer<ResourceT>,
     BufferPayloadPoolT<ResourceT>>;
 
 // ============================================================================
 // Traits for PoolManager
 // ============================================================================
-template <typename ResourceT> struct MpsBufferManagerTraitsT {
+template <typename ResourceT> struct MpsBufferManagerTraits {
   using PayloadPool = BufferPayloadPoolT<ResourceT>;
   using ControlBlock = BufferControlBlockT<ResourceT>;
   struct ControlBlockTag {};
@@ -140,11 +139,11 @@ template <typename ResourceT> struct MpsBufferManagerTraitsT {
 };
 
 // ============================================================================
-// MpsBufferManagerT - Templated buffer manager using PoolManager
+// MpsBufferManager - Templated buffer manager using PoolManager
 // ============================================================================
-template <typename ResourceT> class MpsBufferManagerT {
+template <typename ResourceT> class MpsBufferManager {
 public:
-  using Traits = MpsBufferManagerTraitsT<ResourceT>;
+  using Traits = MpsBufferManagerTraits<ResourceT>;
   using Core = ::orteaf::internal::base::PoolManager<Traits>;
   using MpsBuffer = MpsBuffer<ResourceT>;
   using BufferHandle = ::orteaf::internal::base::BufferHandle;
@@ -161,7 +160,6 @@ public:
 
   // Lease types
   using StrongBufferLease = typename Core::StrongLeaseType;
-  using WeakBufferLease = typename Core::WeakLeaseType;
   // Legacy alias for compatibility
   using BufferLease = StrongBufferLease;
 
@@ -192,12 +190,12 @@ public:
   // =========================================================================
   // Lifecycle
   // =========================================================================
-  MpsBufferManagerT() = default;
-  MpsBufferManagerT(const MpsBufferManagerT &) = delete;
-  MpsBufferManagerT &operator=(const MpsBufferManagerT &) = delete;
-  MpsBufferManagerT(MpsBufferManagerT &&) = default;
-  MpsBufferManagerT &operator=(MpsBufferManagerT &&) = default;
-  ~MpsBufferManagerT() = default;
+  MpsBufferManager() = default;
+  MpsBufferManager(const MpsBufferManager &) = delete;
+  MpsBufferManager &operator=(const MpsBufferManager &) = delete;
+  MpsBufferManager(MpsBufferManager &&) = default;
+  MpsBufferManager &operator=(MpsBufferManager &&) = default;
+  ~MpsBufferManager() = default;
 
   void configure(const Config &config) {
     shutdown();
@@ -354,8 +352,7 @@ namespace orteaf::internal::execution::mps::manager {
 using MpsResource =
     ::orteaf::internal::execution::allocator::resource::mps::MpsResource;
 using MpsBufferPool = MpsBufferPoolT<MpsResource>;
-using MpsBufferManagerTraits = MpsBufferManagerTraitsT<MpsResource>;
-using MpsBufferManager = MpsBufferManagerT<MpsResource>;
+using MpsBufferManagerraits = MpsBufferManagerTraits<MpsResource>;
 } // namespace orteaf::internal::execution::mps::manager
 
 #endif // ORTEAF_ENABLE_MPS
