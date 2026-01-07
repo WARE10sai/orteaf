@@ -80,7 +80,11 @@ public:
    * @brief Check if the runtime is initialized.
    */
   bool isInitialized() const noexcept {
-    return slow_ops_ != nullptr && device_manager_.getDeviceCount() > 0;
+#if ORTEAF_ENABLE_TEST
+    return slow_ops_ != nullptr && device_manager_.isConfiguredForTest();
+#else
+    return slow_ops_ != nullptr;
+#endif
   }
 
 private:

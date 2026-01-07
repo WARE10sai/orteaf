@@ -51,7 +51,7 @@ TEST_F(CpuRuntimeManagerTest, InitializeWithDefaultOps) {
 
   EXPECT_TRUE(manager_->isInitialized());
   EXPECT_NE(manager_->slowOps(), nullptr);
-  EXPECT_EQ(manager_->deviceManager().getDeviceCount(), 1u);
+  EXPECT_TRUE(manager_->deviceManager().isConfiguredForTest());
 }
 
 TEST_F(CpuRuntimeManagerTest, ShutdownClearsState) {
@@ -70,7 +70,8 @@ TEST_F(CpuRuntimeManagerTest, DeviceManagerReturnsCorrectArch) {
   auto lease = device_manager.acquire(base::DeviceHandle{0});
   EXPECT_TRUE(lease);
 
-  auto arch = device_manager.getArch(base::DeviceHandle{0});
+  // Access arch through lease
+  auto arch = lease.payloadPtr()->arch;
   EXPECT_EQ(arch, architecture::detectCpuArchitecture());
 }
 
@@ -104,12 +105,12 @@ TEST_F(CpuRuntimeManagerTest, ReinitializeAfterShutdown) {
   manager_->initialize();
 
   EXPECT_TRUE(manager_->isInitialized());
-  EXPECT_EQ(manager_->deviceManager().getDeviceCount(), 1u);
+  EXPECT_TRUE(manager_->deviceManager().isConfiguredForTest());
 }
 
 TEST_F(CpuRuntimeManagerTest, DeviceManagerIsAlive) {
   manager_->initialize();
 
   auto &device_manager = manager_->deviceManager();
-  EXPECT_TRUE(device_manager.isAlive(base::DeviceHandle{0}));
+  EXPECT_TRUE(device_manager.isAliveForTest(base::DeviceHandle{0}));
 }

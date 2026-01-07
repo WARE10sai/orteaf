@@ -163,36 +163,6 @@ public:
    */
   DeviceLease acquire(DeviceHandle handle);
 
-  /**
-   * @brief Release a device lease.
-   *
-   * @param lease Lease to release
-   */
-  void release(DeviceLease &lease) noexcept;
-
-  /**
-   * @brief Get the architecture for the specified device.
-   *
-   * @param handle Device handle
-   * @return Architecture enum value
-   */
-  ::orteaf::internal::architecture::Architecture getArch(DeviceHandle handle);
-
-  /**
-   * @brief Get the number of CPU devices.
-   *
-   * @return Always 1 for CPU
-   */
-  std::size_t getDeviceCount() const noexcept;
-
-  /**
-   * @brief Check if a device handle is alive.
-   *
-   * @param handle Device handle to check
-   * @return true if device is initialized and alive
-   */
-  bool isAlive(DeviceHandle handle) const noexcept;
-
 #if ORTEAF_ENABLE_TEST
   std::size_t getDeviceCountForTest() const noexcept;
   bool isConfiguredForTest() const noexcept;

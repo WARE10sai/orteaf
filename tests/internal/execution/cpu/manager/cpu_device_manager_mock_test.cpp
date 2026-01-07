@@ -61,19 +61,19 @@ protected:
 };
 
 TEST_F(CpuDeviceManagerMockTest, ConfiguresWithMockedArch) {
-  EXPECT_EQ(manager_->getDeviceCount(), 0u);
+  EXPECT_FALSE(manager_->isConfiguredForTest());
 
   EXPECT_CALL(*mock_ops_, detectArchitecture(base::DeviceHandle{0}))
       .WillOnce(Return(architecture::Architecture::CpuZen4));
 
   configureManager();
 
-  EXPECT_EQ(manager_->getDeviceCount(), 1u);
+  EXPECT_TRUE(manager_->isConfiguredForTest());
   auto lease = manager_->acquire(base::DeviceHandle{0});
   EXPECT_TRUE(lease);
-  EXPECT_EQ(manager_->getArch(base::DeviceHandle{0}),
-            architecture::Architecture::CpuZen4);
-  EXPECT_TRUE(manager_->isAlive(base::DeviceHandle{0}));
+  // Access arch through lease
+  EXPECT_EQ(lease.payloadPtr()->arch, architecture::Architecture::CpuZen4);
+  EXPECT_TRUE(manager_->isAliveForTest(base::DeviceHandle{0}));
 }
 
 TEST_F(CpuDeviceManagerMockTest, ShutdownClearsState) {
@@ -83,8 +83,8 @@ TEST_F(CpuDeviceManagerMockTest, ShutdownClearsState) {
   configureManager();
   manager_->shutdown();
 
-  EXPECT_EQ(manager_->getDeviceCount(), 0u);
-  EXPECT_FALSE(manager_->isAlive(base::DeviceHandle{0}));
+  EXPECT_FALSE(manager_->isConfiguredForTest());
+  EXPECT_FALSE(manager_->isAliveForTest(base::DeviceHandle{0}));
 }
 
 TEST_F(CpuDeviceManagerMockTest, InvalidDeviceIdThrows) {

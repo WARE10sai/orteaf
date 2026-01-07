@@ -133,46 +133,6 @@ CpuDeviceManager::DeviceLease CpuDeviceManager::acquire(DeviceHandle handle) {
   return lease;
 }
 
-void CpuDeviceManager::release(DeviceLease &lease) noexcept { lease.release(); }
-
-::orteaf::internal::architecture::Architecture
-CpuDeviceManager::getArch(DeviceHandle handle) {
-  core_.ensureConfigured();
-
-  if (!handle.isValid() || handle.index != 0) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "invalid CPU device handle");
-  }
-
-  // Get lease from lifetime registry
-  if (!lifetime_.has(handle)) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "CPU device not acquired");
-  }
-
-  auto lease = lifetime_.get(handle);
-  if (!lease) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "CPU device lease is invalid");
-  }
-
-  return lease.payloadPtr()->arch;
-}
-
-std::size_t CpuDeviceManager::getDeviceCount() const noexcept {
-  return core_.isConfigured() ? 1u : 0u;
-}
-
-bool CpuDeviceManager::isAlive(DeviceHandle handle) const noexcept {
-  if (!core_.isConfigured() || !handle.isValid() || handle.index != 0) {
-    return false;
-  }
-  return core_.isAlive(handle);
-}
-
 #if ORTEAF_ENABLE_TEST
 std::size_t CpuDeviceManager::getDeviceCountForTest() const noexcept {
   return core_.payloadPoolSizeForTest();

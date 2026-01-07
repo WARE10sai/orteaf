@@ -35,8 +35,8 @@ mps_wrapper::MpsCommandQueue_t makeQueue(std::uintptr_t value) {
   return reinterpret_cast<mps_wrapper::MpsCommandQueue_t>(value);
 }
 
-mps_rt::MpsDeviceManager::Config makeConfig(
-    mps_rt::MpsDeviceManager::SlowOps *ops) {
+mps_rt::MpsDeviceManager::Config
+makeConfig(mps_rt::MpsDeviceManager::SlowOps *ops) {
   mps_rt::MpsDeviceManager::Config config{};
   config.ops = ops;
   const int count = ops ? ops->getDeviceCount() : 0;
@@ -71,7 +71,8 @@ mps_rt::MpsDeviceManager::Config makeConfig(
   config.library_config.pipeline_config.pool.payload_block_size = 1;
   config.library_config.pipeline_config.pool.control_block_block_size = 1;
   config.library_config.pipeline_config.pool.payload_growth_chunk_size = 1;
-  config.library_config.pipeline_config.pool.control_block_growth_chunk_size = 1;
+  config.library_config.pipeline_config.pool.control_block_growth_chunk_size =
+      1;
   config.heap_config.pool.payload_block_size = 1;
   config.heap_config.pool.control_block_block_size = 1;
   config.heap_config.pool.payload_growth_chunk_size = 1;
@@ -118,8 +119,6 @@ TYPED_TEST(MpsDeviceManagerTypedTest, AccessBeforeInitializationThrows) {
   // Act & Assert: All accessors throw InvalidState before initialization
   ExpectError(diag_error::OrteafErrc::InvalidState,
               [&] { (void)manager.acquire(base::DeviceHandle{0}); });
-  ExpectError(diag_error::OrteafErrc::InvalidState,
-              [&] { (void)manager.getArch(base::DeviceHandle{0}); });
   EXPECT_FALSE(manager.isAliveForTest(base::DeviceHandle{0}));
   EXPECT_FALSE(manager.isAliveForTest(base::DeviceHandle{0}));
 }
@@ -288,10 +287,10 @@ TYPED_TEST(MpsDeviceManagerTypedTest, GetArchMatchesReportedArchitecture) {
 
   // Assert: Verify architecture for each device
   for (std::uint32_t idx = 0; idx < count; ++idx) {
-    const auto arch = manager.getArch(base::DeviceHandle{idx});
     const auto device = manager.acquire(base::DeviceHandle{idx});
     auto *resource = device.payloadPtr();
     EXPECT_NE(resource, nullptr);
+    const auto arch = resource->arch;
     if constexpr (TypeParam::is_mock) {
       const auto expected_arch = (idx == 0) ? architecture::Architecture::MpsM4
                                             : architecture::Architecture::MpsM3;
@@ -335,8 +334,6 @@ TYPED_TEST(MpsDeviceManagerTypedTest, InvalidDeviceIdRejectsAccess) {
   // Act & Assert: Invalid ID throws
   ExpectError(diag_error::OrteafErrc::InvalidArgument,
               [&] { (void)manager.acquire(invalid); });
-  ExpectError(diag_error::OrteafErrc::InvalidArgument,
-              [&] { (void)manager.getArch(invalid); });
   EXPECT_FALSE(manager.isAliveForTest(invalid));
 
   // Cleanup
@@ -414,8 +411,6 @@ TYPED_TEST(MpsDeviceManagerTypedTest, DeviceNotAliveThrowsOnAccess) {
 
   ExpectError(diag_error::OrteafErrc::InvalidState,
               [&] { (void)manager.acquire(base::DeviceHandle{0}); });
-  ExpectError(diag_error::OrteafErrc::InvalidState,
-              [&] { (void)manager.getArch(base::DeviceHandle{0}); });
 
   // Cleanup
   manager.shutdown();
@@ -864,7 +859,8 @@ TYPED_TEST(MpsDeviceManagerTypedTest, LeaseCopyIncrementsStrongCount) {
   manager.shutdown();
 }
 
-TYPED_TEST(MpsDeviceManagerTypedTest, LeaseCopyAssignmentIncrementsStrongCount) {
+TYPED_TEST(MpsDeviceManagerTypedTest,
+           LeaseCopyAssignmentIncrementsStrongCount) {
   auto &manager = this->manager();
 
   // Arrange
