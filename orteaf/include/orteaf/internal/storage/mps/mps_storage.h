@@ -9,13 +9,13 @@ namespace orteaf::internal::storage::mps {
 class MpsStorage {
 public:
   using MpsResource = ::orteaf::internal::execution::allocator::resource::mps::MpsResource;
-  using StrongBufferLease =
+  using BufferLease =
       ::orteaf::internal::execution::mps::manager::MpsBufferManager<MpsResource>::StrongBufferLease;
   using FenceToken = ::orteaf::internal::execution::mps::resource::MpsFenceToken;
   using Layout = ::orteaf::internal::storage::mps::MpsStorageLayout;
 
 private:
-    StrongBufferLease strong_buffer_lease_;
+    BufferLease buffer_lease_;
     FenceToken fence_token_;
     Layout layout_;
 };
