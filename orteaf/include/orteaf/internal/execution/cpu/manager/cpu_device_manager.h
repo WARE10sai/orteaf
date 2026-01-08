@@ -1,108 +1,181 @@
 #pragma once
 
+#include <cstddef>
+
 #include "orteaf/internal/architecture/architecture.h"
 #include "orteaf/internal/base/handle.h"
-#include "orteaf/internal/diagnostics/error/error.h"
-#include "orteaf/internal/execution/cpu/platform/cpu_execution_ops.h"
+#include "orteaf/internal/base/lease/control_block/strong.h"
+#include "orteaf/internal/base/manager/lease_lifetime_registry.h"
+#include "orteaf/internal/base/manager/pool_manager.h"
+#include "orteaf/internal/base/pool/fixed_slot_store.h"
+#include "orteaf/internal/execution/cpu/platform/cpu_slow_ops.h"
 
 namespace orteaf::internal::execution::cpu::manager {
 
+// Forward declaration
+class CpuBufferManager;
+
+// =============================================================================
+// Device Resource
+// =============================================================================
+
 /**
- * @brief Minimal CPU device manager that exposes getters for the host CPU
- * state.
+ * @brief Resource structure holding CPU device state and sub-managers.
  *
- * See `docs/developer/runtime-architecture.md` for the runtime manager vision;
- * this concrete CPU implementation currently exposes only a single device with
- * `Architecture` metadata and an `is_alive` flag, driven by the lightweight
- * detector in `orteaf/internal/architecture/cpu_detect.h`.
+ * Similar to MpsDeviceResource, this holds the architecture information
+ * and any device-specific sub-managers (e.g., buffer manager).
  */
-template <class ExecutionOps =
-              ::orteaf::internal::execution::cpu::platform::CpuExecutionOps>
-struct CpuDeviceManager {
-  void initializeDevices() {
-    if (initialized_) {
-      return;
-    }
-    state_.arch = ExecutionOps::detectArchitecture();
-    state_.is_alive = true;
-    initialized_ = true;
-  }
+struct CpuDeviceResource {
+  using SlowOps = ::orteaf::internal::execution::cpu::platform::CpuSlowOps;
 
-  void shutdown() {
-    if (!initialized_) {
-      return;
-    }
-    state_.is_alive = false;
-    initialized_ = false;
-  }
+  ::orteaf::internal::architecture::Architecture arch{
+      ::orteaf::internal::architecture::Architecture::CpuGeneric};
+  bool is_alive{false};
 
-  /**
-   * @brief Return the number of managed CPU devices (0 or 1 for now).
-   *
-   * The count is derived from the initialization state. This manager only ever
-   * reports a single host CPU device (`DeviceHandle{0}`) once
-   * `initializeDevices()` has run.
-   */
-  std::size_t getDeviceCount() const { return initialized_ ? 1u : 0u; }
+  CpuDeviceResource() = default;
+  CpuDeviceResource(const CpuDeviceResource &) = delete;
+  CpuDeviceResource &operator=(const CpuDeviceResource &) = delete;
+  CpuDeviceResource(CpuDeviceResource &&other) noexcept;
+  CpuDeviceResource &operator=(CpuDeviceResource &&other) noexcept;
+  ~CpuDeviceResource();
 
-  /**
-   * @brief Return the detected architecture for the requested CPU device.
-   *
-   * The architecture originates from `detectCpuArchitecture()`, so the
-   * operating system's signals determine the value.
-   */
-  ::orteaf::internal::architecture::Architecture
-  getArch(::orteaf::internal::base::DeviceHandle handle) const {
-    ensureValid(handle);
-    return state_.arch;
-  }
-
-  /**
-   * @brief Query whether the CPU device is considered alive.
-   *
-   * Only the primary device exists today, so this will be `true` when the
-   * manager is initialized and the caller supplies `DeviceHandle{0}`.
-   */
-  bool isAlive(::orteaf::internal::base::DeviceHandle handle) const {
-    ensureValid(handle);
-    return state_.is_alive;
-  }
+  void reset(SlowOps *slow_ops) noexcept;
 
 private:
-  /**
-   * @brief Validate the device id and initialization state.
-   *
-   * Throws `diagnostics::error::InvalidState` when validation fails, mirroring
-   * what the rest of the runtime manager suite would expect from well-formed
-   * getters.
-   */
-  void ensureValid(::orteaf::internal::base::DeviceHandle handle) const {
-    if (!initialized_ || handle != kPrimaryDevice) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          "invalid CPU device");
-    }
-  }
-
-  /**
-   * @brief Local storage for the detected CPU device information.
-   */
-  struct State {
-    ::orteaf::internal::architecture::Architecture arch{
-        ::orteaf::internal::architecture::Architecture::CpuGeneric};
-    bool is_alive{false};
-  };
-
-  static constexpr ::orteaf::internal::base::DeviceHandle kPrimaryDevice{0};
-
-  State state_{};
-  bool initialized_{false};
+  void moveFrom(CpuDeviceResource &&other) noexcept;
 };
 
-inline CpuDeviceManager<> CpuDeviceManagerInstance{};
+// =============================================================================
+// Payload Pool Traits
+// =============================================================================
 
-inline CpuDeviceManager<> &GetCpuDeviceManager() {
-  return CpuDeviceManagerInstance;
-}
+struct DevicePayloadPoolTraits {
+  using Payload = CpuDeviceResource;
+  using Handle = ::orteaf::internal::base::DeviceHandle;
+  using SlowOps = ::orteaf::internal::execution::cpu::platform::CpuSlowOps;
+
+  struct Request {
+    Handle handle{Handle::invalid()};
+  };
+
+  struct Context {
+    SlowOps *ops{nullptr};
+  };
+
+  static bool create(Payload &payload, const Request &request,
+                     const Context &context);
+  static void destroy(Payload &payload, const Request &request,
+                      const Context &context);
+};
+
+// =============================================================================
+// Payload Pool
+// =============================================================================
+
+using DevicePayloadPool =
+    ::orteaf::internal::base::pool::FixedSlotStore<DevicePayloadPoolTraits>;
+
+// Forward-declare CB tag to avoid circular dependency
+struct DeviceManagerCBTag {};
+
+// =============================================================================
+// ControlBlock
+// =============================================================================
+
+using DeviceControlBlock = ::orteaf::internal::base::StrongControlBlock<
+    ::orteaf::internal::base::DeviceHandle, CpuDeviceResource,
+    DevicePayloadPool>;
+
+// =============================================================================
+// Manager Traits for PoolManager
+// =============================================================================
+
+struct CpuDeviceManagerTraits {
+  using PayloadPool = DevicePayloadPool;
+  using ControlBlock = DeviceControlBlock;
+  using ControlBlockTag = DeviceManagerCBTag;
+  using PayloadHandle = ::orteaf::internal::base::DeviceHandle;
+  static constexpr const char *Name = "CPU device manager";
+};
+
+// =============================================================================
+// CpuDeviceManager
+// =============================================================================
+
+/**
+ * @brief CPU device manager using PoolManager pattern.
+ *
+ * Manages the host CPU device with the same architecture as MpsDeviceManager.
+ * Provides DeviceLease for safe resource access with automatic cleanup.
+ */
+class CpuDeviceManager {
+public:
+  using SlowOps = ::orteaf::internal::execution::cpu::platform::CpuSlowOps;
+  using DeviceHandle = ::orteaf::internal::base::DeviceHandle;
+
+  using Core = ::orteaf::internal::base::PoolManager<CpuDeviceManagerTraits>;
+  using ControlBlock = Core::ControlBlock;
+  using ControlBlockHandle = Core::ControlBlockHandle;
+  using ControlBlockPool = Core::ControlBlockPool;
+
+  using DeviceLease = Core::StrongLeaseType;
+  using LifetimeRegistry =
+      ::orteaf::internal::base::manager::LeaseLifetimeRegistry<DeviceHandle,
+                                                               DeviceLease>;
+
+  struct Config {
+    SlowOps *ops{nullptr};
+    Core::Config pool{};
+  };
+
+  CpuDeviceManager() = default;
+  CpuDeviceManager(const CpuDeviceManager &) = delete;
+  CpuDeviceManager &operator=(const CpuDeviceManager &) = delete;
+  CpuDeviceManager(CpuDeviceManager &&) = default;
+  CpuDeviceManager &operator=(CpuDeviceManager &&) = default;
+  ~CpuDeviceManager() = default;
+
+  // =========================================================================
+  // Lifecycle
+  // =========================================================================
+
+  /**
+   * @brief Configure the device manager.
+   *
+   * @param config Configuration including SlowOps and pool settings
+   */
+  void configure(const Config &config);
+
+  /**
+   * @brief Shutdown the device manager and release all resources.
+   */
+  void shutdown();
+
+  // =========================================================================
+  // Device access
+  // =========================================================================
+
+  /**
+   * @brief Acquire a lease for the specified device.
+   *
+   * @param handle Device handle (must be DeviceHandle{0} for CPU)
+   * @return DeviceLease for the device
+   */
+  DeviceLease acquire(DeviceHandle handle);
+
+#if ORTEAF_ENABLE_TEST
+  std::size_t getDeviceCountForTest() const noexcept;
+  bool isConfiguredForTest() const noexcept;
+  std::size_t payloadPoolSizeForTest() const noexcept;
+  std::size_t payloadPoolCapacityForTest() const noexcept;
+  bool isAliveForTest(DeviceHandle handle) const noexcept;
+  std::size_t controlBlockPoolAvailableForTest() const noexcept;
+#endif
+
+private:
+  SlowOps *ops_{nullptr};
+  Core core_{};
+  LifetimeRegistry lifetime_{};
+};
 
 } // namespace orteaf::internal::execution::cpu::manager
