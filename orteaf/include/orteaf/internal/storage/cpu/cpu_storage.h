@@ -2,33 +2,100 @@
 
 #include <utility>
 
-#include <orteaf/internal/storage/cpu/cpu_storage_layout.h>
 #include <orteaf/internal/execution/cpu/manager/cpu_buffer_manager.h>
+#include <orteaf/internal/storage/cpu/cpu_storage_layout.h>
 
 namespace orteaf::internal::storage::cpu {
+
 class CpuStorage {
 public:
-    using BufferLease = ::orteaf::internal::execution::cpu::manager::CpuBufferManager::BufferLease;
-    using Layout = ::orteaf::internal::storage::cpu::CpuStorageLayout;
+  using BufferManager =
+      ::orteaf::internal::execution::cpu::manager::CpuBufferManager;
+  using BufferLease = BufferManager::BufferLease;
+  using Layout = ::orteaf::internal::storage::cpu::CpuStorageLayout;
 
-    struct Config {
-        BufferLease buffer_lease{};
-        Layout layout{};
-    };
+  /**
+   * @brief Builder for constructing CpuStorage instances.
+   *
+   * Provides a fluent interface for configuring and creating CpuStorage.
+   * The builder acquires a buffer lease from the manager upon build().
+   *
+   * @par Example
+   * @code
+   * auto storage = CpuStorage::builder()
+   *     .withManager(&buffer_manager)
+   *     .withSize(1024)
+   *     .withAlignment(16)
+   *     .withLayout(layout)
+   *     .build();
+   * @endcode
+   */
+  class Builder {
+  public:
+    Builder() = default;
 
-    CpuStorage() = default;
-    explicit CpuStorage(Config config)
-        : buffer_lease_(std::move(config.buffer_lease)),
-          layout_(std::move(config.layout)) {}
+    Builder &withManager(BufferManager *manager) {
+      buffer_manager_ = manager;
+      return *this;
+    }
 
-    CpuStorage(const CpuStorage &) = default;
-    CpuStorage &operator=(const CpuStorage &) = default;
-    CpuStorage(CpuStorage &&) = default;
-    CpuStorage &operator=(CpuStorage &&) = default;
-    ~CpuStorage() = default;
+    Builder &withSize(std::size_t size) {
+      size_ = size;
+      return *this;
+    }
+
+    Builder &withAlignment(std::size_t alignment) {
+      alignment_ = alignment;
+      return *this;
+    }
+
+    Builder &withLayout(Layout layout) {
+      layout_ = std::move(layout);
+      return *this;
+    }
+
+    /**
+     * @brief Build the CpuStorage instance.
+     *
+     * Acquires a buffer lease from the configured manager and
+     * constructs the CpuStorage.
+     *
+     * @return Constructed CpuStorage instance.
+     * @throws If buffer_manager is null or acquisition fails.
+     */
+    CpuStorage build() {
+      // TODO: Add validation (null check for manager, size > 0, etc.)
+      BufferLease lease = buffer_manager_->acquire(size_, alignment_);
+      return CpuStorage(std::move(lease), std::move(layout_));
+    }
+
+  private:
+    BufferManager *buffer_manager_{nullptr};
+    std::size_t size_{0};
+    std::size_t alignment_{0};
+    Layout layout_{};
+  };
+
+  /**
+   * @brief Create a new Builder instance.
+   * @return A new Builder for constructing CpuStorage.
+   */
+  static Builder builder() { return Builder{}; }
+
+  CpuStorage() = default;
+
+  CpuStorage(const CpuStorage &) = default;
+  CpuStorage &operator=(const CpuStorage &) = default;
+  CpuStorage(CpuStorage &&) = default;
+  CpuStorage &operator=(CpuStorage &&) = default;
+  ~CpuStorage() = default;
 
 private:
-    BufferLease buffer_lease_;
-    Layout layout_;
+  CpuStorage(BufferLease buffer_lease, Layout layout)
+      : buffer_lease_(std::move(buffer_lease)), layout_(std::move(layout)) {}
+
+  BufferLease buffer_lease_;
+  Layout layout_;
 };
+
 } // namespace orteaf::internal::storage::cpu
