@@ -104,7 +104,18 @@ void MpsHeapManager::configure(const Config &config) {
   // Configure core + payload pool
   HeapPayloadPoolTraits::Request request{};
   auto context = makePayloadContext();
-  core_.configure(config.pool, request, context);
+  Core::Builder<HeapPayloadPoolTraits::Request,
+                HeapPayloadPoolTraits::Context>{}
+      .withControlBlockCapacity(config.pool.control_block_capacity)
+      .withControlBlockBlockSize(config.pool.control_block_block_size)
+      .withControlBlockGrowthChunkSize(
+          config.pool.control_block_growth_chunk_size)
+      .withPayloadCapacity(config.pool.payload_capacity)
+      .withPayloadBlockSize(config.pool.payload_block_size)
+      .withPayloadGrowthChunkSize(config.pool.payload_growth_chunk_size)
+      .withRequest(request)
+      .withContext(context)
+      .configure(core_);
 
 }
 

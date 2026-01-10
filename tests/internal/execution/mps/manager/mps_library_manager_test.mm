@@ -24,7 +24,7 @@ mps_wrapper::MpsLibrary_t makeLibrary(std::uintptr_t value) {
   return reinterpret_cast<mps_wrapper::MpsLibrary_t>(value);
 }
 
-void setPoolBlockSizes(mps_rt::MpsLibraryManager::Core::Config &pool) {
+void setPoolBlockSizes(::orteaf::internal::base::PoolConfig &pool) {
   if (pool.payload_block_size == 0) {
     pool.payload_block_size =
         pool.payload_capacity == 0 ? 1u : pool.payload_capacity;

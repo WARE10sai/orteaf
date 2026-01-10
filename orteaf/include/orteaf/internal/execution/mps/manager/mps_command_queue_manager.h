@@ -137,7 +137,7 @@ public:
   struct Config {
     DeviceType device{nullptr};
     SlowOps *ops{nullptr};
-    Core::Config pool{};
+    ::orteaf::internal::base::PoolConfig pool{};
     ::orteaf::internal::execution::mps::manager::MpsFenceManager
         *fence_manager{nullptr};
   };

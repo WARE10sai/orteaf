@@ -185,7 +185,7 @@ public:
         usage{::orteaf::internal::execution::mps::platform::wrapper::
                   kMPSDefaultBufferUsage};
     // PoolManager config
-    Core::Config pool{};
+    ::orteaf::internal::base::PoolConfig pool{};
   };
 
   // =========================================================================
@@ -244,7 +244,19 @@ public:
     // Configure PoolManager + PayloadPool
     typename BufferPayloadPoolTraitsT<ResourceT>::Request request{};
     auto context = makePayloadContext();
-    core_.configure(config.pool, request, context);
+    typename Core::template Builder<
+        typename BufferPayloadPoolTraitsT<ResourceT>::Request,
+        typename BufferPayloadPoolTraitsT<ResourceT>::Context>{}
+        .withControlBlockCapacity(config.pool.control_block_capacity)
+        .withControlBlockBlockSize(config.pool.control_block_block_size)
+        .withControlBlockGrowthChunkSize(
+            config.pool.control_block_growth_chunk_size)
+        .withPayloadCapacity(config.pool.payload_capacity)
+        .withPayloadBlockSize(config.pool.payload_block_size)
+        .withPayloadGrowthChunkSize(config.pool.payload_growth_chunk_size)
+        .withRequest(request)
+        .withContext(context)
+        .configure(core_);
   }
 
   void shutdown() {

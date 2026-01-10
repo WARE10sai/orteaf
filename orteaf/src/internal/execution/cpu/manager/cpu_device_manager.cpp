@@ -96,7 +96,18 @@ void CpuDeviceManager::configure(const Config &config) {
   DevicePayloadPoolTraits::Context context{};
   context.ops = ops_;
 
-  core_.configure(pool_config, request, context);
+  Core::Builder<DevicePayloadPoolTraits::Request,
+                DevicePayloadPoolTraits::Context>{}
+      .withControlBlockCapacity(pool_config.control_block_capacity)
+      .withControlBlockBlockSize(pool_config.control_block_block_size)
+      .withControlBlockGrowthChunkSize(
+          pool_config.control_block_growth_chunk_size)
+      .withPayloadCapacity(pool_config.payload_capacity)
+      .withPayloadBlockSize(pool_config.payload_block_size)
+      .withPayloadGrowthChunkSize(pool_config.payload_growth_chunk_size)
+      .withRequest(request)
+      .withContext(context)
+      .configure(core_);
   core_.createAllPayloads(request, context);
 }
 

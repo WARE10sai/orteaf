@@ -168,7 +168,7 @@ public:
     MpsLibraryManager *library_manager{nullptr};
     SlowOps *ops{nullptr};
     BufferManager::Config buffer_config{};
-    Core::Config pool{};
+    ::orteaf::internal::base::PoolConfig pool{};
   };
 
   void configure(const Config &config);

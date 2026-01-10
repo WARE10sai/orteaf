@@ -125,7 +125,7 @@ public:
 
   struct Config {
     SlowOps *ops{nullptr};
-    Core::Config pool{};
+    ::orteaf::internal::base::PoolConfig pool{};
   };
 
   CpuDeviceManager() = default;

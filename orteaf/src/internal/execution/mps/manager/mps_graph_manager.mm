@@ -23,7 +23,18 @@ void MpsGraphManager::configure(const Config &config) {
   key_to_index_.clear();
   const GraphPayloadPoolTraits::Request payload_request{};
   const auto payload_context = makePayloadContext();
-  core_.configure(config.pool, payload_request, payload_context);
+  Core::Builder<GraphPayloadPoolTraits::Request,
+                GraphPayloadPoolTraits::Context>{}
+      .withControlBlockCapacity(config.pool.control_block_capacity)
+      .withControlBlockBlockSize(config.pool.control_block_block_size)
+      .withControlBlockGrowthChunkSize(
+          config.pool.control_block_growth_chunk_size)
+      .withPayloadCapacity(config.pool.payload_capacity)
+      .withPayloadBlockSize(config.pool.payload_block_size)
+      .withPayloadGrowthChunkSize(config.pool.payload_growth_chunk_size)
+      .withRequest(payload_request)
+      .withContext(payload_context)
+      .configure(core_);
 }
 
 void MpsGraphManager::shutdown() {

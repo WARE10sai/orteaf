@@ -219,7 +219,7 @@ public:
 
   struct Config {
     SlowOps *ops{nullptr};
-    Core::Config pool{};
+    ::orteaf::internal::base::PoolConfig pool{};
     MpsCommandQueueManager::Config command_queue_config{};
     MpsEventManager::Config event_config{};
     MpsFenceManager::Config fence_config{};

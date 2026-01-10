@@ -27,7 +27,18 @@ void MpsCommandQueueManager::configure(const Config &config) {
   const CommandQueuePayloadPoolTraits::Request payload_request{};
   const CommandQueuePayloadPoolTraits::Context payload_context{device_, ops_,
                                                                fence_manager_};
-  core_.configure(config.pool, payload_request, payload_context);
+  Core::Builder<CommandQueuePayloadPoolTraits::Request,
+                CommandQueuePayloadPoolTraits::Context>{}
+      .withControlBlockCapacity(config.pool.control_block_capacity)
+      .withControlBlockBlockSize(config.pool.control_block_block_size)
+      .withControlBlockGrowthChunkSize(
+          config.pool.control_block_growth_chunk_size)
+      .withPayloadCapacity(config.pool.payload_capacity)
+      .withPayloadBlockSize(config.pool.payload_block_size)
+      .withPayloadGrowthChunkSize(config.pool.payload_growth_chunk_size)
+      .withRequest(payload_request)
+      .withContext(payload_context)
+      .configure(core_);
   if (!core_.createAllPayloads(payload_request, payload_context)) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,

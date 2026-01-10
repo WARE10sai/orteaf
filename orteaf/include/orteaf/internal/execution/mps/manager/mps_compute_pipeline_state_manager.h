@@ -163,7 +163,7 @@ public:
     DeviceType device{nullptr};
     LibraryType library{nullptr};
     SlowOps *ops{nullptr};
-    Core::Config pool{};
+    ::orteaf::internal::base::PoolConfig pool{};
   };
 
   void configure(const Config &config);

@@ -36,29 +36,34 @@ struct DummyPayloadTraits {
   }
 };
 
-using PayloadPool = ::orteaf::internal::base::pool::SlotPool<DummyPayloadTraits>;
-using ControlBlock = ::orteaf::internal::base::SharedControlBlock<
-    PayloadHandle, DummyPayload, PayloadPool>;
+using PayloadPool =
+    ::orteaf::internal::base::pool::SlotPool<DummyPayloadTraits>;
+using ControlBlock =
+    ::orteaf::internal::base::SharedControlBlock<PayloadHandle, DummyPayload,
+                                                 PayloadPool>;
 
 struct DummyManagerTraits {
-  using PayloadPool = ::orteaf::internal::base::pool::SlotPool<DummyPayloadTraits>;
-  using ControlBlock = ::orteaf::internal::base::SharedControlBlock<
-      PayloadHandle, DummyPayload, PayloadPool>;
+  using PayloadPool =
+      ::orteaf::internal::base::pool::SlotPool<DummyPayloadTraits>;
+  using ControlBlock =
+      ::orteaf::internal::base::SharedControlBlock<PayloadHandle, DummyPayload,
+                                                   PayloadPool>;
   struct ControlBlockTag {};
   using PayloadHandle = ::PayloadHandle;
   static constexpr const char *Name = "DummyManager";
 };
 
-using PoolManager =
-    ::orteaf::internal::base::PoolManager<DummyManagerTraits>;
+using PoolManager = ::orteaf::internal::base::PoolManager<DummyManagerTraits>;
 
 struct BoundControlBlockTag {};
 using BoundControlBlockHandle =
     ::orteaf::internal::base::pool::ControlBlockHandle<BoundControlBlockTag>;
-using BoundPayloadPool = ::orteaf::internal::base::pool::WithControlBlockBinding<
-    PayloadPool, BoundControlBlockHandle>;
-using BoundControlBlock = ::orteaf::internal::base::SharedControlBlock<
-    PayloadHandle, DummyPayload, BoundPayloadPool>;
+using BoundPayloadPool =
+    ::orteaf::internal::base::pool::WithControlBlockBinding<
+        PayloadPool, BoundControlBlockHandle>;
+using BoundControlBlock =
+    ::orteaf::internal::base::SharedControlBlock<PayloadHandle, DummyPayload,
+                                                 BoundPayloadPool>;
 
 struct BoundManagerTraits {
   using PayloadPool = BoundPayloadPool;
@@ -71,15 +76,20 @@ struct BoundManagerTraits {
 using BoundPoolManager =
     ::orteaf::internal::base::PoolManager<BoundManagerTraits>;
 
-PoolManager::Config makeBaseConfig() {
-  PoolManager::Config config{};
-  config.control_block_capacity = 2;
-  config.control_block_block_size = 2;
-  config.control_block_growth_chunk_size = 1;
-  config.payload_growth_chunk_size = 1;
-  config.payload_capacity = 2;
-  config.payload_block_size = 2;
-  return config;
+// Builder type aliases
+using Builder = PoolManager::Builder<DummyPayloadTraits::Request,
+                                     DummyPayloadTraits::Context>;
+using BoundBuilder = BoundPoolManager::Builder<DummyPayloadTraits::Request,
+                                               DummyPayloadTraits::Context>;
+
+Builder makeBaseBuilder() {
+  return Builder{}
+      .withControlBlockCapacity(2)
+      .withControlBlockBlockSize(2)
+      .withControlBlockGrowthChunkSize(1)
+      .withPayloadGrowthChunkSize(1)
+      .withPayloadCapacity(2)
+      .withPayloadBlockSize(2);
 }
 
 TEST(PoolManager, InitiallyNotConfigured) {
@@ -97,75 +107,86 @@ TEST(PoolManager, EnsureConfiguredThrowsWhenNotConfigured) {
 
 TEST(PoolManager, ConfigureRejectsZeroControlBlockBlockSize) {
   PoolManager manager;
-  auto config = makeBaseConfig();
-  config.control_block_block_size = 0;
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder = makeBaseBuilder()
+                     .withControlBlockBlockSize(0)
+                     .withRequest(req)
+                     .withContext(ctx);
 
   ::orteaf::tests::ExpectErrorMessage(
       ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
       {"DummyManager", "control block size must be > 0"},
-      [&manager, &config, &req, &ctx] { manager.configure(config, req, ctx); });
+      [&manager, &builder] { builder.configure(manager); });
 }
 
 TEST(PoolManager, ConfigureRejectsZeroControlBlockGrowthChunkSize) {
   PoolManager manager;
-  auto config = makeBaseConfig();
-  config.control_block_growth_chunk_size = 0;
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder = makeBaseBuilder()
+                     .withControlBlockGrowthChunkSize(0)
+                     .withRequest(req)
+                     .withContext(ctx);
 
   ::orteaf::tests::ExpectErrorMessage(
       ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
       {"DummyManager", "control block growth chunk size must be > 0"},
-      [&manager, &config, &req, &ctx] { manager.configure(config, req, ctx); });
+      [&manager, &builder] { builder.configure(manager); });
 }
 
 TEST(PoolManager, ConfigureRejectsZeroPayloadGrowthChunkSize) {
   PoolManager manager;
-  auto config = makeBaseConfig();
-  config.payload_growth_chunk_size = 0;
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder = makeBaseBuilder()
+                     .withPayloadGrowthChunkSize(0)
+                     .withRequest(req)
+                     .withContext(ctx);
 
   ::orteaf::tests::ExpectErrorMessage(
       ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
       {"DummyManager", "payload growth chunk size must be > 0"},
-      [&manager, &config, &req, &ctx] { manager.configure(config, req, ctx); });
+      [&manager, &builder] { builder.configure(manager); });
 }
 
 TEST(PoolManager, ConfigureRejectsZeroPayloadBlockSize) {
   PoolManager manager;
-  auto config = makeBaseConfig();
-  config.payload_block_size = 0;
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder = makeBaseBuilder()
+                     .withPayloadBlockSize(0)
+                     .withRequest(req)
+                     .withContext(ctx);
 
   ::orteaf::tests::ExpectErrorMessage(
       ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
       {"DummyManager", "payload block size must be > 0"},
-      [&manager, &config, &req, &ctx] { manager.configure(config, req, ctx); });
+      [&manager, &builder] { builder.configure(manager); });
 }
 
 TEST(PoolManager, ConfigureMarksManagerConfigured) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   EXPECT_TRUE(manager.isConfigured());
 }
 
 TEST(PoolManager, ConfigureWithZeroCapacityMarksConfiguredAndAllowsGrowth) {
   PoolManager manager;
-  auto config = makeBaseConfig();
-  config.payload_capacity = 0;
-  config.control_block_capacity = 0;
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder = makeBaseBuilder()
+                     .withPayloadCapacity(0)
+                     .withControlBlockCapacity(0)
+                     .withRequest(req)
+                     .withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   EXPECT_TRUE(manager.isConfigured());
 
   auto handle = manager.acquirePayloadOrGrowAndCreate(req, ctx);
@@ -197,11 +218,12 @@ TEST(PoolManager, SetControlBlockBlockSizeAcceptsNonZero) {
 
 TEST(PoolManager, SetControlBlockBlockSizeRejectsWhenLeaseActive) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
@@ -217,11 +239,12 @@ TEST(PoolManager, SetControlBlockBlockSizeRejectsWhenLeaseActive) {
 
 TEST(PoolManager, SetControlBlockBlockSizeAcceptsAfterLeaseReleased) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
@@ -249,11 +272,12 @@ TEST(PoolManager, SetPayloadBlockSizeAcceptsNonZero) {
 
 TEST(PoolManager, SetPayloadBlockSizeRejectsWhenLeaseActive) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
@@ -269,11 +293,12 @@ TEST(PoolManager, SetPayloadBlockSizeRejectsWhenLeaseActive) {
 
 TEST(PoolManager, SetPayloadBlockSizeAcceptsAfterLeaseReleased) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
@@ -288,11 +313,12 @@ TEST(PoolManager, SetPayloadBlockSizeAcceptsAfterLeaseReleased) {
 
 TEST(PoolManager, ConfigureRejectsControlBlockSizeChangeWhenLeaseActive) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
@@ -300,21 +326,24 @@ TEST(PoolManager, ConfigureRejectsControlBlockSizeChangeWhenLeaseActive) {
   auto lease = manager.acquireWeakLease(handle);
   EXPECT_TRUE(lease);
 
-  auto updated = config;
-  updated.control_block_block_size = config.control_block_block_size + 1;
+  auto updated = makeBaseBuilder()
+                     .withControlBlockBlockSize(3)
+                     .withRequest(req)
+                     .withContext(ctx);
   ::orteaf::tests::ExpectErrorMessage(
       ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
       {"DummyManager", "shutdown aborted due to active leases"},
-      [&manager, &updated, &req, &ctx] { manager.configure(updated, req, ctx); });
+      [&manager, &updated] { updated.configure(manager); });
 }
 
 TEST(PoolManager, ConfigureAcceptsControlBlockSizeChangeAfterLeaseReleased) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
@@ -324,18 +353,21 @@ TEST(PoolManager, ConfigureAcceptsControlBlockSizeChangeAfterLeaseReleased) {
     EXPECT_TRUE(lease);
   }
 
-  auto updated = config;
-  updated.control_block_block_size = config.control_block_block_size + 1;
-  EXPECT_NO_THROW(manager.configure(updated, req, ctx));
+  auto updated = makeBaseBuilder()
+                     .withControlBlockBlockSize(3)
+                     .withRequest(req)
+                     .withContext(ctx);
+  EXPECT_NO_THROW(updated.configure(manager));
 }
 
 TEST(PoolManager, ConfigureRejectsPayloadBlockSizeChangeWhenStrongLeaseActive) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
@@ -343,21 +375,24 @@ TEST(PoolManager, ConfigureRejectsPayloadBlockSizeChangeWhenStrongLeaseActive) {
   auto lease = manager.acquireStrongLease(handle);
   EXPECT_TRUE(lease);
 
-  auto updated = config;
-  updated.payload_block_size = config.payload_block_size + 1;
+  auto updated = makeBaseBuilder()
+                     .withPayloadBlockSize(3)
+                     .withRequest(req)
+                     .withContext(ctx);
   ::orteaf::tests::ExpectErrorMessage(
       ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
       {"DummyManager", "teardown aborted due to active strong references"},
-      [&manager, &updated, &req, &ctx] { manager.configure(updated, req, ctx); });
+      [&manager, &updated] { updated.configure(manager); });
 }
 
 TEST(PoolManager, ConfigureAcceptsPayloadBlockSizeChangeAfterLeaseReleased) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
@@ -367,18 +402,21 @@ TEST(PoolManager, ConfigureAcceptsPayloadBlockSizeChangeAfterLeaseReleased) {
     EXPECT_TRUE(lease);
   }
 
-  auto updated = config;
-  updated.payload_block_size = config.payload_block_size + 1;
-  EXPECT_NO_THROW(manager.configure(updated, req, ctx));
+  auto updated = makeBaseBuilder()
+                     .withPayloadBlockSize(3)
+                     .withRequest(req)
+                     .withContext(ctx);
+  EXPECT_NO_THROW(updated.configure(manager));
 }
 
 TEST(PoolManager, ShutdownRejectsWhenStrongLeaseActive) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
@@ -394,11 +432,12 @@ TEST(PoolManager, ShutdownRejectsWhenStrongLeaseActive) {
 
 TEST(PoolManager, ShutdownRejectsWhenWeakLeaseActive) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
@@ -417,11 +456,12 @@ TEST(PoolManager, ShutdownRejectsWhenWeakLeaseActive) {
 
 TEST(PoolManager, ShutdownAcceptsAfterLeasesReleased) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
@@ -482,21 +522,23 @@ TEST(PoolManager, IsAliveReturnsFalseWhenNotConfigured) {
 
 TEST(PoolManager, IsAliveReturnsFalseForInvalidHandle) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   EXPECT_FALSE(manager.isAlive(PayloadHandle::invalid()));
 }
 
 TEST(PoolManager, IsAliveReturnsFalseForUncreatedPayload) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_FALSE(manager.isAlive(handle));
@@ -504,11 +546,12 @@ TEST(PoolManager, IsAliveReturnsFalseForUncreatedPayload) {
 
 TEST(PoolManager, IsAliveReturnsTrueForCreatedPayload) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
@@ -517,11 +560,12 @@ TEST(PoolManager, IsAliveReturnsTrueForCreatedPayload) {
 
 TEST(PoolManager, EmplacePayloadReturnsTrueAndCreatesPayload) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
@@ -530,21 +574,23 @@ TEST(PoolManager, EmplacePayloadReturnsTrueAndCreatesPayload) {
 
 TEST(PoolManager, EmplacePayloadReturnsFalseForInvalidHandle) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   EXPECT_FALSE(manager.emplacePayload(PayloadHandle::invalid(), req, ctx));
 }
 
 TEST(PoolManager, EmplacePayloadReturnsFalseWhenAlreadyCreated) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
@@ -553,29 +599,32 @@ TEST(PoolManager, EmplacePayloadReturnsFalseWhenAlreadyCreated) {
 
 TEST(PoolManager, CreateAllPayloadsCreatesAllSlots) {
   PoolManager manager;
-  auto config = makeBaseConfig();
-  config.payload_capacity = 3;
-  config.payload_block_size = 3;
+  constexpr std::size_t kPayloadCapacity = 3;
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder = makeBaseBuilder()
+                     .withPayloadCapacity(kPayloadCapacity)
+                     .withPayloadBlockSize(kPayloadCapacity)
+                     .withRequest(req)
+                     .withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   EXPECT_TRUE(manager.createAllPayloads(req, ctx));
 
-  for (std::size_t i = 0; i < config.payload_capacity; ++i) {
-    auto handle =
-        PayloadHandle{static_cast<PayloadHandle::index_type>(i), 0};
+  for (std::size_t i = 0; i < kPayloadCapacity; ++i) {
+    auto handle = PayloadHandle{static_cast<PayloadHandle::index_type>(i), 0};
     EXPECT_TRUE(manager.isAlive(handle));
   }
 }
 
 TEST(PoolManager, ReserveUncreatedPayloadOrGrowReturnsUncreatedHandle) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_FALSE(manager.isAlive(handle));
@@ -583,13 +632,15 @@ TEST(PoolManager, ReserveUncreatedPayloadOrGrowReturnsUncreatedHandle) {
 
 TEST(PoolManager, ReserveUncreatedPayloadOrGrowGrowsWhenExhausted) {
   PoolManager manager;
-  auto config = makeBaseConfig();
-  config.payload_capacity = 1;
-  config.payload_growth_chunk_size = 2;
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder = makeBaseBuilder()
+                     .withPayloadCapacity(1)
+                     .withPayloadGrowthChunkSize(2)
+                     .withRequest(req)
+                     .withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto first = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(first.isValid());
   auto second = manager.reserveUncreatedPayloadOrGrow();
@@ -600,14 +651,16 @@ TEST(PoolManager, ReserveUncreatedPayloadOrGrowGrowsWhenExhausted) {
 
 TEST(PoolManager, AcquirePayloadOrGrowAndCreateCreatesPayload) {
   PoolManager manager;
-  auto config = makeBaseConfig();
-  config.payload_capacity = 0;
-  config.payload_block_size = 1;
-  config.payload_growth_chunk_size = 1;
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder = makeBaseBuilder()
+                     .withPayloadCapacity(0)
+                     .withPayloadBlockSize(1)
+                     .withPayloadGrowthChunkSize(1)
+                     .withRequest(req)
+                     .withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.acquirePayloadOrGrowAndCreate(req, ctx);
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.isAlive(handle));
@@ -615,11 +668,12 @@ TEST(PoolManager, AcquirePayloadOrGrowAndCreateCreatesPayload) {
 
 TEST(PoolManager, AcquireStrongLeaseRejectsInvalidHandle) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   ::orteaf::tests::ExpectErrorMessage(
       ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
       {"DummyManager", "handle is invalid"},
@@ -628,11 +682,12 @@ TEST(PoolManager, AcquireStrongLeaseRejectsInvalidHandle) {
 
 TEST(PoolManager, AcquireWeakLeaseRejectsInvalidHandle) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   ::orteaf::tests::ExpectErrorMessage(
       ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
       {"DummyManager", "handle is invalid"},
@@ -641,11 +696,12 @@ TEST(PoolManager, AcquireWeakLeaseRejectsInvalidHandle) {
 
 TEST(PoolManager, AcquireStrongLeaseRejectsUncreatedPayload) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   ::orteaf::tests::ExpectErrorMessage(
@@ -656,11 +712,12 @@ TEST(PoolManager, AcquireStrongLeaseRejectsUncreatedPayload) {
 
 TEST(PoolManager, AcquireWeakLeaseRejectsUncreatedPayload) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   ::orteaf::tests::ExpectErrorMessage(
@@ -671,11 +728,12 @@ TEST(PoolManager, AcquireWeakLeaseRejectsUncreatedPayload) {
 
 TEST(PoolManager, AcquireStrongLeaseReturnsValidLease) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
@@ -689,11 +747,12 @@ TEST(PoolManager, AcquireStrongLeaseReturnsValidLease) {
 
 TEST(PoolManager, AcquireWeakLeaseReturnsValidLease) {
   PoolManager manager;
-  auto config = makeBaseConfig();
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder =
+      makeBaseBuilder().withRequest(req).withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
@@ -707,17 +766,19 @@ TEST(PoolManager, AcquireWeakLeaseReturnsValidLease) {
 
 TEST(PoolManager, AcquireStrongLeaseRebindsControlBlockAfterRelease) {
   BoundPoolManager manager;
-  BoundPoolManager::Config config{};
-  config.control_block_capacity = 1;
-  config.control_block_block_size = 1;
-  config.control_block_growth_chunk_size = 1;
-  config.payload_growth_chunk_size = 1;
-  config.payload_capacity = 1;
-  config.payload_block_size = 1;
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder = BoundBuilder{}
+                     .withControlBlockCapacity(1)
+                     .withControlBlockBlockSize(1)
+                     .withControlBlockGrowthChunkSize(1)
+                     .withPayloadGrowthChunkSize(1)
+                     .withPayloadCapacity(1)
+                     .withPayloadBlockSize(1)
+                     .withRequest(req)
+                     .withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
@@ -745,17 +806,19 @@ TEST(PoolManager, AcquireStrongLeaseRebindsControlBlockAfterRelease) {
 
 TEST(PoolManager, AcquireStrongLeaseTwiceReusesSameControlBlockAndHandle) {
   BoundPoolManager manager;
-  BoundPoolManager::Config config{};
-  config.control_block_capacity = 1;
-  config.control_block_block_size = 1;
-  config.control_block_growth_chunk_size = 1;
-  config.payload_growth_chunk_size = 1;
-  config.payload_capacity = 1;
-  config.payload_block_size = 1;
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder = BoundBuilder{}
+                     .withControlBlockCapacity(1)
+                     .withControlBlockBlockSize(1)
+                     .withControlBlockGrowthChunkSize(1)
+                     .withPayloadGrowthChunkSize(1)
+                     .withPayloadCapacity(1)
+                     .withPayloadBlockSize(1)
+                     .withRequest(req)
+                     .withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));
@@ -772,17 +835,19 @@ TEST(PoolManager, AcquireStrongLeaseTwiceReusesSameControlBlockAndHandle) {
 
 TEST(PoolManager, AcquireWeakLeaseTwiceReusesSameControlBlockAndHandle) {
   BoundPoolManager manager;
-  BoundPoolManager::Config config{};
-  config.control_block_capacity = 1;
-  config.control_block_block_size = 1;
-  config.control_block_growth_chunk_size = 1;
-  config.payload_growth_chunk_size = 1;
-  config.payload_capacity = 1;
-  config.payload_block_size = 1;
   DummyPayloadTraits::Request req{};
   DummyPayloadTraits::Context ctx{};
+  auto builder = BoundBuilder{}
+                     .withControlBlockCapacity(1)
+                     .withControlBlockBlockSize(1)
+                     .withControlBlockGrowthChunkSize(1)
+                     .withPayloadGrowthChunkSize(1)
+                     .withPayloadCapacity(1)
+                     .withPayloadBlockSize(1)
+                     .withRequest(req)
+                     .withContext(ctx);
 
-  manager.configure(config, req, ctx);
+  builder.configure(manager);
   auto handle = manager.reserveUncreatedPayloadOrGrow();
   EXPECT_TRUE(handle.isValid());
   EXPECT_TRUE(manager.emplacePayload(handle, req, ctx));

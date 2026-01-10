@@ -32,11 +32,33 @@ void MpsDeviceManager::configure(const Config &config) {
                                        config.library_config,
                                        config.graph_config};
   if (device_count <= 0) {
-    core_.configure(config.pool, payload_request, payload_context);
+    Core::Builder<DevicePayloadPoolTraits::Request,
+                  DevicePayloadPoolTraits::Context>{}
+        .withControlBlockCapacity(config.pool.control_block_capacity)
+        .withControlBlockBlockSize(config.pool.control_block_block_size)
+        .withControlBlockGrowthChunkSize(
+            config.pool.control_block_growth_chunk_size)
+        .withPayloadCapacity(config.pool.payload_capacity)
+        .withPayloadBlockSize(config.pool.payload_block_size)
+        .withPayloadGrowthChunkSize(config.pool.payload_growth_chunk_size)
+        .withRequest(payload_request)
+        .withContext(payload_context)
+        .configure(core_);
     return;
   }
 
-  core_.configure(config.pool, payload_request, payload_context);
+  Core::Builder<DevicePayloadPoolTraits::Request,
+                DevicePayloadPoolTraits::Context>{}
+      .withControlBlockCapacity(config.pool.control_block_capacity)
+      .withControlBlockBlockSize(config.pool.control_block_block_size)
+      .withControlBlockGrowthChunkSize(
+          config.pool.control_block_growth_chunk_size)
+      .withPayloadCapacity(config.pool.payload_capacity)
+      .withPayloadBlockSize(config.pool.payload_block_size)
+      .withPayloadGrowthChunkSize(config.pool.payload_growth_chunk_size)
+      .withRequest(payload_request)
+      .withContext(payload_context)
+      .configure(core_);
   core_.createAllPayloads(payload_request, payload_context);
 }
 
