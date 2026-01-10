@@ -185,7 +185,12 @@ public:
         usage{::orteaf::internal::execution::mps::platform::wrapper::
                   kMPSDefaultBufferUsage};
     // PoolManager config
-    ::orteaf::internal::base::PoolConfig pool{};
+    std::size_t control_block_capacity{0};
+    std::size_t control_block_block_size{0};
+    std::size_t control_block_growth_chunk_size{1};
+    std::size_t payload_capacity{0};
+    std::size_t payload_block_size{0};
+    std::size_t payload_growth_chunk_size{1};
   };
 
   // =========================================================================
@@ -247,13 +252,13 @@ public:
     typename Core::template Builder<
         typename BufferPayloadPoolTraitsT<ResourceT>::Request,
         typename BufferPayloadPoolTraitsT<ResourceT>::Context>{}
-        .withControlBlockCapacity(config.pool.control_block_capacity)
-        .withControlBlockBlockSize(config.pool.control_block_block_size)
+        .withControlBlockCapacity(config.control_block_capacity)
+        .withControlBlockBlockSize(config.control_block_block_size)
         .withControlBlockGrowthChunkSize(
-            config.pool.control_block_growth_chunk_size)
-        .withPayloadCapacity(config.pool.payload_capacity)
-        .withPayloadBlockSize(config.pool.payload_block_size)
-        .withPayloadGrowthChunkSize(config.pool.payload_growth_chunk_size)
+            config.control_block_growth_chunk_size)
+        .withPayloadCapacity(config.payload_capacity)
+        .withPayloadBlockSize(config.payload_block_size)
+        .withPayloadGrowthChunkSize(config.payload_growth_chunk_size)
         .withRequest(request)
         .withContext(context)
         .configure(core_);

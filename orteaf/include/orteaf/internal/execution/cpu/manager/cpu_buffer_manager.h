@@ -185,7 +185,13 @@ public:
 
   struct Config {
     SlowOps *ops{nullptr};
-    ::orteaf::internal::base::PoolConfig pool{};
+    // PoolManager settings
+    std::size_t control_block_capacity{0};
+    std::size_t control_block_block_size{0};
+    std::size_t control_block_growth_chunk_size{1};
+    std::size_t payload_capacity{0};
+    std::size_t payload_block_size{0};
+    std::size_t payload_growth_chunk_size{1};
   };
 
   CpuBufferManager() = default;
@@ -207,18 +213,21 @@ public:
   void configure(const Config &config) {
     ops_ = config.ops;
 
-    auto pool_config = config.pool;
-    if (pool_config.payload_capacity == 0) {
-      pool_config.payload_capacity = 64;
+    std::size_t payload_capacity = config.payload_capacity;
+    if (payload_capacity == 0) {
+      payload_capacity = 64;
     }
-    if (pool_config.payload_block_size == 0) {
-      pool_config.payload_block_size = 16;
+    std::size_t payload_block_size = config.payload_block_size;
+    if (payload_block_size == 0) {
+      payload_block_size = 16;
     }
-    if (pool_config.control_block_capacity == 0) {
-      pool_config.control_block_capacity = 64;
+    std::size_t control_block_capacity = config.control_block_capacity;
+    if (control_block_capacity == 0) {
+      control_block_capacity = 64;
     }
-    if (pool_config.control_block_block_size == 0) {
-      pool_config.control_block_block_size = 16;
+    std::size_t control_block_block_size = config.control_block_block_size;
+    if (control_block_block_size == 0) {
+      control_block_block_size = 16;
     }
 
     BufferPayloadPoolTraits::Request request{};
@@ -227,13 +236,13 @@ public:
 
     Core::Builder<BufferPayloadPoolTraits::Request,
                   BufferPayloadPoolTraits::Context>{}
-        .withControlBlockCapacity(pool_config.control_block_capacity)
-        .withControlBlockBlockSize(pool_config.control_block_block_size)
+        .withControlBlockCapacity(control_block_capacity)
+        .withControlBlockBlockSize(control_block_block_size)
         .withControlBlockGrowthChunkSize(
-            pool_config.control_block_growth_chunk_size)
-        .withPayloadCapacity(pool_config.payload_capacity)
-        .withPayloadBlockSize(pool_config.payload_block_size)
-        .withPayloadGrowthChunkSize(pool_config.payload_growth_chunk_size)
+            config.control_block_growth_chunk_size)
+        .withPayloadCapacity(payload_capacity)
+        .withPayloadBlockSize(payload_block_size)
+        .withPayloadGrowthChunkSize(config.payload_growth_chunk_size)
         .withRequest(request)
         .withContext(context)
         .configure(core_);

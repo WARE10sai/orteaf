@@ -109,7 +109,13 @@ public:
   struct Config {
     DeviceType device{nullptr};
     SlowOps *ops{nullptr};
-    ::orteaf::internal::base::PoolConfig pool{};
+    // PoolManager settings
+    std::size_t control_block_capacity{0};
+    std::size_t control_block_block_size{0};
+    std::size_t control_block_growth_chunk_size{1};
+    std::size_t payload_capacity{0};
+    std::size_t payload_block_size{0};
+    std::size_t payload_growth_chunk_size{1};
   };
 
   MpsFenceManager() = default;

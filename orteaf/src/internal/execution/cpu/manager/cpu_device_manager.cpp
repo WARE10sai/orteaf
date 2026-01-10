@@ -79,15 +79,16 @@ void CpuDeviceManager::configure(const Config &config) {
   ops_ = config.ops;
 
   // Setup pool configuration
-  auto pool_config = config.pool;
   // CPU has exactly 1 device
-  pool_config.payload_capacity = 1;
-  pool_config.payload_block_size = 1;
-  if (pool_config.control_block_capacity == 0) {
-    pool_config.control_block_capacity = 4;
+  const std::size_t payload_capacity = 1;
+  const std::size_t payload_block_size = 1;
+  std::size_t control_block_capacity = config.control_block_capacity;
+  if (control_block_capacity == 0) {
+    control_block_capacity = 4;
   }
-  if (pool_config.control_block_block_size == 0) {
-    pool_config.control_block_block_size = 4;
+  std::size_t control_block_block_size = config.control_block_block_size;
+  if (control_block_block_size == 0) {
+    control_block_block_size = 4;
   }
 
   DevicePayloadPoolTraits::Request request{};
@@ -98,13 +99,13 @@ void CpuDeviceManager::configure(const Config &config) {
 
   Core::Builder<DevicePayloadPoolTraits::Request,
                 DevicePayloadPoolTraits::Context>{}
-      .withControlBlockCapacity(pool_config.control_block_capacity)
-      .withControlBlockBlockSize(pool_config.control_block_block_size)
+      .withControlBlockCapacity(control_block_capacity)
+      .withControlBlockBlockSize(control_block_block_size)
       .withControlBlockGrowthChunkSize(
-          pool_config.control_block_growth_chunk_size)
-      .withPayloadCapacity(pool_config.payload_capacity)
-      .withPayloadBlockSize(pool_config.payload_block_size)
-      .withPayloadGrowthChunkSize(pool_config.payload_growth_chunk_size)
+          config.control_block_growth_chunk_size)
+      .withPayloadCapacity(payload_capacity)
+      .withPayloadBlockSize(payload_block_size)
+      .withPayloadGrowthChunkSize(config.payload_growth_chunk_size)
       .withRequest(request)
       .withContext(context)
       .configure(core_);

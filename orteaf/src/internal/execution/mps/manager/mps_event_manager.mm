@@ -25,13 +25,13 @@ void MpsEventManager::configure(const Config &config) {
   const auto payload_context = makePayloadContext();
   Core::Builder<EventPayloadPoolTraits::Request,
                 EventPayloadPoolTraits::Context>{}
-      .withControlBlockCapacity(config.pool.control_block_capacity)
-      .withControlBlockBlockSize(config.pool.control_block_block_size)
+      .withControlBlockCapacity(config.control_block_capacity)
+      .withControlBlockBlockSize(config.control_block_block_size)
       .withControlBlockGrowthChunkSize(
-          config.pool.control_block_growth_chunk_size)
-      .withPayloadCapacity(config.pool.payload_capacity)
-      .withPayloadBlockSize(config.pool.payload_block_size)
-      .withPayloadGrowthChunkSize(config.pool.payload_growth_chunk_size)
+          config.control_block_growth_chunk_size)
+      .withPayloadCapacity(config.payload_capacity)
+      .withPayloadBlockSize(config.payload_block_size)
+      .withPayloadGrowthChunkSize(config.payload_growth_chunk_size)
       .withRequest(payload_request)
       .withContext(payload_context)
       .configure(core_);
