@@ -585,7 +585,12 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
   auto &manager = this->manager();
   constexpr std::size_t kCapacity = 2;
 
-  // Arrange
+  // Arrange: Set up mock expectations BEFORE makeConfig, since makeConfig
+  // queries device count to set payload_capacity
+  const auto device0 = makeDevice(0x500);
+  const auto device1 = makeDevice(0x600);
+  this->adapter().expectGetDeviceCount(2);
+
   auto config = makeConfig(this->getOps());
   config.command_queue_config.payload_capacity = kCapacity;
   config.command_queue_config.control_block_capacity = kCapacity;
@@ -594,8 +599,6 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
   config.command_queue_config.payload_growth_chunk_size = 1;
   config.command_queue_config.control_block_growth_chunk_size = 1;
 
-  const auto device0 = makeDevice(0x500);
-  const auto device1 = makeDevice(0x600);
   this->adapter().expectGetDeviceCount(2);
   this->adapter().expectGetDevices({{0, device0}, {1, device1}});
   this->adapter().expectDetectArchitectures({
@@ -637,14 +640,17 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
   auto &manager = this->manager();
   constexpr std::size_t kCapacity = 4;
 
-  // Arrange
+  // Arrange: Set up mock expectations BEFORE makeConfig, since makeConfig
+  // queries device count to set payload_capacity
+  const auto device0 = makeDevice(0x700);
+  this->adapter().expectGetDeviceCount(1);
+
   auto config = makeConfig(this->getOps());
   config.heap_config.payload_capacity = kCapacity;
   config.heap_config.control_block_capacity = kCapacity;
   config.heap_config.payload_block_size = kCapacity;
   config.heap_config.control_block_block_size = kCapacity;
 
-  const auto device0 = makeDevice(0x700);
   this->adapter().expectGetDeviceCount(1);
   this->adapter().expectGetDevices({{0, device0}});
   this->adapter().expectDetectArchitectures({
@@ -678,14 +684,17 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
   auto &manager = this->manager();
   constexpr std::size_t kCapacity = 2;
 
-  // Arrange
+  // Arrange: Set up mock expectations BEFORE makeConfig, since makeConfig
+  // queries device count to set payload_capacity
+  const auto device0 = makeDevice(0x750);
+  this->adapter().expectGetDeviceCount(1);
+
   auto config = makeConfig(this->getOps());
   config.library_config.payload_capacity = kCapacity;
   config.library_config.control_block_capacity = kCapacity;
   config.library_config.payload_block_size = kCapacity;
   config.library_config.control_block_block_size = kCapacity;
 
-  const auto device0 = makeDevice(0x750);
   this->adapter().expectGetDeviceCount(1);
   this->adapter().expectGetDevices({{0, device0}});
   this->adapter().expectDetectArchitectures({
