@@ -589,7 +589,7 @@ TEST(MpsKernelLauncherImplTest, UpdateFenceReplacesLeaseForSameQueue) {
   impl.updateFenceAndTrack<MockComputeFastOps, FenceRuntimeOps>(
       device, queue_lease, encoder, cb1, token);
   ASSERT_EQ(token.size(), 1u);
-  auto *payload = token[0].payloadPtr();
+  auto *payload = token[0].operator->();
   ASSERT_NE(payload, nullptr);
   EXPECT_EQ(payload->commandBuffer(), cb1);
 
@@ -597,7 +597,7 @@ TEST(MpsKernelLauncherImplTest, UpdateFenceReplacesLeaseForSameQueue) {
   impl.updateFenceAndTrack<MockComputeFastOps, FenceRuntimeOps>(
       device, queue_lease, encoder, cb2, token);
   EXPECT_EQ(token.size(), 1u);
-  payload = token[0].payloadPtr();
+  payload = token[0].operator->();
   ASSERT_NE(payload, nullptr);
   EXPECT_EQ(payload->commandBuffer(), cb2);
 }
@@ -633,7 +633,7 @@ TEST(MpsKernelLauncherImplTest, DispatchOneShotAddsFenceLeaseWhenProvided) {
 
   EXPECT_EQ(command_buffer, MockComputeFastOps::fake_buffer);
   ASSERT_EQ(token.size(), 1u);
-  auto *payload = token[0].payloadPtr();
+  auto *payload = token[0].operator->();
   ASSERT_NE(payload, nullptr);
   EXPECT_EQ(payload->commandQueueHandle(), queue_lease.payloadHandle());
   EXPECT_EQ(payload->commandBuffer(), MockComputeFastOps::fake_buffer);
@@ -668,7 +668,7 @@ TEST(MpsKernelLauncherImplTest, UpdateFenceReturnsLeaseAndEncodesUpdate) {
       device, queue_lease, encoder, command_buffer);
 
   EXPECT_EQ(MockComputeFastOps::last_encoder_for_fence_update, encoder);
-  auto *payload = lease.payloadPtr();
+  auto *payload = lease.operator->();
   ASSERT_NE(payload, nullptr);
   EXPECT_EQ(payload->commandQueueHandle(), queue_lease.payloadHandle());
   EXPECT_EQ(payload->commandBuffer(), command_buffer);

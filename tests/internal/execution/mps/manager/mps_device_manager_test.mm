@@ -238,7 +238,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, GetDeviceReturnsRegisteredHandle) {
   // Assert: Verify each device
   for (std::uint32_t idx = 0; idx < count; ++idx) {
     const auto device = manager.acquire(mps::MpsDeviceHandle{idx});
-    auto *resource = device.payloadPtr();
+    auto *resource = device.operator->();
     EXPECT_NE(resource, nullptr);
     EXPECT_EQ(resource->device != nullptr, static_cast<bool>(device));
     if constexpr (TypeParam::is_mock) {
@@ -287,7 +287,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, GetArchMatchesReportedArchitecture) {
   // Assert: Verify architecture for each device
   for (std::uint32_t idx = 0; idx < count; ++idx) {
     const auto device = manager.acquire(mps::MpsDeviceHandle{idx});
-    auto *resource = device.payloadPtr();
+    auto *resource = device.operator->();
     EXPECT_NE(resource, nullptr);
     const auto arch = resource->arch;
     if constexpr (TypeParam::is_mock) {
@@ -444,7 +444,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, ReinitializeReleasesPreviousDevices) {
 
   if constexpr (TypeParam::is_mock) {
     const auto device = manager.acquire(mps::MpsDeviceHandle{0});
-    auto *resource = device.payloadPtr();
+    auto *resource = device.operator->();
     ASSERT_NE(resource, nullptr);
     EXPECT_EQ(resource->device, first0);
   }
@@ -465,7 +465,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, ReinitializeReleasesPreviousDevices) {
   EXPECT_EQ(reinit_count, initial_count);
   if constexpr (TypeParam::is_mock) {
     const auto device = manager.acquire(mps::MpsDeviceHandle{0});
-    auto *resource = device.payloadPtr();
+    auto *resource = device.operator->();
     ASSERT_NE(resource, nullptr);
     EXPECT_EQ(resource->device, second0);
     EXPECT_NE(second0, first0);
@@ -625,7 +625,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
        ++index) {
     const auto id = mps::MpsDeviceHandle{index};
     const auto device = manager.acquire(id);
-    auto *resource = device.payloadPtr();
+    auto *resource = device.operator->();
     ASSERT_NE(resource, nullptr);
     EXPECT_EQ(resource->command_queue_manager.payloadPoolSizeForTest(),
               kCapacity);
@@ -670,7 +670,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
        ++index) {
     const auto handle = mps::MpsDeviceHandle{index};
     const auto device = manager.acquire(handle);
-    auto *resource = device.payloadPtr();
+    auto *resource = device.operator->();
     ASSERT_NE(resource, nullptr);
     EXPECT_EQ(resource->heap_manager.payloadPoolSizeForTest(), kCapacity);
   }
@@ -714,7 +714,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
        ++index) {
     const auto id = mps::MpsDeviceHandle{index};
     const auto device = manager.acquire(id);
-    auto *resource = device.payloadPtr();
+    auto *resource = device.operator->();
     ASSERT_NE(resource, nullptr);
     EXPECT_EQ(resource->library_manager.payloadPoolSizeForTest(), kCapacity);
   }
@@ -747,7 +747,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, EventPoolAccessSucceeds) {
 
   // Act & Assert
   auto device = manager.acquire(mps::MpsDeviceHandle{0});
-  auto *resource = device.payloadPtr();
+  auto *resource = device.operator->();
   ASSERT_NE(resource, nullptr);
   EXPECT_NE(&resource->event_pool, nullptr);
   device.release();
@@ -776,7 +776,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, FencePoolAccessSucceeds) {
 
   // Act & Assert
   auto device = manager.acquire(mps::MpsDeviceHandle{0});
-  auto *resource = device.payloadPtr();
+  auto *resource = device.operator->();
   ASSERT_NE(resource, nullptr);
   EXPECT_NE(&resource->fence_pool, nullptr);
   device.release();
@@ -805,7 +805,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, DirectAccessReturnsValidPointers) {
 
   // Act & Assert: All accessors return valid pointers
   auto device = manager.acquire(mps::MpsDeviceHandle{0});
-  auto *resource = device.payloadPtr();
+  auto *resource = device.operator->();
   ASSERT_NE(resource, nullptr);
   if constexpr (TypeParam::is_mock) {
     EXPECT_EQ(resource->device, device0);

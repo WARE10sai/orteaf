@@ -100,7 +100,7 @@ MpsCommandQueueManager::acquire(CommandQueueHandle handle) {
     return cached;
   }
   auto lease = core_.acquireStrongLease(handle);
-  const auto *payload_ptr = lease.payloadPtr();
+  const auto *payload_ptr = lease.operator->();
   if (payload_ptr == nullptr || !payload_ptr->hasQueue()) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,

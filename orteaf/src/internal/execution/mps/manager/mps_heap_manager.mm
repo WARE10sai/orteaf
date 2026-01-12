@@ -192,7 +192,7 @@ MpsHeapManager::bufferManager(const HeapLease &lease) {
   if (!lease) {
     return nullptr;
   }
-  auto *payload = const_cast<MpsHeapResource *>(lease.payloadPtr());
+  auto *payload = const_cast<MpsHeapResource *>(lease.operator->());
   return payload ? &payload->buffer_manager : nullptr;
 }
 
@@ -211,7 +211,7 @@ MpsHeapManager::bufferManager(const HeapDescriptorKey &key) {
       lease = core_.acquireStrongLease(handle);
       lifetime_.set(lease);
     }
-    auto *payload = lease.payloadPtr();
+    auto *payload = lease.operator->();
     return payload ? &payload->buffer_manager : nullptr;
   }
 
@@ -220,7 +220,7 @@ MpsHeapManager::bufferManager(const HeapDescriptorKey &key) {
   if (!lease) {
     return nullptr;
   }
-  auto *payload = lease.payloadPtr();
+  auto *payload = lease.operator->();
   return payload ? &payload->buffer_manager : nullptr;
 }
 

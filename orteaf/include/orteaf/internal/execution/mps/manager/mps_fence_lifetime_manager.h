@@ -65,7 +65,7 @@ public:
           "MPS fence lifetime manager requires a command buffer");
     }
     auto lease = fence_manager_->acquire();
-    auto *payload = lease.payloadPtr();
+    auto *payload = lease.operator->();
     if (payload == nullptr) {
       lease.release();
       ::orteaf::internal::diagnostics::error::throwError(
@@ -101,7 +101,7 @@ public:
     std::size_t ready_end = 0;
     for (std::size_t i = hazards_.size(); i > head_; --i) {
       auto &lease = hazards_[i - 1];
-      auto *payload = lease.payloadPtr();
+      auto *payload = lease.operator->();
       if (payload == nullptr) {
         ready_end = i;
         break;
@@ -118,7 +118,7 @@ public:
 
     const std::size_t released = ready_end - head_;
     for (std::size_t i = head_; i < ready_end; ++i) {
-      auto *payload = hazards_[i].payloadPtr();
+      auto *payload = hazards_[i].operator->();
       if (payload != nullptr) {
 #if ORTEAF_MPS_DEBUG_ENABLED
         if (!payload->isReady<FastOps>()) {
@@ -148,7 +148,7 @@ public:
     }
 
     for (std::size_t i = head_; i < hazards_.size(); ++i) {
-      auto *payload = hazards_[i].payloadPtr();
+      auto *payload = hazards_[i].operator->();
       if (payload == nullptr) {
         continue;
       }
@@ -177,7 +177,7 @@ public:
     }
 
     for (std::size_t i = head_; i < hazards_.size(); ++i) {
-      auto *payload = hazards_[i].payloadPtr();
+      auto *payload = hazards_[i].operator->();
       if (payload == nullptr) {
         continue;
       }

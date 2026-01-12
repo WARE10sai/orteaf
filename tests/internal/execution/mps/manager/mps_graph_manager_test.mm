@@ -112,7 +112,7 @@ TEST_F(MpsGraphManagerTest, AcquireCachesExecutableForSameKey) {
 
   // Act: Acquire twice with same key
   auto lease1 = manager_.acquire(key, compile_fn);
-  auto *payload1 = lease1.payloadPtr();
+  auto *payload1 = lease1.operator->();
   ASSERT_NE(payload1, nullptr);
   auto exe1 = payload1->executable;
   manager_.release(lease1);
@@ -120,7 +120,7 @@ TEST_F(MpsGraphManagerTest, AcquireCachesExecutableForSameKey) {
   auto lease2 = manager_.acquire(key, compile_fn);
 
   // Assert: Same executable (cached)
-  auto *payload2 = lease2.payloadPtr();
+  auto *payload2 = lease2.operator->();
   ASSERT_NE(payload2, nullptr);
   EXPECT_EQ(exe1, payload2->executable);
 
@@ -180,8 +180,8 @@ TEST_F(MpsGraphManagerTest, DifferentKeyShapeTriggersNewCompile) {
   auto lease2 = manager_.acquire(key2, compile_fn);
 
   // Assert: Different executables
-  auto *payload1 = lease1.payloadPtr();
-  auto *payload2 = lease2.payloadPtr();
+  auto *payload1 = lease1.operator->();
+  auto *payload2 = lease2.operator->();
   ASSERT_NE(payload1, nullptr);
   ASSERT_NE(payload2, nullptr);
   EXPECT_NE(payload1->executable, payload2->executable);

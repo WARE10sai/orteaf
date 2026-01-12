@@ -190,7 +190,7 @@ public:
       return false;
     }
     const auto handle = lease.payloadHandle();
-    auto *payload = lease.payloadPtr();
+    auto *payload = lease.operator->();
     if (payload == nullptr) {
       if (handle.isValid()) {
         lifetime_.release(handle);

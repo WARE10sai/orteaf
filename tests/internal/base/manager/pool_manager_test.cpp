@@ -193,8 +193,8 @@ TEST(PoolManager, ConfigureWithZeroCapacityMarksConfiguredAndAllowsGrowth) {
 
   auto lease = manager.acquireStrongLease(handle);
   ASSERT_TRUE(lease);
-  ASSERT_NE(lease.payloadPtr(), nullptr);
-  EXPECT_EQ(lease.payloadPtr()->value, 1);
+  ASSERT_NE(lease.operator->(), nullptr);
+  EXPECT_EQ(lease->value, 1);
 
   lease.release();
   manager.shutdown(req, ctx);
@@ -714,8 +714,8 @@ TEST(PoolManager, AcquireStrongLeaseReturnsValidLease) {
   auto lease = manager.acquireStrongLease(handle);
   EXPECT_TRUE(lease);
   EXPECT_EQ(lease.strongCount(), 1u);
-  EXPECT_NE(lease.payloadPtr(), nullptr);
-  EXPECT_EQ(lease.payloadPtr()->value, 1);
+  EXPECT_NE(lease.operator->(), nullptr);
+  EXPECT_EQ(lease->value, 1);
 }
 
 TEST(PoolManager, AcquireWeakLeaseReturnsValidLease) {
@@ -750,8 +750,8 @@ TEST(PoolManager, AcquireWeakLeaseReturnsValidLease) {
   // lock() will work because strong count > 0
   auto strong = lease.lock();
   ASSERT_TRUE(strong);
-  EXPECT_NE(strong.payloadPtr(), nullptr);
-  EXPECT_EQ(strong.payloadPtr()->value, 1);
+  EXPECT_NE(strong.operator->(), nullptr);
+  EXPECT_EQ(strong->value, 1);
 
   // Release all
   strong.release();

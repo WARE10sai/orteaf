@@ -219,7 +219,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest, GetOrCreateAllocatesAndCachesLibrary) {
   auto lease = manager.acquire(mps_rt::LibraryKey::Named("Foobar"));
 
   // Assert
-  auto *payload = lease.payloadPtr();
+  auto *payload = lease.operator->();
   ASSERT_NE(payload, nullptr);
   EXPECT_EQ(payload->library, lib_handle);
 
@@ -306,7 +306,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest,
 
   // Act
   auto library_lease = manager.acquire(mps_rt::LibraryKey::Named("TestLib"));
-  auto *library_resource = library_lease.payloadPtr();
+  auto *library_resource = library_lease.operator->();
   ASSERT_NE(library_resource, nullptr);
   auto *pipeline_manager = &library_resource->pipeline_manager;
 
@@ -335,7 +335,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest, PipelineManagerCanBeAccessedByKey) {
 
   // Act: Access directly by key
   auto library_lease = manager.acquire(key);
-  auto *library_resource = library_lease.payloadPtr();
+  auto *library_resource = library_lease.operator->();
   ASSERT_NE(library_resource, nullptr);
   auto *pipeline_manager = &library_resource->pipeline_manager;
 
@@ -361,7 +361,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest, LibraryPersistsAfterLeaseRelease) {
 
   // Act
   auto library_lease = manager.acquire(key);
-  auto *library_resource = library_lease.payloadPtr();
+  auto *library_resource = library_lease.operator->();
   ASSERT_NE(library_resource, nullptr);
   auto *pipeline_manager = &library_resource->pipeline_manager;
   EXPECT_NE(pipeline_manager, nullptr);
@@ -394,8 +394,8 @@ TYPED_TEST(MpsLibraryManagerTypedTest,
   // Act
   auto library_lease = manager.acquire(key);
   auto library_lease_again = manager.acquire(key);
-  auto *resource_first = library_lease.payloadPtr();
-  auto *resource_again = library_lease_again.payloadPtr();
+  auto *resource_first = library_lease.operator->();
+  auto *resource_again = library_lease_again.operator->();
   ASSERT_NE(resource_first, nullptr);
   ASSERT_NE(resource_again, nullptr);
   auto *pm1 = &resource_first->pipeline_manager;

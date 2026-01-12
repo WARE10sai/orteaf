@@ -78,13 +78,13 @@ public:
      * @throws If buffer_manager is null or acquisition fails.
      */
     MpsStorage build() {
-      auto *payload = heap_lease_.payloadPtr();
-      if (payload == nullptr) {
+      if (!heap_lease_) {
         ::orteaf::internal::diagnostics::error::throwError(
             ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
             "MpsStorage requires a valid heap lease");
       }
-      BufferLease lease = payload->buffer_manager.acquire(size_, alignment_);
+      BufferLease lease =
+          heap_lease_->buffer_manager.acquire(size_, alignment_);
       return MpsStorage(std::move(lease), std::move(layout_));
     }
 

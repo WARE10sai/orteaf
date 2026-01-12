@@ -349,8 +349,8 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
   // Assert: Same handle (cached)
   EXPECT_EQ(lease0.payloadHandle(), lease1.payloadHandle());
   if constexpr (TypeParam::is_mock) {
-    ASSERT_NE(lease0.payloadPtr(), nullptr);
-    EXPECT_EQ(lease0.payloadPtr()->pipeline_state, pipeline_handle);
+    ASSERT_NE(lease0.operator->(), nullptr);
+    EXPECT_EQ(lease0->pipeline_state, pipeline_handle);
   } else {
     EXPECT_TRUE(lease0);
   }
@@ -408,8 +408,8 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
   auto reacquired = manager.acquire(key);
   EXPECT_EQ(reacquired.payloadHandle(), handle);
   if constexpr (TypeParam::is_mock) {
-    ASSERT_NE(reacquired.payloadPtr(), nullptr);
-    EXPECT_EQ(reacquired.payloadPtr()->pipeline_state, first_pipeline);
+    ASSERT_NE(reacquired.operator->(), nullptr);
+    EXPECT_EQ(reacquired->pipeline_state, first_pipeline);
   } else {
     EXPECT_TRUE(reacquired);
   }

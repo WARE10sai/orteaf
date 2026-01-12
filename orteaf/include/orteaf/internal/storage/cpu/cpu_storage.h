@@ -68,13 +68,13 @@ public:
      * @throws If buffer_manager is null or acquisition fails.
      */
     CpuStorage build() {
-      auto *payload = device_lease_.payloadPtr();
-      if (payload == nullptr) {
+      if (!device_lease_) {
         ::orteaf::internal::diagnostics::error::throwError(
             ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
             "CpuStorage requires a valid device lease");
       }
-      BufferLease lease = payload->buffer_manager.acquire(size_, alignment_);
+      BufferLease lease =
+          device_lease_->buffer_manager.acquire(size_, alignment_);
       return CpuStorage(std::move(lease), std::move(layout_));
     }
 

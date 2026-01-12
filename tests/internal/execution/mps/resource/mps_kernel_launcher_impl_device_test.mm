@@ -33,7 +33,7 @@ TEST(MpsKernelLauncherImplDeviceTest, InitializeWithEmbeddedLibraryRealDevice) {
     ASSERT_EQ(impl.sizeForTest(), 1u);
 
     auto &lease = impl.pipelineLeaseForTest(device, 0);
-    auto *payload = lease.payloadPtr();
+    auto *payload = lease.operator->();
     EXPECT_NE(payload, nullptr);
     if (payload) {
       EXPECT_NE(payload->pipeline_state, nullptr);

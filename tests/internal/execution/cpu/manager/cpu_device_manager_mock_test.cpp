@@ -72,7 +72,7 @@ TEST_F(CpuDeviceManagerMockTest, ConfiguresWithMockedArch) {
   auto lease = manager_->acquire(cpu::CpuDeviceHandle{0});
   EXPECT_TRUE(lease);
   // Access arch through lease
-  EXPECT_EQ(lease.payloadPtr()->arch, architecture::Architecture::CpuZen4);
+  EXPECT_EQ(lease->arch, architecture::Architecture::CpuZen4);
   EXPECT_TRUE(manager_->isAliveForTest(cpu::CpuDeviceHandle{0}));
 }
 

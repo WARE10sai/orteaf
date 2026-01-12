@@ -165,7 +165,7 @@ TYPED_TEST(MpsEventManagerTypedTest, AcquireReturnsValidLease) {
 
   // Assert
   EXPECT_TRUE(lease);
-  EXPECT_NE(lease.payloadPtr(), nullptr);
+  EXPECT_NE(lease.operator->(), nullptr);
   EXPECT_TRUE(lease.payloadHandle().isValid());
 
   // Cleanup

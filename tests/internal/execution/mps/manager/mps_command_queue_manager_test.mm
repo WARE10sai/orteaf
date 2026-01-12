@@ -186,7 +186,7 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest,
     auto lease = manager.acquire();
 
     // Assert
-    auto *payload = lease.payloadPtr();
+    auto *payload = lease.operator->();
     ASSERT_NE(payload, nullptr);
     EXPECT_TRUE(payload->hasQueue());
   } // lease released here
@@ -216,7 +216,7 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest,
                            this->getOps(), &fence_manager);
 
   auto lease = manager.acquire();
-  auto *payload = lease.payloadPtr();
+  auto *payload = lease.operator->();
   ASSERT_NE(payload, nullptr);
   EXPECT_TRUE(payload->hasQueue());
   EXPECT_NO_THROW((void)payload->lifetime().releaseReady());
@@ -328,7 +328,7 @@ TYPED_TEST(MpsCommandQueueManagerTypedTest, LeaseDestructionAllowsShutdown) {
   // Act: Lease goes out of scope
   {
     auto lease = manager.acquire();
-    auto *payload = lease.payloadPtr();
+    auto *payload = lease.operator->();
     ASSERT_NE(payload, nullptr);
     EXPECT_TRUE(payload->hasQueue());
   } // lease released here
