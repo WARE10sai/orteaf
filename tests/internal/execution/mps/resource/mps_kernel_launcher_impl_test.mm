@@ -66,7 +66,7 @@ public:
 
 namespace {
 
-class FenceRuntimeOps {
+class FenceExecutionOps {
 public:
   using PipelineLease =
       mps_rt::manager::MpsComputePipelineStateManager::PipelineLease;
@@ -120,11 +120,11 @@ struct TestFenceManager {
   Fence fence_b{nullptr};
 };
 
-struct FenceRuntimeScope {
-  explicit FenceRuntimeScope(mps_rt::manager::MpsFenceManager &manager) {
-    FenceRuntimeOps::setFenceManager(&manager);
+struct FenceExecutionScope {
+  explicit FenceExecutionScope(mps_rt::manager::MpsFenceManager &manager) {
+    FenceExecutionOps::setFenceManager(&manager);
   }
-  ~FenceRuntimeScope() { FenceRuntimeOps::setFenceManager(nullptr); }
+  ~FenceExecutionScope() { FenceExecutionOps::setFenceManager(nullptr); }
 };
 
 struct TestCommandQueueLease {
@@ -570,8 +570,8 @@ TEST(MpsKernelLauncherImplTest, UpdateFenceReplacesLeaseForSameQueue) {
   });
   const mps::MpsDeviceHandle device{0};
   TestFenceManager fence_manager;
-  FenceRuntimeScope fence_scope(fence_manager.manager);
-  impl.initialize<FenceRuntimeOps>(device);
+  FenceExecutionScope fence_scope(fence_manager.manager);
+  impl.initialize<FenceExecutionOps>(device);
 
   TestCommandQueueLease queue_helper(
       reinterpret_cast<::orteaf::internal::execution::mps::platform::wrapper::
@@ -586,7 +586,7 @@ TEST(MpsKernelLauncherImplTest, UpdateFenceReplacesLeaseForSameQueue) {
                                    wrapper::MpsCommandBuffer_t>(0xBB);
 
   // First lease
-  impl.updateFenceAndTrack<MockComputeFastOps, FenceRuntimeOps>(
+  impl.updateFenceAndTrack<MockComputeFastOps, FenceExecutionOps>(
       device, queue_lease, encoder, cb1, token);
   ASSERT_EQ(token.size(), 1u);
   auto *payload = token[0].operator->();
@@ -594,7 +594,7 @@ TEST(MpsKernelLauncherImplTest, UpdateFenceReplacesLeaseForSameQueue) {
   EXPECT_EQ(payload->commandBuffer(), cb1);
 
   // Second call with same queue_handle should replace
-  impl.updateFenceAndTrack<MockComputeFastOps, FenceRuntimeOps>(
+  impl.updateFenceAndTrack<MockComputeFastOps, FenceExecutionOps>(
       device, queue_lease, encoder, cb2, token);
   EXPECT_EQ(token.size(), 1u);
   payload = token[0].operator->();
@@ -608,8 +608,8 @@ TEST(MpsKernelLauncherImplTest, DispatchOneShotAddsFenceLeaseWhenProvided) {
   });
   const mps::MpsDeviceHandle device{0};
   TestFenceManager fence_manager;
-  FenceRuntimeScope fence_scope(fence_manager.manager);
-  impl.initialize<FenceRuntimeOps>(device);
+  FenceExecutionScope fence_scope(fence_manager.manager);
+  impl.initialize<FenceExecutionOps>(device);
 
   ::orteaf::internal::execution::mps::platform::wrapper::MpsCommandQueue_t
       queue = reinterpret_cast<::orteaf::internal::execution::mps::platform::
@@ -628,7 +628,7 @@ TEST(MpsKernelLauncherImplTest, DispatchOneShotAddsFenceLeaseWhenProvided) {
       0xdead);
 
   auto *command_buffer =
-      impl.dispatchOneShot<MockComputeFastOps, FenceRuntimeOps>(
+      impl.dispatchOneShot<MockComputeFastOps, FenceExecutionOps>(
           queue_lease, device, 0, tg, tptg, [](auto *) {}, &token);
 
   EXPECT_EQ(command_buffer, MockComputeFastOps::fake_buffer);
@@ -648,8 +648,8 @@ TEST(MpsKernelLauncherImplTest, UpdateFenceReturnsLeaseAndEncodesUpdate) {
   });
   const mps::MpsDeviceHandle device{0};
   TestFenceManager fence_manager;
-  FenceRuntimeScope fence_scope(fence_manager.manager);
-  impl.initialize<FenceRuntimeOps>(device);
+  FenceExecutionScope fence_scope(fence_manager.manager);
+  impl.initialize<FenceExecutionOps>(device);
 
   auto *encoder = MockComputeFastOps::fake_encoder;
   auto *command_buffer = MockComputeFastOps::fake_buffer;
@@ -664,7 +664,7 @@ TEST(MpsKernelLauncherImplTest, UpdateFenceReturnsLeaseAndEncodesUpdate) {
                            MpsCommandQueue_t>(0x50));
   auto &queue_lease = queue_helper.lease;
 
-  auto lease = impl.updateFence<MockComputeFastOps, FenceRuntimeOps>(
+  auto lease = impl.updateFence<MockComputeFastOps, FenceExecutionOps>(
       device, queue_lease, encoder, command_buffer);
 
   EXPECT_EQ(MockComputeFastOps::last_encoder_for_fence_update, encoder);

@@ -50,10 +50,10 @@ void setPoolBlockSizes(Config &config) {
 
 template <class Provider>
 class MpsComputePipelineStateManagerTypedTest
-    : public testing_mps::RuntimeManagerFixture<
+    : public testing_mps::ExecutionManagerFixture<
           Provider, mps_rt::MpsComputePipelineStateManager> {
 protected:
-  using Base = testing_mps::RuntimeManagerFixture<
+  using Base = testing_mps::ExecutionManagerFixture<
       Provider, mps_rt::MpsComputePipelineStateManager>;
 
   mps_rt::MpsComputePipelineStateManager &manager() { return Base::manager(); }

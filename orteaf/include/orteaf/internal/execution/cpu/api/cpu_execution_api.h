@@ -1,7 +1,7 @@
 #pragma once
 
 #include "orteaf/internal/diagnostics/error/error.h"
-#include "orteaf/internal/execution/cpu/manager/cpu_runtime_manager.h"
+#include "orteaf/internal/execution/cpu/manager/cpu_execution_manager.h"
 #include "orteaf/internal/execution/cpu/platform/cpu_slow_ops.h"
 #include "orteaf/internal/execution/cpu/cpu_handles.h"
 
@@ -9,8 +9,8 @@ namespace orteaf::internal::execution::cpu::api {
 
 class CpuExecutionApi {
 public:
-  using Runtime =
-      ::orteaf::internal::execution::cpu::manager::CpuRuntimeManager;
+  using ExecutionManager =
+      ::orteaf::internal::execution::cpu::manager::CpuExecutionManager;
   using DeviceHandle = ::orteaf::internal::execution::cpu::CpuDeviceHandle;
   using DeviceLease =
       ::orteaf::internal::execution::cpu::manager::CpuDeviceManager::DeviceLease;
@@ -18,7 +18,7 @@ public:
 
   CpuExecutionApi() = delete;
 
-  static void configure(const Runtime::Config &config) {
+  static void configure(const ExecutionManager::Config &config) {
     runtime().configure(config);
   }
 
@@ -36,8 +36,8 @@ public:
   }
 
 private:
-  static Runtime &runtime() {
-    static Runtime instance{};
+  static ExecutionManager &runtime() {
+    static ExecutionManager instance{};
     return instance;
   }
 };

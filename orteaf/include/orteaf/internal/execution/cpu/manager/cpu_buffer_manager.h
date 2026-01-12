@@ -15,7 +15,7 @@
 namespace orteaf::internal::execution::cpu::manager {
 
 struct DevicePayloadPoolTraits;
-class CpuRuntimeManager;
+class CpuExecutionManager;
 
 // =============================================================================
 // Buffer Resource
@@ -252,7 +252,7 @@ private:
         .configure(core_);
   }
 
-  friend class CpuRuntimeManager;
+  friend class CpuExecutionManager;
   friend struct DevicePayloadPoolTraits;
 
 public:

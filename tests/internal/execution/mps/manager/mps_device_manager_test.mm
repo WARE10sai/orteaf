@@ -85,11 +85,11 @@ makeConfig(mps_rt::MpsDeviceManager::SlowOps *ops) {
 
 template <class Provider>
 class MpsDeviceManagerTypedTest
-    : public testing_mps::RuntimeManagerFixture<Provider,
+    : public testing_mps::ExecutionManagerFixture<Provider,
                                                 mps_rt::MpsDeviceManager> {
 protected:
   using Base =
-      testing_mps::RuntimeManagerFixture<Provider, mps_rt::MpsDeviceManager>;
+      testing_mps::ExecutionManagerFixture<Provider, mps_rt::MpsDeviceManager>;
 
   mps_rt::MpsDeviceManager &manager() { return Base::manager(); }
   auto &adapter() { return Base::adapter(); }

@@ -1,18 +1,22 @@
 #pragma once
 
-#if ORTEAF_ENABLE_MPS
-
 #include <memory>
 
-#include "orteaf/internal/execution/mps/manager/mps_device_manager.h"
-#include "orteaf/internal/execution/mps/platform/mps_slow_ops.h"
+#include "orteaf/internal/execution/cpu/manager/cpu_device_manager.h"
+#include "orteaf/internal/execution/cpu/platform/cpu_slow_ops.h"
 
-namespace orteaf::internal::execution::mps::manager {
+namespace orteaf::internal::execution::cpu::manager {
 
-class MpsRuntimeManager {
-  using SlowOps = ::orteaf::internal::execution::mps::platform::MpsSlowOps;
+/**
+ * @brief CPU execution manager that provides unified access to CPU managers.
+ *
+ * Similar to MpsExecutionManager, this class owns the SlowOps instance and
+ * manages the lifecycle of CPU managers (device manager, buffer manager, etc.).
+ */
+class CpuExecutionManager {
+  using SlowOps = ::orteaf::internal::execution::cpu::platform::CpuSlowOps;
   using SlowOpsImpl =
-      ::orteaf::internal::execution::mps::platform::MpsSlowOpsImpl;
+      ::orteaf::internal::execution::cpu::platform::CpuSlowOpsImpl;
 
 public:
   // =========================================================================
@@ -21,28 +25,34 @@ public:
 
   struct Config {
     /// Custom SlowOps instance (nullptr for default implementation).
-    /// If provided, the RuntimeManager takes ownership.
+    /// If provided, the ExecutionManager takes ownership.
     SlowOps *slow_ops = nullptr;
     /// Device manager configuration
-    MpsDeviceManager::Config device_config = {};
+    CpuDeviceManager::Config device_config = {};
   };
 
-  MpsRuntimeManager() = default;
-  MpsRuntimeManager(const MpsRuntimeManager &) = delete;
-  MpsRuntimeManager &operator=(const MpsRuntimeManager &) = delete;
-  MpsRuntimeManager(MpsRuntimeManager &&) = default;
-  MpsRuntimeManager &operator=(MpsRuntimeManager &&) = default;
-  ~MpsRuntimeManager() = default;
+  CpuExecutionManager() = default;
+  CpuExecutionManager(const CpuExecutionManager &) = delete;
+  CpuExecutionManager &operator=(const CpuExecutionManager &) = delete;
+  CpuExecutionManager(CpuExecutionManager &&) = default;
+  CpuExecutionManager &operator=(CpuExecutionManager &&) = default;
+  ~CpuExecutionManager() = default;
 
   // =========================================================================
   // Manager accessors
   // =========================================================================
 
-  MpsDeviceManager &deviceManager() noexcept { return device_manager_; }
-  const MpsDeviceManager &deviceManager() const noexcept {
+  /**
+   * @brief Get the device manager.
+   */
+  CpuDeviceManager &deviceManager() noexcept { return device_manager_; }
+  const CpuDeviceManager &deviceManager() const noexcept {
     return device_manager_;
   }
 
+  /**
+   * @brief Get the SlowOps instance.
+   */
   SlowOps *slowOps() noexcept { return slow_ops_.get(); }
   const SlowOps *slowOps() const noexcept { return slow_ops_.get(); }
 
@@ -51,12 +61,7 @@ public:
   // =========================================================================
 
   /**
-   * @brief Configure the MPS runtime with default settings.
-   */
-  void configure() { configure(Config{}); }
-
-  /**
-   * @brief Configure the MPS runtime.
+   * @brief Configure the CPU execution manager.
    *
    * @param config Configuration including SlowOps and sub-manager settings
    */
@@ -68,19 +73,22 @@ public:
     }
 
     // Configure device manager
-    MpsDeviceManager::InternalConfig device_config{};
+    CpuDeviceManager::InternalConfig device_config{};
     device_config.public_config = config.device_config;
     device_config.ops = slow_ops_.get();
     device_manager_.configure(device_config);
   }
 
+  /**
+   * @brief Shutdown the CPU execution manager and release all resources.
+   */
   void shutdown() {
     device_manager_.shutdown();
     slow_ops_.reset();
   }
 
   /**
-   * @brief Check if the runtime is configured.
+   * @brief Check if the execution manager is configured.
    */
   bool isConfigured() const noexcept {
 #if ORTEAF_ENABLE_TEST
@@ -91,10 +99,8 @@ public:
   }
 
 private:
-  MpsDeviceManager device_manager_{};
+  CpuDeviceManager device_manager_{};
   std::unique_ptr<SlowOps> slow_ops_{};
 };
 
-} // namespace orteaf::internal::execution::mps::manager
-
-#endif // ORTEAF_ENABLE_MPS
+} // namespace orteaf::internal::execution::cpu::manager

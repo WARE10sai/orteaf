@@ -24,7 +24,7 @@
 
 namespace orteaf::internal::execution::mps::manager {
 
-class MpsRuntimeManager;
+class MpsExecutionManager;
 
 // =============================================================================
 // Device Resource
@@ -260,7 +260,7 @@ private:
 
   void configure(const InternalConfig &config);
 
-  friend class MpsRuntimeManager;
+  friend class MpsExecutionManager;
 
 public:
   // =========================================================================

@@ -7,7 +7,7 @@
 #include <utility>
 
 #include "orteaf/internal/diagnostics/error/error.h"
-#include "orteaf/internal/execution/mps/manager/mps_runtime_manager.h"
+#include "orteaf/internal/execution/mps/manager/mps_execution_manager.h"
 #include "orteaf/internal/execution/mps/platform/mps_slow_ops.h"
 #include "orteaf/internal/execution/mps/mps_handles.h"
 
@@ -15,8 +15,8 @@ namespace orteaf::internal::execution::mps::api {
 
 class MpsExecutionApi {
 public:
-  using Runtime =
-      ::orteaf::internal::execution::mps::manager::MpsRuntimeManager;
+  using ExecutionManager =
+      ::orteaf::internal::execution::mps::manager::MpsExecutionManager;
   using DeviceHandle = ::orteaf::internal::execution::mps::MpsDeviceHandle;
   using DeviceLease =
       ::orteaf::internal::execution::mps::manager::MpsDeviceManager::DeviceLease;
@@ -34,11 +34,11 @@ public:
 
   MpsExecutionApi() = delete;
 
-  // Configure runtime with default configuration.
+  // Configure execution manager with default configuration.
   static void configure() { runtime().configure(); }
 
-  // Configure runtime with the provided configuration.
-  static void configure(const Runtime::Config &config) {
+  // Configure execution manager with the provided configuration.
+  static void configure(const ExecutionManager::Config &config) {
     runtime().configure(config);
   }
 
@@ -84,9 +84,9 @@ public:
   }
 
 private:
-  // Singleton access to the runtime manager (hidden from external callers).
-  static Runtime &runtime() {
-    static Runtime instance{};
+  // Singleton access to the execution manager (hidden from external callers).
+  static ExecutionManager &runtime() {
+    static ExecutionManager instance{};
     return instance;
   }
 };

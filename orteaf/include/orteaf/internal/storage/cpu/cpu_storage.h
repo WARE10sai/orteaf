@@ -46,8 +46,9 @@ public:
     }
 
     Builder &withDeviceHandle(DeviceHandle handle) {
-      device_lease_ = ::orteaf::internal::execution::cpu::api::
-          CpuExecutionApi::acquireDevice(handle);
+      device_lease_ =
+          ::orteaf::internal::execution::cpu::api::CpuExecutionApi::
+              acquireDevice(handle);
       return *this;
     }
 

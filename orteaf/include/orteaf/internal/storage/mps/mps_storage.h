@@ -57,8 +57,9 @@ public:
 
     Builder &withDeviceHandle(DeviceHandle handle,
                               const HeapDescriptorKey &key) {
-      heap_lease_ = ::orteaf::internal::execution::mps::api::
-          MpsExecutionApi::acquireHeap(handle, key);
+      heap_lease_ =
+          ::orteaf::internal::execution::mps::api::MpsExecutionApi::acquireHeap(
+              handle, key);
       return *this;
     }
 

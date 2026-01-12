@@ -121,7 +121,7 @@ TEST_F(CpuStorageBuilderTest, StorageIsMoveAssignable) {
 }
 
 TEST(CpuStorageExecutionApiTest, BuilderWithDeviceHandleUsesExecutionApi) {
-  cpu_api::CpuExecutionApi::Runtime::Config config{};
+  cpu_api::CpuExecutionApi::ExecutionManager::Config config{};
   cpu_api::CpuExecutionApi::configure(config);
   {
     auto storage = cpu_storage::CpuStorage::builder()

@@ -169,7 +169,7 @@ TEST(MpsStorageExecutionApiTest, BuilderWithDeviceHandleUsesExecutionApi) {
               setHeapDescriptorType(heap_descriptor, heap_key.heap_type))
       .Times(1);
 
-  mps_api::MpsExecutionApi::Runtime::Config config{};
+  mps_api::MpsExecutionApi::ExecutionManager::Config config{};
   config.slow_ops = mock;
   auto &device_config = config.device_config;
   device_config.control_block_capacity = 1;

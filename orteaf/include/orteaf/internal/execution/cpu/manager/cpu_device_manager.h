@@ -14,7 +14,7 @@
 namespace orteaf::internal::execution::cpu::manager {
 
 // Forward declaration
-class CpuRuntimeManager;
+class CpuExecutionManager;
 
 // =============================================================================
 // Device Resource
@@ -156,7 +156,7 @@ private:
 
   void configure(const InternalConfig &config);
 
-  friend class CpuRuntimeManager;
+  friend class CpuExecutionManager;
 
 public:
 
