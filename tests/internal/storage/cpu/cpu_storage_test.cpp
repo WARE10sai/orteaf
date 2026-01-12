@@ -1,3 +1,4 @@
+#include "orteaf/internal/execution/cpu/api/cpu_execution_api.h"
 #include "orteaf/internal/execution/cpu/manager/cpu_device_manager.h"
 #include "orteaf/internal/execution/cpu/platform/cpu_slow_ops.h"
 #include "orteaf/internal/storage/cpu/cpu_storage.h"
@@ -10,6 +11,7 @@ namespace cpu_storage = orteaf::internal::storage::cpu;
 namespace cpu = orteaf::internal::execution::cpu;
 namespace cpu_manager = orteaf::internal::execution::cpu::manager;
 namespace cpu_platform = orteaf::internal::execution::cpu::platform;
+namespace cpu_api = orteaf::internal::execution::cpu::api;
 
 class CpuStorageBuilderTest : public ::testing::Test {
 protected:
@@ -116,4 +118,16 @@ TEST_F(CpuStorageBuilderTest, StorageIsMoveAssignable) {
   cpu_storage::CpuStorage storage2;
   storage2 = std::move(storage1);
   SUCCEED();
+}
+
+TEST(CpuStorageExecutionApiTest, BuilderWithDeviceHandleUsesExecutionApi) {
+  cpu_api::CpuExecutionApi::configure();
+  {
+    auto storage = cpu_storage::CpuStorage::builder()
+                       .withDeviceHandle(cpu::CpuDeviceHandle{0})
+                       .withSize(128)
+                       .build();
+    SUCCEED();
+  }
+  cpu_api::CpuExecutionApi::shutdown();
 }
