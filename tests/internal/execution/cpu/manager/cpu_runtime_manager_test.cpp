@@ -48,7 +48,7 @@ protected:
 TEST_F(CpuRuntimeManagerTest, ConfigureWithDefaultOps) {
   EXPECT_FALSE(manager_->isConfigured());
 
-  manager_->configure();
+  manager_->configure({});
 
   EXPECT_TRUE(manager_->isConfigured());
   EXPECT_NE(manager_->slowOps(), nullptr);
@@ -56,7 +56,7 @@ TEST_F(CpuRuntimeManagerTest, ConfigureWithDefaultOps) {
 }
 
 TEST_F(CpuRuntimeManagerTest, ShutdownClearsState) {
-  manager_->configure();
+  manager_->configure({});
   EXPECT_TRUE(manager_->isConfigured());
 
   manager_->shutdown();
@@ -65,7 +65,7 @@ TEST_F(CpuRuntimeManagerTest, ShutdownClearsState) {
 }
 
 TEST_F(CpuRuntimeManagerTest, DeviceManagerReturnsCorrectArch) {
-  manager_->configure();
+  manager_->configure({});
 
   auto &device_manager = manager_->deviceManager();
   auto lease = device_manager.acquire(cpu::CpuDeviceHandle{0});
@@ -92,26 +92,26 @@ TEST_F(CpuRuntimeManagerTest, ConfigureWithCustomOps) {
 }
 
 TEST_F(CpuRuntimeManagerTest, DoubleConfigureUsesExistingOps) {
-  manager_->configure();
+  manager_->configure({});
   auto *first_ops = manager_->slowOps();
 
-  manager_->configure(); // Should reuse existing ops
+  manager_->configure({}); // Should reuse existing ops
 
   EXPECT_EQ(manager_->slowOps(), first_ops);
 }
 
 TEST_F(CpuRuntimeManagerTest, ReconfigureAfterShutdown) {
-  manager_->configure();
+  manager_->configure({});
   manager_->shutdown();
 
-  manager_->configure();
+  manager_->configure({});
 
   EXPECT_TRUE(manager_->isConfigured());
   EXPECT_TRUE(manager_->deviceManager().isConfiguredForTest());
 }
 
 TEST_F(CpuRuntimeManagerTest, DeviceManagerIsAlive) {
-  manager_->configure();
+  manager_->configure({});
 
   auto &device_manager = manager_->deviceManager();
   EXPECT_TRUE(device_manager.isAliveForTest(cpu::CpuDeviceHandle{0}));

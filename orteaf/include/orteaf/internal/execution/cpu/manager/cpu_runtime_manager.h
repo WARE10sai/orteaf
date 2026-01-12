@@ -61,11 +61,6 @@ public:
   // =========================================================================
 
   /**
-   * @brief Configure the CPU runtime with default settings.
-   */
-  void configure() { configure(Config{}); }
-
-  /**
    * @brief Configure the CPU runtime.
    *
    * @param config Configuration including SlowOps and sub-manager settings

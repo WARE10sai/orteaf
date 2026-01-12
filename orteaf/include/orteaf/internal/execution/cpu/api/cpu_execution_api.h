@@ -18,8 +18,6 @@ public:
 
   CpuExecutionApi() = delete;
 
-  static void configure() { runtime().configure(); }
-
   static void configure(const Runtime::Config &config) {
     runtime().configure(config);
   }
