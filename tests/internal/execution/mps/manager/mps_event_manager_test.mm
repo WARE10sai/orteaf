@@ -39,11 +39,11 @@ makeConfig(std::size_t payload_capacity, std::size_t control_block_capacity,
 
 template <class Provider>
 class MpsEventManagerTypedTest
-    : public testing_mps::RuntimeManagerFixture<Provider,
+    : public testing_mps::ExecutionManagerFixture<Provider,
                                                 mps_rt::MpsEventManager> {
 protected:
   using Base =
-      testing_mps::RuntimeManagerFixture<Provider, mps_rt::MpsEventManager>;
+      testing_mps::ExecutionManagerFixture<Provider, mps_rt::MpsEventManager>;
   mps_rt::MpsEventManager &manager() { return Base::manager(); }
   auto &adapter() { return Base::adapter(); }
 };

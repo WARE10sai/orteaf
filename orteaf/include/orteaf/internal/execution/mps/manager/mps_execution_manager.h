@@ -9,7 +9,7 @@
 
 namespace orteaf::internal::execution::mps::manager {
 
-class MpsRuntimeManager {
+class MpsExecutionManager {
   using SlowOps = ::orteaf::internal::execution::mps::platform::MpsSlowOps;
   using SlowOpsImpl =
       ::orteaf::internal::execution::mps::platform::MpsSlowOpsImpl;
@@ -21,18 +21,18 @@ public:
 
   struct Config {
     /// Custom SlowOps instance (nullptr for default implementation).
-    /// If provided, the RuntimeManager takes ownership.
+    /// If provided, the ExecutionManager takes ownership.
     SlowOps *slow_ops = nullptr;
     /// Device manager configuration
     MpsDeviceManager::Config device_config = {};
   };
 
-  MpsRuntimeManager() = default;
-  MpsRuntimeManager(const MpsRuntimeManager &) = delete;
-  MpsRuntimeManager &operator=(const MpsRuntimeManager &) = delete;
-  MpsRuntimeManager(MpsRuntimeManager &&) = default;
-  MpsRuntimeManager &operator=(MpsRuntimeManager &&) = default;
-  ~MpsRuntimeManager() = default;
+  MpsExecutionManager() = default;
+  MpsExecutionManager(const MpsExecutionManager &) = delete;
+  MpsExecutionManager &operator=(const MpsExecutionManager &) = delete;
+  MpsExecutionManager(MpsExecutionManager &&) = default;
+  MpsExecutionManager &operator=(MpsExecutionManager &&) = default;
+  ~MpsExecutionManager() = default;
 
   // =========================================================================
   // Manager accessors
@@ -51,12 +51,12 @@ public:
   // =========================================================================
 
   /**
-   * @brief Configure the MPS runtime with default settings.
+   * @brief Configure the MPS execution manager with default settings.
    */
   void configure() { configure(Config{}); }
 
   /**
-   * @brief Configure the MPS runtime.
+   * @brief Configure the MPS execution manager.
    *
    * @param config Configuration including SlowOps and sub-manager settings
    */
@@ -80,7 +80,7 @@ public:
   }
 
   /**
-   * @brief Check if the runtime is configured.
+   * @brief Check if the execution manager is configured.
    */
   bool isConfigured() const noexcept {
 #if ORTEAF_ENABLE_TEST

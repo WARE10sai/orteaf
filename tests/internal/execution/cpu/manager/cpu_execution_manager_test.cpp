@@ -1,7 +1,7 @@
 #include "orteaf/internal/architecture/architecture.h"
 #include "orteaf/internal/architecture/cpu_detect.h"
 #include "orteaf/internal/execution/cpu/cpu_handles.h"
-#include "orteaf/internal/execution/cpu/manager/cpu_runtime_manager.h"
+#include "orteaf/internal/execution/cpu/manager/cpu_execution_manager.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -31,10 +31,10 @@ public:
 
 } // namespace
 
-class CpuRuntimeManagerTest : public ::testing::Test {
+class CpuExecutionManagerTest : public ::testing::Test {
 protected:
   void SetUp() override {
-    manager_ = std::make_unique<cpu_rt::CpuRuntimeManager>();
+    manager_ = std::make_unique<cpu_rt::CpuExecutionManager>();
   }
 
   void TearDown() override {
@@ -42,21 +42,21 @@ protected:
     manager_.reset();
   }
 
-  std::unique_ptr<cpu_rt::CpuRuntimeManager> manager_;
+  std::unique_ptr<cpu_rt::CpuExecutionManager> manager_;
 };
 
-TEST_F(CpuRuntimeManagerTest, ConfigureWithDefaultOps) {
+TEST_F(CpuExecutionManagerTest, ConfigureWithDefaultOps) {
   EXPECT_FALSE(manager_->isConfigured());
 
-  manager_->configure();
+  manager_->configure({});
 
   EXPECT_TRUE(manager_->isConfigured());
   EXPECT_NE(manager_->slowOps(), nullptr);
   EXPECT_TRUE(manager_->deviceManager().isConfiguredForTest());
 }
 
-TEST_F(CpuRuntimeManagerTest, ShutdownClearsState) {
-  manager_->configure();
+TEST_F(CpuExecutionManagerTest, ShutdownClearsState) {
+  manager_->configure({});
   EXPECT_TRUE(manager_->isConfigured());
 
   manager_->shutdown();
@@ -64,8 +64,8 @@ TEST_F(CpuRuntimeManagerTest, ShutdownClearsState) {
   EXPECT_FALSE(manager_->isConfigured());
 }
 
-TEST_F(CpuRuntimeManagerTest, DeviceManagerReturnsCorrectArch) {
-  manager_->configure();
+TEST_F(CpuExecutionManagerTest, DeviceManagerReturnsCorrectArch) {
+  manager_->configure({});
 
   auto &device_manager = manager_->deviceManager();
   auto lease = device_manager.acquire(cpu::CpuDeviceHandle{0});
@@ -76,14 +76,14 @@ TEST_F(CpuRuntimeManagerTest, DeviceManagerReturnsCorrectArch) {
   EXPECT_EQ(arch, architecture::detectCpuArchitecture());
 }
 
-TEST_F(CpuRuntimeManagerTest, ConfigureWithCustomOps) {
+TEST_F(CpuExecutionManagerTest, ConfigureWithCustomOps) {
   auto *mock_ops = new NiceMock<CpuSlowOpsMock>();
 
   ON_CALL(*mock_ops, getDeviceCount()).WillByDefault(Return(1));
   ON_CALL(*mock_ops, detectArchitecture(cpu::CpuDeviceHandle{0}))
       .WillByDefault(Return(architecture::Architecture::CpuZen4));
 
-  cpu_rt::CpuRuntimeManager::Config config{};
+  cpu_rt::CpuExecutionManager::Config config{};
   config.slow_ops = mock_ops;
   manager_->configure(config);
 
@@ -91,27 +91,27 @@ TEST_F(CpuRuntimeManagerTest, ConfigureWithCustomOps) {
   EXPECT_EQ(manager_->slowOps(), mock_ops);
 }
 
-TEST_F(CpuRuntimeManagerTest, DoubleConfigureUsesExistingOps) {
-  manager_->configure();
+TEST_F(CpuExecutionManagerTest, DoubleConfigureUsesExistingOps) {
+  manager_->configure({});
   auto *first_ops = manager_->slowOps();
 
-  manager_->configure(); // Should reuse existing ops
+  manager_->configure({}); // Should reuse existing ops
 
   EXPECT_EQ(manager_->slowOps(), first_ops);
 }
 
-TEST_F(CpuRuntimeManagerTest, ReconfigureAfterShutdown) {
-  manager_->configure();
+TEST_F(CpuExecutionManagerTest, ReconfigureAfterShutdown) {
+  manager_->configure({});
   manager_->shutdown();
 
-  manager_->configure();
+  manager_->configure({});
 
   EXPECT_TRUE(manager_->isConfigured());
   EXPECT_TRUE(manager_->deviceManager().isConfiguredForTest());
 }
 
-TEST_F(CpuRuntimeManagerTest, DeviceManagerIsAlive) {
-  manager_->configure();
+TEST_F(CpuExecutionManagerTest, DeviceManagerIsAlive) {
+  manager_->configure({});
 
   auto &device_manager = manager_->deviceManager();
   EXPECT_TRUE(device_manager.isAliveForTest(cpu::CpuDeviceHandle{0}));

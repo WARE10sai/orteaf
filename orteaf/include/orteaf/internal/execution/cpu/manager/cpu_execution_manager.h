@@ -8,12 +8,12 @@
 namespace orteaf::internal::execution::cpu::manager {
 
 /**
- * @brief CPU runtime manager that provides unified access to CPU managers.
+ * @brief CPU execution manager that provides unified access to CPU managers.
  *
- * Similar to MpsRuntimeManager, this class owns the SlowOps instance and
+ * Similar to MpsExecutionManager, this class owns the SlowOps instance and
  * manages the lifecycle of CPU managers (device manager, buffer manager, etc.).
  */
-class CpuRuntimeManager {
+class CpuExecutionManager {
   using SlowOps = ::orteaf::internal::execution::cpu::platform::CpuSlowOps;
   using SlowOpsImpl =
       ::orteaf::internal::execution::cpu::platform::CpuSlowOpsImpl;
@@ -25,18 +25,18 @@ public:
 
   struct Config {
     /// Custom SlowOps instance (nullptr for default implementation).
-    /// If provided, the RuntimeManager takes ownership.
+    /// If provided, the ExecutionManager takes ownership.
     SlowOps *slow_ops = nullptr;
     /// Device manager configuration
     CpuDeviceManager::Config device_config = {};
   };
 
-  CpuRuntimeManager() = default;
-  CpuRuntimeManager(const CpuRuntimeManager &) = delete;
-  CpuRuntimeManager &operator=(const CpuRuntimeManager &) = delete;
-  CpuRuntimeManager(CpuRuntimeManager &&) = default;
-  CpuRuntimeManager &operator=(CpuRuntimeManager &&) = default;
-  ~CpuRuntimeManager() = default;
+  CpuExecutionManager() = default;
+  CpuExecutionManager(const CpuExecutionManager &) = delete;
+  CpuExecutionManager &operator=(const CpuExecutionManager &) = delete;
+  CpuExecutionManager(CpuExecutionManager &&) = default;
+  CpuExecutionManager &operator=(CpuExecutionManager &&) = default;
+  ~CpuExecutionManager() = default;
 
   // =========================================================================
   // Manager accessors
@@ -61,12 +61,7 @@ public:
   // =========================================================================
 
   /**
-   * @brief Configure the CPU runtime with default settings.
-   */
-  void configure() { configure(Config{}); }
-
-  /**
-   * @brief Configure the CPU runtime.
+   * @brief Configure the CPU execution manager.
    *
    * @param config Configuration including SlowOps and sub-manager settings
    */
@@ -85,7 +80,7 @@ public:
   }
 
   /**
-   * @brief Shutdown the CPU runtime and release all resources.
+   * @brief Shutdown the CPU execution manager and release all resources.
    */
   void shutdown() {
     device_manager_.shutdown();
@@ -93,7 +88,7 @@ public:
   }
 
   /**
-   * @brief Check if the runtime is configured.
+   * @brief Check if the execution manager is configured.
    */
   bool isConfigured() const noexcept {
 #if ORTEAF_ENABLE_TEST

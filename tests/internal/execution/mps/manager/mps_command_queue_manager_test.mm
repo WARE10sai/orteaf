@@ -44,11 +44,11 @@ makeConfig(std::size_t payload_capacity, std::size_t control_block_capacity,
 
 template <class Provider>
 class MpsCommandQueueManagerTypedTest
-    : public testing_mps::RuntimeManagerFixture<
+    : public testing_mps::ExecutionManagerFixture<
           Provider, mps_rt::MpsCommandQueueManager> {
 protected:
   using Base =
-      testing_mps::RuntimeManagerFixture<Provider,
+      testing_mps::ExecutionManagerFixture<Provider,
                                          mps_rt::MpsCommandQueueManager>;
 
   mps_rt::MpsCommandQueueManager &manager() { return Base::manager(); }

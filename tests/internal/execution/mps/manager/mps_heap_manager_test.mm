@@ -31,11 +31,11 @@ mps_wrapper::MpsHeapDescriptor_t makeHeapDescriptor(std::uintptr_t value) {
 
 template <class Provider>
 class MpsHeapManagerTypedTest
-    : public testing_mps::RuntimeManagerFixture<Provider,
+    : public testing_mps::ExecutionManagerFixture<Provider,
                                                 mps_rt::MpsHeapManager> {
 protected:
   using Base =
-      testing_mps::RuntimeManagerFixture<Provider, mps_rt::MpsHeapManager>;
+      testing_mps::ExecutionManagerFixture<Provider, mps_rt::MpsHeapManager>;
 
   mps_rt::MpsHeapManager &manager() { return Base::manager(); }
   auto &adapter() { return Base::adapter(); }

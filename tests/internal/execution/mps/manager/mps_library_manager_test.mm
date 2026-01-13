@@ -47,11 +47,11 @@ void setPoolBlockSizes(mps_rt::MpsLibraryManager::Config &config) {
 
 template <class Provider>
 class MpsLibraryManagerTypedTest
-    : public testing_mps::RuntimeManagerFixture<Provider,
+    : public testing_mps::ExecutionManagerFixture<Provider,
                                                 mps_rt::MpsLibraryManager> {
 protected:
   using Base =
-      testing_mps::RuntimeManagerFixture<Provider, mps_rt::MpsLibraryManager>;
+      testing_mps::ExecutionManagerFixture<Provider, mps_rt::MpsLibraryManager>;
 
   mps_rt::MpsLibraryManager &manager() { return Base::manager(); }
   auto &adapter() { return Base::adapter(); }

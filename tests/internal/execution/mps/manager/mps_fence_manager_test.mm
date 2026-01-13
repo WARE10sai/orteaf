@@ -39,11 +39,11 @@ mps_rt::MpsFenceManager::Config makeConfig(
 
 template <class Provider>
 class MpsFenceManagerTypedTest
-    : public testing_mps::RuntimeManagerFixture<Provider,
+    : public testing_mps::ExecutionManagerFixture<Provider,
                                                 mps_rt::MpsFenceManager> {
 protected:
   using Base =
-      testing_mps::RuntimeManagerFixture<Provider, mps_rt::MpsFenceManager>;
+      testing_mps::ExecutionManagerFixture<Provider, mps_rt::MpsFenceManager>;
   mps_rt::MpsFenceManager &manager() { return Base::manager(); }
   auto &adapter() { return Base::adapter(); }
 };
