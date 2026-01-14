@@ -11,7 +11,7 @@
 #include "orteaf/internal/base/manager/pool_manager.h"
 #include "orteaf/internal/base/pool/slot_pool.h"
 #include "orteaf/internal/diagnostics/error/error.h"
-#include "orteaf/internal/execution/allocator/execution_buffer.h"
+#include "orteaf/internal/execution/mps/resource/mps_buffer.h"
 #include "orteaf/internal/execution/allocator/policies/chunk_locator/direct_chunk_locator.h"
 #include "orteaf/internal/execution/allocator/policies/fast_free/fast_free_policies.h"
 #include "orteaf/internal/execution/allocator/policies/freelist/host_stack_freelist_policy.h"
@@ -58,7 +58,7 @@ template <typename ResourceT> class MpsBufferManager;
 // ============================================================================
 template <typename ResourceT> struct BufferPayloadPoolTraitsT {
   using MpsBuffer =
-      ::orteaf::internal::execution::allocator::ExecutionBuffer<Execution::Mps>;
+      ::orteaf::internal::execution::mps::resource::MpsBuffer;
   using Payload = MpsBuffer;
   using Handle = ::orteaf::internal::execution::mps::MpsBufferHandle;
   using SegregatePool = MpsBufferPoolT<ResourceT>;
@@ -122,7 +122,7 @@ using BufferPayloadPoolT = ::orteaf::internal::base::pool::SlotPool<
 // ============================================================================
 template <typename ResourceT>
 using MpsBuffer =
-    ::orteaf::internal::execution::allocator::ExecutionBuffer<Execution::Mps>;
+    ::orteaf::internal::execution::mps::resource::MpsBuffer;
 
 template <typename ResourceT>
 using BufferControlBlockT = ::orteaf::internal::base::StrongControlBlock<
