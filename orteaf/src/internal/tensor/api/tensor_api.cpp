@@ -13,9 +13,17 @@ TensorApi::StorageManager &storageManagerSingleton() {
   return instance;
 }
 
-TensorApi::DenseTensorImplManager &denseManagerSingleton() {
-  static TensorApi::DenseTensorImplManager instance;
+TensorApi::Registry &registrySingleton() {
+  static TensorApi::Registry instance;
   return instance;
+}
+
+void ensureConfigured() {
+  if (!g_configured) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
+        "TensorApi is not configured");
+  }
 }
 
 } // namespace
@@ -28,8 +36,8 @@ void TensorApi::configure(const Config &config) {
   }
 
   storageManagerSingleton().configure(config.storage_config);
-  denseManagerSingleton().configure(config.dense_config,
-                                    storageManagerSingleton());
+  registrySingleton().configure(config.registry_config,
+                                storageManagerSingleton());
   g_configured = true;
 }
 
@@ -37,7 +45,7 @@ void TensorApi::shutdown() {
   if (!g_configured) {
     return;
   }
-  denseManagerSingleton().shutdown();
+  registrySingleton().shutdown();
   storageManagerSingleton().shutdown();
   g_configured = false;
 }
@@ -45,21 +53,20 @@ void TensorApi::shutdown() {
 bool TensorApi::isConfigured() noexcept { return g_configured; }
 
 TensorApi::StorageManager &TensorApi::storage() {
-  if (!g_configured) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "TensorApi is not configured");
-  }
+  ensureConfigured();
   return storageManagerSingleton();
 }
 
+TensorApi::Registry &TensorApi::registry() {
+  ensureConfigured();
+  return registrySingleton();
+}
+
+// ===== TensorImpl Manager Accessors =====
+
 TensorApi::DenseTensorImplManager &TensorApi::dense() {
-  if (!g_configured) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "TensorApi is not configured");
-  }
-  return denseManagerSingleton();
+  ensureConfigured();
+  return registrySingleton().get<DenseTensorImpl>();
 }
 
 // ===== Convenience methods =====

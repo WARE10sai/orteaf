@@ -5,13 +5,13 @@
  * @brief Internal API for tensor management.
  *
  * TensorApi provides centralized access to StorageManager and
- * tensor impl managers, enabling tensor creation and manipulation.
+ * tensor impl managers via the TensorImplRegistry.
  * This is internal infrastructure - users should use the Tensor class.
  */
 
 #include <span>
 
-#include <orteaf/extension/tensor/manager/dense_tensor_impl_manager.h>
+#include <orteaf/extension/tensor/registry/tensor_impl_types.h>
 #include <orteaf/internal/storage/manager/storage_manager.h>
 
 namespace orteaf::internal::tensor::api {
@@ -19,14 +19,26 @@ namespace orteaf::internal::tensor::api {
 /**
  * @brief Internal API for tensor management.
  *
- * Holds StorageManager and various tensor impl managers.
+ * Holds StorageManager and the TensorImplRegistry which manages
+ * all registered tensor impl managers.
+ *
  * Must be configured before use and shutdown when done.
  *
  * @note This is internal infrastructure. Users should use Tensor class.
+ *
+ * @par Adding a new TensorImpl accessor
+ * After registering a new impl in tensor_impl_registry.h,
+ * add an accessor method here:
+ * @code
+ * static CooTensorImplManager& coo() { return registry().get<CooTensorImpl>();
+ * }
+ * @endcode
  */
 class TensorApi {
 public:
   using StorageManager = ::orteaf::internal::storage::manager::StorageManager;
+  using Registry = ::orteaf::internal::tensor::registry::RegisteredImpls;
+  using DenseTensorImpl = ::orteaf::extension::tensor::DenseTensorImpl;
   using DenseTensorImplManager =
       ::orteaf::extension::tensor::DenseTensorImplManager;
   using TensorImplLease = DenseTensorImplManager::TensorImplLease;
@@ -36,7 +48,7 @@ public:
 
   struct Config {
     StorageManager::Config storage_config{};
-    DenseTensorImplManager::Config dense_config{};
+    Registry::Config registry_config{};
   };
 
   TensorApi() = delete;
@@ -53,10 +65,20 @@ public:
   /// @brief Access the storage manager.
   static StorageManager &storage();
 
+  /// @brief Access the registry.
+  static Registry &registry();
+
+  // ===== TensorImpl Manager Accessors =====
+  // Contributors: Add accessor for new impls here
+
   /// @brief Access the dense tensor impl manager.
   static DenseTensorImplManager &dense();
 
-  // ===== Convenience methods =====
+  // Future: Add more accessors
+  // static CooTensorImplManager& coo();
+  // static CsrTensorImplManager& csr();
+
+  // ===== Convenience methods for DenseTensorImpl =====
 
   /// @brief Create a new dense tensor impl.
   static TensorImplLease create(std::span<const Dim> shape, DType dtype,
@@ -80,10 +102,6 @@ public:
 
   /// @brief Create an unsqueezed view.
   static TensorImplLease unsqueeze(const TensorImplLease &src, std::size_t dim);
-
-  // Future: Add more impl managers
-  // static CooTensorImplManager& coo();
-  // static CsrTensorImplManager& csr();
 };
 
 } // namespace orteaf::internal::tensor::api
