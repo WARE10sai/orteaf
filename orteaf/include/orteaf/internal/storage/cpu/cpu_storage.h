@@ -3,8 +3,10 @@
 #include <utility>
 
 #include <orteaf/internal/diagnostics/error/error.h>
+#include <orteaf/internal/dtype/dtype.h>
 #include <orteaf/internal/execution/cpu/api/cpu_execution_api.h>
 #include <orteaf/internal/execution/cpu/manager/cpu_device_manager.h>
+#include <orteaf/internal/execution/execution.h>
 #include <orteaf/internal/storage/cpu/cpu_storage_layout.h>
 
 namespace orteaf::internal::storage::cpu {
@@ -19,6 +21,11 @@ public:
   using DeviceLease = DeviceManager::DeviceLease;
   using BufferLease = BufferManager::BufferLease;
   using Layout = ::orteaf::internal::storage::cpu::CpuStorageLayout;
+  using DType = ::orteaf::internal::DType;
+  using Execution = ::orteaf::internal::execution::Execution;
+
+  /// @brief The execution backend for this storage type.
+  static constexpr Execution kExecution = Execution::Cpu;
 
   /**
    * @brief Builder for constructing CpuStorage instances.
@@ -30,7 +37,8 @@ public:
    * @code
    * auto storage = CpuStorage::builder()
    *     .withDeviceLease(device_lease)
-   *     .withSize(1024)
+   *     .withDType(DType::F32)
+   *     .withNumElements(256)
    *     .withAlignment(16)
    *     .withLayout(layout)
    *     .build();
@@ -46,14 +54,18 @@ public:
     }
 
     Builder &withDeviceHandle(DeviceHandle handle) {
-      device_lease_ =
-          ::orteaf::internal::execution::cpu::api::CpuExecutionApi::
-              acquireDevice(handle);
+      device_lease_ = ::orteaf::internal::execution::cpu::api::CpuExecutionApi::
+          acquireDevice(handle);
       return *this;
     }
 
-    Builder &withSize(std::size_t size) {
-      size_ = size;
+    Builder &withDType(DType dtype) {
+      dtype_ = dtype;
+      return *this;
+    }
+
+    Builder &withNumElements(std::size_t numel) {
+      numel_ = numel;
       return *this;
     }
 
@@ -82,14 +94,17 @@ public:
             ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
             "CpuStorage requires a valid device lease");
       }
+      const std::size_t size_in_bytes =
+          numel_ * ::orteaf::internal::sizeOf(dtype_);
       BufferLease lease =
-          device_lease_->buffer_manager.acquire(size_, alignment_);
-      return CpuStorage(std::move(lease), std::move(layout_));
+          device_lease_->buffer_manager.acquire(size_in_bytes, alignment_);
+      return CpuStorage(std::move(lease), std::move(layout_), dtype_, numel_);
     }
 
   private:
     DeviceLease device_lease_{};
-    std::size_t size_{0};
+    DType dtype_{DType::F32};
+    std::size_t numel_{0};
     std::size_t alignment_{0};
     Layout layout_{};
   };
@@ -108,12 +123,30 @@ public:
   CpuStorage &operator=(CpuStorage &&) = default;
   ~CpuStorage() = default;
 
+  /// @brief Return the execution backend for this storage.
+  constexpr Execution execution() const { return kExecution; }
+
+  /// @brief Return the data type of elements in this storage.
+  DType dtype() const { return dtype_; }
+
+  /// @brief Return the number of elements in this storage.
+  std::size_t numel() const { return numel_; }
+
+  /// @brief Return the size of the storage in bytes.
+  std::size_t sizeInBytes() const {
+    return numel_ * ::orteaf::internal::sizeOf(dtype_);
+  }
+
 private:
-  CpuStorage(BufferLease buffer_lease, Layout layout)
-      : buffer_lease_(std::move(buffer_lease)), layout_(std::move(layout)) {}
+  CpuStorage(BufferLease buffer_lease, Layout layout, DType dtype,
+             std::size_t numel)
+      : buffer_lease_(std::move(buffer_lease)), layout_(std::move(layout)),
+        dtype_(dtype), numel_(numel) {}
 
   BufferLease buffer_lease_;
   Layout layout_;
+  DType dtype_{DType::F32};
+  std::size_t numel_{0};
 };
 
 } // namespace orteaf::internal::storage::cpu
