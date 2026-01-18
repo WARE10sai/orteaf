@@ -94,6 +94,32 @@ void CudaSlowOpsImpl::destroyEvent(
   ::orteaf::internal::execution::cuda::platform::wrapper::destroyEvent(event);
 }
 
+::orteaf::internal::execution::cuda::platform::wrapper::CudaModule_t
+CudaSlowOpsImpl::loadModuleFromFile(const char *filepath) {
+  return ::orteaf::internal::execution::cuda::platform::wrapper::
+      loadModuleFromFile(filepath);
+}
+
+::orteaf::internal::execution::cuda::platform::wrapper::CudaModule_t
+CudaSlowOpsImpl::loadModuleFromImage(const void *image) {
+  return ::orteaf::internal::execution::cuda::platform::wrapper::
+      loadModuleFromImage(image);
+}
+
+::orteaf::internal::execution::cuda::platform::wrapper::CudaFunction_t
+CudaSlowOpsImpl::getFunction(
+    ::orteaf::internal::execution::cuda::platform::wrapper::CudaModule_t module,
+    const char *kernel_name) {
+  return ::orteaf::internal::execution::cuda::platform::wrapper::getFunction(
+      module, kernel_name);
+}
+
+void CudaSlowOpsImpl::unloadModule(
+    ::orteaf::internal::execution::cuda::platform::wrapper::CudaModule_t
+        module) {
+  ::orteaf::internal::execution::cuda::platform::wrapper::unloadModule(module);
+}
+
 } // namespace orteaf::internal::execution::cuda::platform
 
 #endif // ORTEAF_ENABLE_CUDA

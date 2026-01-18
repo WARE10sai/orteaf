@@ -3,6 +3,7 @@
 #if ORTEAF_ENABLE_CUDA
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -80,19 +81,6 @@ struct ModulePayloadPoolTraits {
       ::orteaf::internal::execution::cuda::platform::wrapper::CudaContext_t;
   using SlowOps = ::orteaf::internal::execution::cuda::platform::CudaSlowOps;
 
-  using LoadFromFileFn =
-      ::orteaf::internal::execution::cuda::platform::wrapper::CudaModule_t (*)(
-          const char *);
-  using LoadFromImageFn =
-      ::orteaf::internal::execution::cuda::platform::wrapper::CudaModule_t (*)(
-          const void *);
-  using GetFunctionFn =
-      ::orteaf::internal::execution::cuda::platform::wrapper::CudaFunction_t (*)(
-          ::orteaf::internal::execution::cuda::platform::wrapper::CudaModule_t,
-          const char *);
-  using UnloadFn = void (*)(
-      ::orteaf::internal::execution::cuda::platform::wrapper::CudaModule_t);
-
   struct Request {
     ModuleKey key{};
   };
@@ -100,10 +88,6 @@ struct ModulePayloadPoolTraits {
   struct Context {
     ContextType context{nullptr};
     SlowOps *ops{nullptr};
-    LoadFromFileFn load_from_file{nullptr};
-    LoadFromImageFn load_from_image{nullptr};
-    GetFunctionFn get_function{nullptr};
-    UnloadFn unload{nullptr};
   };
 
   static bool create(Payload &payload, const Request &request,
@@ -146,10 +130,6 @@ public:
                                                                ModuleLease>;
 
   struct Config {
-    ModulePayloadPoolTraits::LoadFromFileFn load_from_file{nullptr};
-    ModulePayloadPoolTraits::LoadFromImageFn load_from_image{nullptr};
-    ModulePayloadPoolTraits::GetFunctionFn get_function{nullptr};
-    ModulePayloadPoolTraits::UnloadFn unload{nullptr};
     std::size_t control_block_capacity{0};
     std::size_t control_block_block_size{0};
     std::size_t control_block_growth_chunk_size{1};
@@ -218,10 +198,6 @@ private:
 
   ContextType context_{nullptr};
   SlowOps *ops_{nullptr};
-  ModulePayloadPoolTraits::LoadFromFileFn load_from_file_{nullptr};
-  ModulePayloadPoolTraits::LoadFromImageFn load_from_image_{nullptr};
-  ModulePayloadPoolTraits::GetFunctionFn get_function_{nullptr};
-  ModulePayloadPoolTraits::UnloadFn unload_{nullptr};
   Core core_{};
   LifetimeRegistry lifetime_{};
   std::unordered_map<ModuleKey, std::size_t, ModuleKeyHasher> key_to_index_{};

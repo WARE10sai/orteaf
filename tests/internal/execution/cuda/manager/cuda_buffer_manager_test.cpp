@@ -103,6 +103,21 @@ public:
 
   void destroyEvent(cuda_wrapper::CudaEvent_t) override {}
 
+  cuda_wrapper::CudaModule_t loadModuleFromFile(const char *) override {
+    return nullptr;
+  }
+
+  cuda_wrapper::CudaModule_t loadModuleFromImage(const void *) override {
+    return nullptr;
+  }
+
+  cuda_wrapper::CudaFunction_t getFunction(cuda_wrapper::CudaModule_t,
+                                           const char *) override {
+    return nullptr;
+  }
+
+  void unloadModule(cuda_wrapper::CudaModule_t) override {}
+
   void setContextForTest(cuda_wrapper::CudaContext_t context) {
     context_ = context;
   }

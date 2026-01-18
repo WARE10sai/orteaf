@@ -8,6 +8,7 @@
 #include "orteaf/internal/execution/cuda/platform/wrapper/cuda_context.h"
 #include "orteaf/internal/execution/cuda/platform/wrapper/cuda_device.h"
 #include "orteaf/internal/execution/cuda/platform/wrapper/cuda_event.h"
+#include "orteaf/internal/execution/cuda/platform/wrapper/cuda_module.h"
 #include "orteaf/internal/execution/cuda/platform/wrapper/cuda_stream.h"
 
 namespace orteaf::internal::execution::cuda::platform {
@@ -60,6 +61,18 @@ struct CudaSlowOps {
   virtual void destroyEvent(
       ::orteaf::internal::execution::cuda::platform::wrapper::CudaEvent_t
           event) = 0;
+
+  virtual ::orteaf::internal::execution::cuda::platform::wrapper::CudaModule_t
+  loadModuleFromFile(const char *filepath) = 0;
+  virtual ::orteaf::internal::execution::cuda::platform::wrapper::CudaModule_t
+  loadModuleFromImage(const void *image) = 0;
+  virtual ::orteaf::internal::execution::cuda::platform::wrapper::CudaFunction_t
+  getFunction(::orteaf::internal::execution::cuda::platform::wrapper::CudaModule_t
+                  module,
+              const char *kernel_name) = 0;
+  virtual void unloadModule(
+      ::orteaf::internal::execution::cuda::platform::wrapper::CudaModule_t
+          module) = 0;
 };
 
 // Default implementation backed by wrapper functions.
@@ -107,6 +120,18 @@ struct CudaSlowOpsImpl final : public CudaSlowOps {
   void destroyEvent(
       ::orteaf::internal::execution::cuda::platform::wrapper::CudaEvent_t
           event) override;
+
+  ::orteaf::internal::execution::cuda::platform::wrapper::CudaModule_t
+  loadModuleFromFile(const char *filepath) override;
+  ::orteaf::internal::execution::cuda::platform::wrapper::CudaModule_t
+  loadModuleFromImage(const void *image) override;
+  ::orteaf::internal::execution::cuda::platform::wrapper::CudaFunction_t
+  getFunction(::orteaf::internal::execution::cuda::platform::wrapper::CudaModule_t
+                  module,
+              const char *kernel_name) override;
+  void unloadModule(
+      ::orteaf::internal::execution::cuda::platform::wrapper::CudaModule_t
+          module) override;
 };
 
 } // namespace orteaf::internal::execution::cuda::platform
