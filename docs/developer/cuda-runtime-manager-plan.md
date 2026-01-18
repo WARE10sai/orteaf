@@ -18,12 +18,14 @@ to the existing MPS/CPU managers.
 - `orteaf/include/orteaf/internal/runtime/cuda/manager/`
   - `cuda_execution_manager.h`
   - `cuda_device_manager.h`
+  - `cuda_buffer_manager.h`
   - `cuda_context_manager.h`
   - `cuda_stream_manager.h`
   - `cuda_event_manager.h`
 - `orteaf/src/internal/runtime/cuda/manager/`
   - `cuda_execution_manager.cpp`
   - `cuda_device_manager.cpp`
+  - `cuda_buffer_manager.cpp`
   - `cuda_context_manager.cpp`
   - `cuda_stream_manager.cpp`
   - `cuda_event_manager.cpp`
@@ -39,10 +41,12 @@ to the existing MPS/CPU managers.
 - `CudaDeviceManager`
   - Enumerates CUDA devices via SlowOps.
   - Creates per-device payloads and owns sub-managers:
-    `CudaContextManager`, `CudaStreamManager`, `CudaEventManager`.
+    `CudaContextManager`, `CudaBufferManager`, `CudaStreamManager`, `CudaEventManager`.
   - Tracks device architecture metadata.
 - `CudaContextManager`
   - Creates and releases CUDA contexts for a device (initially primary context).
+- `CudaBufferManager`
+  - Allocates and frees CUDA device buffers using the CUDA allocator resource.
 - `CudaStreamManager`
   - Creates/destroys streams within a device context.
 - `CudaEventManager`
@@ -66,4 +70,3 @@ to the existing MPS/CPU managers.
    the existing CUDA wrapper functions.
 2. Add headers for CUDA runtime managers with configs and public APIs.
 3. Implement manager sources and wire the device manager to configure sub-managers.
-

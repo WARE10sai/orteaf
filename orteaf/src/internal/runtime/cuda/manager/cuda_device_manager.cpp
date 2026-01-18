@@ -37,6 +37,12 @@ bool DevicePayloadPoolTraits::create(Payload &payload, const Request &request,
   payload.primary_context = payload.context_manager.acquirePrimary();
   const auto primary_context = payload.primary_context->context;
 
+  CudaBufferManager::InternalConfig buffer_config{};
+  buffer_config.public_config = context.buffer_config;
+  buffer_config.context = primary_context;
+  buffer_config.ops = context.ops;
+  payload.buffer_manager.configure(buffer_config);
+
   CudaStreamManager::InternalConfig stream_config{};
   stream_config.public_config = context.stream_config;
   stream_config.context = primary_context;
@@ -87,6 +93,7 @@ void CudaDeviceManager::configure(const InternalConfig &config) {
   DevicePayloadPoolTraits::Context payload_context{};
   payload_context.ops = ops_;
   payload_context.context_config = cfg.context_config;
+  payload_context.buffer_config = cfg.buffer_config;
   payload_context.stream_config = cfg.stream_config;
   payload_context.event_config = cfg.event_config;
 
