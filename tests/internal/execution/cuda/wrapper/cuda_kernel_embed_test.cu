@@ -128,8 +128,8 @@ TEST(CudaKernelEmbedTest, EntriesExposeEmbeddedKernelData) {
 }
 
 TEST(CudaKernelEmbedTest, CreateEmbeddedModuleFailsWithMissingKernel) {
-    auto module = createEmbeddedModule("nonexistent_kernel_for_embed_test");
-    EXPECT_EQ(module, nullptr);
+    auto cudaModule = createEmbeddedModule("nonexistent_kernel_for_embed_test");
+    EXPECT_EQ(cudaModule, nullptr);
 }
 
 TEST(CudaKernelEmbedTest, CreateEmbeddedModuleEmptyNameThrows) {
@@ -151,12 +151,12 @@ TEST(CudaKernelEmbedTest, CreateEmbeddedModuleLoadsAndFindsFunction) {
         GTEST_SKIP() << "No CUDA device available.";
     }
 
-    auto module = createEmbeddedModule(kKernelName);
-    ASSERT_NE(module, nullptr);
+    auto cudaModule = createEmbeddedModule(kKernelName);
+    ASSERT_NE(cudaModule, nullptr);
 
     std::string kernel_name{kKernelSymbol};
-    auto fn = cuda::getFunction(module, kernel_name.c_str());
+    auto fn = cuda::getFunction(cudaModule, kernel_name.c_str());
     EXPECT_NE(fn, nullptr);
 
-    cuda::unloadModule(module);
+    cuda::unloadModule(cudaModule);
 }
