@@ -39,13 +39,18 @@ bool ModulePayloadPoolTraits::create(Payload &payload, const Request &request,
   }
 
   payload.module = module;
-  payload.function_cache.clear();
+  CudaFunctionManager::InternalConfig function_config{};
+  function_config.public_config = context.function_config;
+  function_config.context = context.context;
+  function_config.module = module;
+  function_config.ops = context.ops;
+  payload.function_manager.configure(function_config);
   return true;
 }
 
 void ModulePayloadPoolTraits::destroy(Payload &payload, const Request &,
                                       const Context &context) {
-  payload.function_cache.clear();
+  payload.function_manager.shutdown();
   if (payload.module != nullptr && context.ops != nullptr) {
     context.ops->unloadModule(payload.module);
   }
@@ -68,6 +73,7 @@ void CudaModuleManager::configure(const InternalConfig &config) {
   context_ = config.context;
   ops_ = config.ops;
   const auto &cfg = config.public_config;
+  function_config_ = cfg.function_config;
 
   std::size_t payload_capacity = cfg.payload_capacity;
   if (payload_capacity == 0) {
@@ -116,6 +122,7 @@ void CudaModuleManager::shutdown() {
   key_to_index_.clear();
   context_ = nullptr;
   ops_ = nullptr;
+  function_config_ = {};
 }
 
 CudaModuleManager::ModuleLease CudaModuleManager::acquire(const ModuleKey &key) {
@@ -207,14 +214,7 @@ CudaModuleManager::FunctionType CudaModuleManager::getFunction(
   }
 
   ops_->setContext(context_);
-  auto fn = ops_->getFunction(payload->module, key.c_str());
-  if (fn == nullptr) {
-    ::orteaf::internal::diagnostics::error::throwError(
-        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-        "Failed to resolve CUDA function");
-  }
-  payload->function_cache.emplace(std::move(key), fn);
-  return fn;
+  return payload->function_manager.getFunction(key);
 }
 
 void CudaModuleManager::validateKey(const ModuleKey &key) const {
@@ -240,6 +240,7 @@ CudaModuleManager::makePayloadContext() const noexcept {
   ModulePayloadPoolTraits::Context context{};
   context.context = context_;
   context.ops = ops_;
+  context.function_config = function_config_;
   return context;
 }
 

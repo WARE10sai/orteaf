@@ -14,6 +14,7 @@
 #include "orteaf/internal/base/manager/pool_manager.h"
 #include "orteaf/internal/base/pool/slot_pool.h"
 #include "orteaf/internal/execution/cuda/cuda_handles.h"
+#include "orteaf/internal/execution/cuda/manager/cuda_function_manager.h"
 #include "orteaf/internal/execution/cuda/platform/cuda_slow_ops.h"
 #include "orteaf/internal/execution/cuda/platform/wrapper/cuda_kernel_embed_api.h"
 #include "orteaf/internal/execution/cuda/platform/wrapper/cuda_module.h"
@@ -69,9 +70,7 @@ struct ModuleKeyHasher {
 struct CudaModuleResource {
   ::orteaf::internal::execution::cuda::platform::wrapper::CudaModule_t module{
       nullptr};
-  std::unordered_map<std::string,
-                     ::orteaf::internal::execution::cuda::platform::wrapper::CudaFunction_t>
-      function_cache{};
+  CudaFunctionManager function_manager{};
 };
 
 struct ModulePayloadPoolTraits {
@@ -88,6 +87,7 @@ struct ModulePayloadPoolTraits {
   struct Context {
     ContextType context{nullptr};
     SlowOps *ops{nullptr};
+    CudaFunctionManager::Config function_config{};
   };
 
   static bool create(Payload &payload, const Request &request,
@@ -130,6 +130,7 @@ public:
                                                                ModuleLease>;
 
   struct Config {
+    CudaFunctionManager::Config function_config{};
     std::size_t control_block_capacity{0};
     std::size_t control_block_block_size{0};
     std::size_t control_block_growth_chunk_size{1};
@@ -198,6 +199,7 @@ private:
 
   ContextType context_{nullptr};
   SlowOps *ops_{nullptr};
+  CudaFunctionManager::Config function_config_{};
   Core core_{};
   LifetimeRegistry lifetime_{};
   std::unordered_map<ModuleKey, std::size_t, ModuleKeyHasher> key_to_index_{};

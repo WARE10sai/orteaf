@@ -12,6 +12,7 @@ struct CudaGraphTag {};
 struct CudaEventTag {};
 struct CudaFenceTag {};
 struct CudaModuleTag {};
+struct CudaFunctionTag {};
 
 using CudaDeviceHandle = ::orteaf::internal::base::Handle<CudaDeviceTag, uint32_t, void>;
 using CudaStreamHandle = ::orteaf::internal::base::Handle<CudaStreamTag, uint32_t, uint8_t>;
@@ -22,6 +23,7 @@ using CudaGraphHandle = ::orteaf::internal::base::Handle<CudaGraphTag, uint32_t,
 using CudaEventHandle = ::orteaf::internal::base::Handle<CudaEventTag, uint32_t, uint8_t>;
 using CudaFenceHandle = ::orteaf::internal::base::Handle<CudaFenceTag, uint32_t, uint8_t>;
 using CudaModuleHandle = ::orteaf::internal::base::Handle<CudaModuleTag, uint32_t, uint8_t>;
+using CudaFunctionHandle = ::orteaf::internal::base::Handle<CudaFunctionTag, uint32_t, uint8_t>;
 
 static_assert(std::is_trivially_copyable_v<CudaDeviceHandle>);
 static_assert(std::is_trivially_copyable_v<CudaBufferHandle>);
@@ -29,5 +31,6 @@ static_assert(std::is_trivially_copyable_v<CudaBufferViewHandle>);
 static_assert(std::is_trivially_copyable_v<CudaEventHandle>);
 static_assert(std::is_trivially_copyable_v<CudaFenceHandle>);
 static_assert(std::is_trivially_copyable_v<CudaModuleHandle>);
+static_assert(std::is_trivially_copyable_v<CudaFunctionHandle>);
 
 } // namespace orteaf::internal::execution::cuda

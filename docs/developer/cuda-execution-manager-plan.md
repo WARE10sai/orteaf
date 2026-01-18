@@ -20,6 +20,7 @@ to the existing MPS/CPU managers.
   - `cuda_buffer_manager.h`
   - `cuda_context_manager.h`
   - `cuda_module_manager.h`
+  - `cuda_function_manager.h`
   - `cuda_stream_manager.h`
   - `cuda_event_manager.h`
 - `orteaf/src/internal/execution/cuda/manager/`
@@ -28,6 +29,7 @@ to the existing MPS/CPU managers.
   - `cuda_buffer_manager.cpp`
   - `cuda_context_manager.cpp`
   - `cuda_module_manager.cpp`
+  - `cuda_function_manager.cpp`
   - `cuda_stream_manager.cpp`
   - `cuda_event_manager.cpp`
 - `orteaf/include/orteaf/internal/execution/cuda/platform/`
@@ -49,6 +51,8 @@ to the existing MPS/CPU managers.
   - Allocates and frees CUDA device buffers using the CUDA allocator resource.
 - `CudaModuleManager`
   - Loads CUDA modules (file or embedded blobs) and caches kernel functions.
+- `CudaFunctionManager`
+  - Resolves CUDA functions from a module and manages cached handles.
 - `CudaStreamManager`
   - Creates/destroys streams within a device context.
 - `CudaEventManager`
@@ -58,6 +62,7 @@ to the existing MPS/CPU managers.
 - `CudaExecutionManager` -> `CudaDeviceManager`.
 - `CudaDeviceManager` -> per-device resource that holds `CudaContextManager`.
 - `CudaContextManager` -> per-context resource that holds buffer/stream/event/module managers.
+- `CudaModuleManager` -> per-module resource that owns a function manager.
 - `CudaStreamManager` / `CudaEventManager` require an active CUDA context; manager
   configure step sets the context before resource creation.
 
