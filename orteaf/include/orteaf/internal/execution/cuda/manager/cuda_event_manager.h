@@ -11,9 +11,9 @@
 #include "orteaf/internal/base/pool/slot_pool.h"
 #include "orteaf/internal/execution/cuda/cuda_handles.h"
 #include "orteaf/internal/execution/cuda/platform/cuda_slow_ops.h"
-#include "orteaf/internal/execution/cuda/platform/wrapper/cuda_stream.h"
+#include "orteaf/internal/execution/cuda/platform/wrapper/cuda_event.h"
 
-namespace orteaf::internal::runtime::cuda::manager {
+namespace orteaf::internal::execution::cuda::manager {
 
 struct ContextPayloadPoolTraits;
 
@@ -21,10 +21,10 @@ struct ContextPayloadPoolTraits;
 // Payload Pool Traits
 // =============================================================================
 
-struct StreamPayloadPoolTraits {
+struct EventPayloadPoolTraits {
   using Payload =
-      ::orteaf::internal::execution::cuda::platform::wrapper::CudaStream_t;
-  using Handle = ::orteaf::internal::execution::cuda::CudaStreamHandle;
+      ::orteaf::internal::execution::cuda::platform::wrapper::CudaEvent_t;
+  using Handle = ::orteaf::internal::execution::cuda::CudaEventHandle;
   using ContextType =
       ::orteaf::internal::execution::cuda::platform::wrapper::CudaContext_t;
   using SlowOps = ::orteaf::internal::execution::cuda::platform::CudaSlowOps;
@@ -44,11 +44,11 @@ struct StreamPayloadPoolTraits {
       return false;
     }
     context.ops->setContext(context.context);
-    auto stream = context.ops->createStream();
-    if (stream == nullptr) {
+    auto event = context.ops->createEvent();
+    if (event == nullptr) {
       return false;
     }
-    payload = stream;
+    payload = event;
     return true;
   }
 
@@ -57,60 +57,60 @@ struct StreamPayloadPoolTraits {
     if (payload != nullptr && context.ops != nullptr &&
         context.context != nullptr) {
       context.ops->setContext(context.context);
-      context.ops->destroyStream(payload);
+      context.ops->destroyEvent(payload);
       payload = nullptr;
     }
   }
 };
 
-using StreamPayloadPool =
-    ::orteaf::internal::base::pool::SlotPool<StreamPayloadPoolTraits>;
+using EventPayloadPool =
+    ::orteaf::internal::base::pool::SlotPool<EventPayloadPoolTraits>;
 
 // =============================================================================
 // ControlBlock
 // =============================================================================
 
-struct StreamControlBlockTag {};
+struct EventControlBlockTag {};
 
-using StreamControlBlock = ::orteaf::internal::base::StrongControlBlock<
-    ::orteaf::internal::execution::cuda::CudaStreamHandle,
-    ::orteaf::internal::execution::cuda::platform::wrapper::CudaStream_t,
-    StreamPayloadPool>;
+using EventControlBlock = ::orteaf::internal::base::StrongControlBlock<
+    ::orteaf::internal::execution::cuda::CudaEventHandle,
+    ::orteaf::internal::execution::cuda::platform::wrapper::CudaEvent_t,
+    EventPayloadPool>;
 
 // =============================================================================
 // Manager Traits
 // =============================================================================
 
-struct CudaStreamManagerTraits {
-  using PayloadPool = StreamPayloadPool;
-  using ControlBlock = StreamControlBlock;
+struct CudaEventManagerTraits {
+  using PayloadPool = EventPayloadPool;
+  using ControlBlock = EventControlBlock;
   struct ControlBlockTag {};
-  using PayloadHandle = ::orteaf::internal::execution::cuda::CudaStreamHandle;
-  static constexpr const char *Name = "CUDA stream manager";
+  using PayloadHandle = ::orteaf::internal::execution::cuda::CudaEventHandle;
+  static constexpr const char *Name = "CUDA event manager";
 };
 
 // =============================================================================
-// CudaStreamManager
+// CudaEventManager
 // =============================================================================
 
-class CudaStreamManager {
+class CudaEventManager {
 public:
   using SlowOps = ::orteaf::internal::execution::cuda::platform::CudaSlowOps;
   using ContextType =
       ::orteaf::internal::execution::cuda::platform::wrapper::CudaContext_t;
-  using StreamHandle = ::orteaf::internal::execution::cuda::CudaStreamHandle;
-  using StreamType =
-      ::orteaf::internal::execution::cuda::platform::wrapper::CudaStream_t;
+  using EventHandle = ::orteaf::internal::execution::cuda::CudaEventHandle;
+  using EventType =
+      ::orteaf::internal::execution::cuda::platform::wrapper::CudaEvent_t;
 
-  using Core = ::orteaf::internal::base::PoolManager<CudaStreamManagerTraits>;
+  using Core = ::orteaf::internal::base::PoolManager<CudaEventManagerTraits>;
   using ControlBlock = Core::ControlBlock;
   using ControlBlockHandle = Core::ControlBlockHandle;
   using ControlBlockPool = Core::ControlBlockPool;
 
-  using StreamLease = Core::StrongLeaseType;
+  using EventLease = Core::StrongLeaseType;
 
 private:
-  friend StreamLease;
+  friend EventLease;
 
 public:
   struct Config {
@@ -122,12 +122,12 @@ public:
     std::size_t payload_growth_chunk_size{1};
   };
 
-  CudaStreamManager() = default;
-  CudaStreamManager(const CudaStreamManager &) = delete;
-  CudaStreamManager &operator=(const CudaStreamManager &) = delete;
-  CudaStreamManager(CudaStreamManager &&) = default;
-  CudaStreamManager &operator=(CudaStreamManager &&) = default;
-  ~CudaStreamManager() = default;
+  CudaEventManager() = default;
+  CudaEventManager(const CudaEventManager &) = delete;
+  CudaEventManager &operator=(const CudaEventManager &) = delete;
+  CudaEventManager(CudaEventManager &&) = default;
+  CudaEventManager &operator=(CudaEventManager &&) = default;
+  ~CudaEventManager() = default;
 
 private:
   struct InternalConfig {
@@ -143,7 +143,7 @@ private:
 public:
   void shutdown();
 
-  StreamLease acquire();
+  EventLease acquire();
 
 #if ORTEAF_ENABLE_TEST
   void configureForTest(const Config &config, ContextType context,
@@ -169,19 +169,19 @@ public:
   std::size_t controlBlockPoolCapacityForTest() const noexcept {
     return core_.controlBlockPoolCapacityForTest();
   }
-  bool isAliveForTest(StreamHandle handle) const noexcept {
+  bool isAliveForTest(EventHandle handle) const noexcept {
     return core_.isAlive(handle);
   }
 #endif
 
 private:
-  StreamPayloadPoolTraits::Context makePayloadContext() const noexcept;
+  EventPayloadPoolTraits::Context makePayloadContext() const noexcept;
 
   ContextType context_{nullptr};
   SlowOps *ops_{nullptr};
   Core core_{};
 };
 
-} // namespace orteaf::internal::runtime::cuda::manager
+} // namespace orteaf::internal::execution::cuda::manager
 
 #endif // ORTEAF_ENABLE_CUDA

@@ -5,9 +5,9 @@
 #include <memory>
 
 #include "orteaf/internal/execution/cuda/platform/cuda_slow_ops.h"
-#include "orteaf/internal/runtime/cuda/manager/cuda_device_manager.h"
+#include "orteaf/internal/execution/cuda/manager/cuda_device_manager.h"
 
-namespace orteaf::internal::runtime::cuda::manager {
+namespace orteaf::internal::execution::cuda::manager {
 
 class CudaExecutionManager {
   using SlowOps = ::orteaf::internal::execution::cuda::platform::CudaSlowOps;
@@ -68,6 +68,6 @@ private:
   std::unique_ptr<SlowOps> slow_ops_{};
 };
 
-} // namespace orteaf::internal::runtime::cuda::manager
+} // namespace orteaf::internal::execution::cuda::manager
 
 #endif // ORTEAF_ENABLE_CUDA

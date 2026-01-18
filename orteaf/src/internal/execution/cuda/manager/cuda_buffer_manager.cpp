@@ -1,10 +1,10 @@
-#include "orteaf/internal/runtime/cuda/manager/cuda_buffer_manager.h"
+#include "orteaf/internal/execution/cuda/manager/cuda_buffer_manager.h"
 
 #if ORTEAF_ENABLE_CUDA
 
 #include "orteaf/internal/diagnostics/error/error.h"
 
-namespace orteaf::internal::runtime::cuda::manager {
+namespace orteaf::internal::execution::cuda::manager {
 
 void CudaBufferManager::configure(const InternalConfig &config) {
   shutdown();
@@ -107,6 +107,6 @@ CudaBufferManager::makePayloadContext() const noexcept {
   return BufferPayloadPoolTraits::Context{context_, ops_, alloc_, free_};
 }
 
-} // namespace orteaf::internal::runtime::cuda::manager
+} // namespace orteaf::internal::execution::cuda::manager
 
 #endif // ORTEAF_ENABLE_CUDA

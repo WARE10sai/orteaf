@@ -14,9 +14,9 @@
 #include "orteaf/internal/base/pool/fixed_slot_store.h"
 #include "orteaf/internal/execution/cuda/cuda_handles.h"
 #include "orteaf/internal/execution/cuda/platform/cuda_slow_ops.h"
-#include "orteaf/internal/runtime/cuda/manager/cuda_context_manager.h"
+#include "orteaf/internal/execution/cuda/manager/cuda_context_manager.h"
 
-namespace orteaf::internal::runtime::cuda::manager {
+namespace orteaf::internal::execution::cuda::manager {
 
 class CudaExecutionManager;
 
@@ -204,6 +204,6 @@ private:
   LifetimeRegistry lifetime_{};
 };
 
-} // namespace orteaf::internal::runtime::cuda::manager
+} // namespace orteaf::internal::execution::cuda::manager
 
 #endif // ORTEAF_ENABLE_CUDA

@@ -12,11 +12,12 @@
 #include "orteaf/internal/execution/cuda/cuda_handles.h"
 #include "orteaf/internal/execution/cuda/platform/cuda_slow_ops.h"
 #include "orteaf/internal/execution/cuda/platform/wrapper/cuda_context.h"
-#include "orteaf/internal/runtime/cuda/manager/cuda_buffer_manager.h"
-#include "orteaf/internal/runtime/cuda/manager/cuda_event_manager.h"
-#include "orteaf/internal/runtime/cuda/manager/cuda_stream_manager.h"
+#include "orteaf/internal/execution/cuda/manager/cuda_buffer_manager.h"
+#include "orteaf/internal/execution/cuda/manager/cuda_event_manager.h"
+#include "orteaf/internal/execution/cuda/manager/cuda_module_manager.h"
+#include "orteaf/internal/execution/cuda/manager/cuda_stream_manager.h"
 
-namespace orteaf::internal::runtime::cuda::manager {
+namespace orteaf::internal::execution::cuda::manager {
 
 struct DevicePayloadPoolTraits;
 
@@ -39,6 +40,7 @@ struct CudaContextResource {
   CudaBufferManager buffer_manager{};
   CudaStreamManager stream_manager{};
   CudaEventManager event_manager{};
+  CudaModuleManager module_manager{};
 
   CudaContextResource() = default;
   CudaContextResource(const CudaContextResource &) = delete;
@@ -60,6 +62,7 @@ struct CudaContextResource {
     buffer_manager.shutdown();
     stream_manager.shutdown();
     event_manager.shutdown();
+    module_manager.shutdown();
     if (context != nullptr && ops != nullptr) {
       if (is_primary) {
         ops->releasePrimaryContext(device);
@@ -80,6 +83,7 @@ private:
     buffer_manager = std::move(other.buffer_manager);
     stream_manager = std::move(other.stream_manager);
     event_manager = std::move(other.event_manager);
+    module_manager = std::move(other.module_manager);
     other.device = DeviceType{};
     other.context = nullptr;
     other.is_primary = false;
@@ -108,6 +112,7 @@ struct ContextPayloadPoolTraits {
     CudaBufferManager::Config buffer_config{};
     CudaStreamManager::Config stream_config{};
     CudaEventManager::Config event_config{};
+    CudaModuleManager::Config module_config{};
   };
 
   static bool create(Payload &payload, const Request &request,
@@ -146,6 +151,12 @@ struct ContextPayloadPoolTraits {
     event_config.context = payload.context;
     event_config.ops = context.ops;
     payload.event_manager.configure(event_config);
+
+    CudaModuleManager::InternalConfig module_config{};
+    module_config.public_config = context.module_config;
+    module_config.context = payload.context;
+    module_config.ops = context.ops;
+    payload.module_manager.configure(module_config);
 
     return true;
   }
@@ -215,6 +226,7 @@ public:
     CudaBufferManager::Config buffer_config{};
     CudaStreamManager::Config stream_config{};
     CudaEventManager::Config event_config{};
+    CudaModuleManager::Config module_config{};
   };
 
   CudaContextManager() = default;
@@ -277,9 +289,10 @@ private:
   CudaBufferManager::Config buffer_config_{};
   CudaStreamManager::Config stream_config_{};
   CudaEventManager::Config event_config_{};
+  CudaModuleManager::Config module_config_{};
   Core core_{};
 };
 
-} // namespace orteaf::internal::runtime::cuda::manager
+} // namespace orteaf::internal::execution::cuda::manager
 
 #endif // ORTEAF_ENABLE_CUDA

@@ -1,10 +1,10 @@
-#include "orteaf/internal/runtime/cuda/manager/cuda_device_manager.h"
+#include "orteaf/internal/execution/cuda/manager/cuda_device_manager.h"
 
 #if ORTEAF_ENABLE_CUDA
 
 #include "orteaf/internal/diagnostics/error/error.h"
 
-namespace orteaf::internal::runtime::cuda::manager {
+namespace orteaf::internal::execution::cuda::manager {
 
 // =============================================================================
 // DevicePayloadPoolTraits Implementation
@@ -119,6 +119,6 @@ CudaDeviceManager::DeviceLease CudaDeviceManager::acquire(DeviceHandle handle) {
   return lease;
 }
 
-} // namespace orteaf::internal::runtime::cuda::manager
+} // namespace orteaf::internal::execution::cuda::manager
 
 #endif // ORTEAF_ENABLE_CUDA

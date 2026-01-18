@@ -1,10 +1,10 @@
-#include "orteaf/internal/runtime/cuda/manager/cuda_context_manager.h"
+#include "orteaf/internal/execution/cuda/manager/cuda_context_manager.h"
 
 #if ORTEAF_ENABLE_CUDA
 
 #include "orteaf/internal/diagnostics/error/error.h"
 
-namespace orteaf::internal::runtime::cuda::manager {
+namespace orteaf::internal::execution::cuda::manager {
 
 void CudaContextManager::configure(const InternalConfig &config) {
   shutdown();
@@ -19,6 +19,7 @@ void CudaContextManager::configure(const InternalConfig &config) {
   buffer_config_ = cfg.buffer_config;
   stream_config_ = cfg.stream_config;
   event_config_ = cfg.event_config;
+  module_config_ = cfg.module_config;
 
   ContextPayloadPoolTraits::Request payload_request{};
   payload_request.kind = ContextKind::Primary;
@@ -48,6 +49,7 @@ void CudaContextManager::shutdown() {
   buffer_config_ = {};
   stream_config_ = {};
   event_config_ = {};
+  module_config_ = {};
 }
 
 CudaContextManager::ContextLease CudaContextManager::acquirePrimary() {
@@ -86,9 +88,10 @@ CudaContextManager::makePayloadContext() const noexcept {
   context.buffer_config = buffer_config_;
   context.stream_config = stream_config_;
   context.event_config = event_config_;
+  context.module_config = module_config_;
   return context;
 }
 
-} // namespace orteaf::internal::runtime::cuda::manager
+} // namespace orteaf::internal::execution::cuda::manager
 
 #endif // ORTEAF_ENABLE_CUDA

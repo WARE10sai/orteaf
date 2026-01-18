@@ -1,4 +1,4 @@
-#include "orteaf/internal/runtime/cuda/manager/cuda_buffer_manager.h"
+#include "orteaf/internal/execution/cuda/manager/cuda_buffer_manager.h"
 
 #include <gtest/gtest.h>
 
@@ -11,7 +11,7 @@
 
 #if ORTEAF_ENABLE_CUDA
 
-namespace cuda_rt = orteaf::internal::runtime::cuda::manager;
+namespace cuda_rt = orteaf::internal::execution::cuda::manager;
 namespace cuda_platform = orteaf::internal::execution::cuda::platform;
 namespace cuda_wrapper = orteaf::internal::execution::cuda::platform::wrapper;
 namespace cuda_resource = orteaf::internal::execution::cuda::resource;

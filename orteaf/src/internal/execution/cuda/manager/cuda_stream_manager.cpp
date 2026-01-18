@@ -1,31 +1,31 @@
-#include "orteaf/internal/runtime/cuda/manager/cuda_event_manager.h"
+#include "orteaf/internal/execution/cuda/manager/cuda_stream_manager.h"
 
 #if ORTEAF_ENABLE_CUDA
 
 #include "orteaf/internal/diagnostics/error/error.h"
 
-namespace orteaf::internal::runtime::cuda::manager {
+namespace orteaf::internal::execution::cuda::manager {
 
-void CudaEventManager::configure(const InternalConfig &config) {
+void CudaStreamManager::configure(const InternalConfig &config) {
   shutdown();
   if (config.context == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-        "CUDA event manager requires a valid context");
+        "CUDA stream manager requires a valid context");
   }
   if (config.ops == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
-        "CUDA event manager requires valid ops");
+        "CUDA stream manager requires valid ops");
   }
   context_ = config.context;
   ops_ = config.ops;
   const auto &cfg = config.public_config;
 
-  const EventPayloadPoolTraits::Request payload_request{};
+  const StreamPayloadPoolTraits::Request payload_request{};
   const auto payload_context = makePayloadContext();
-  Core::Builder<EventPayloadPoolTraits::Request,
-                EventPayloadPoolTraits::Context>{}
+  Core::Builder<StreamPayloadPoolTraits::Request,
+                StreamPayloadPoolTraits::Context>{}
       .withControlBlockCapacity(cfg.control_block_capacity)
       .withControlBlockBlockSize(cfg.control_block_block_size)
       .withControlBlockGrowthChunkSize(cfg.control_block_growth_chunk_size)
@@ -37,35 +37,35 @@ void CudaEventManager::configure(const InternalConfig &config) {
       .configure(core_);
 }
 
-void CudaEventManager::shutdown() {
+void CudaStreamManager::shutdown() {
   if (!core_.isConfigured()) {
     return;
   }
-  const EventPayloadPoolTraits::Request payload_request{};
+  const StreamPayloadPoolTraits::Request payload_request{};
   const auto payload_context = makePayloadContext();
   core_.shutdown(payload_request, payload_context);
   context_ = nullptr;
   ops_ = nullptr;
 }
 
-CudaEventManager::EventLease CudaEventManager::acquire() {
+CudaStreamManager::StreamLease CudaStreamManager::acquire() {
   core_.ensureConfigured();
-  const EventPayloadPoolTraits::Request request{};
+  const StreamPayloadPoolTraits::Request request{};
   const auto context = makePayloadContext();
   auto handle = core_.acquirePayloadOrGrowAndCreate(request, context);
   if (!handle.isValid()) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
-        "CUDA event manager has no available slots");
+        "CUDA stream manager has no available slots");
   }
   return core_.acquireStrongLease(handle);
 }
 
-EventPayloadPoolTraits::Context
-CudaEventManager::makePayloadContext() const noexcept {
-  return EventPayloadPoolTraits::Context{context_, ops_};
+StreamPayloadPoolTraits::Context
+CudaStreamManager::makePayloadContext() const noexcept {
+  return StreamPayloadPoolTraits::Context{context_, ops_};
 }
 
-} // namespace orteaf::internal::runtime::cuda::manager
+} // namespace orteaf::internal::execution::cuda::manager
 
 #endif // ORTEAF_ENABLE_CUDA

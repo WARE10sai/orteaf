@@ -15,7 +15,7 @@
 #include "orteaf/internal/execution/cuda/resource/cuda_buffer.h"
 #include "orteaf/internal/execution/allocator/resource/cuda/cuda_resource.h"
 
-namespace orteaf::internal::runtime::cuda::manager {
+namespace orteaf::internal::execution::cuda::manager {
 
 struct ContextPayloadPoolTraits;
 
@@ -212,6 +212,6 @@ private:
   Core core_{};
 };
 
-} // namespace orteaf::internal::runtime::cuda::manager
+} // namespace orteaf::internal::execution::cuda::manager
 
 #endif // ORTEAF_ENABLE_CUDA
