@@ -144,6 +144,7 @@ public:
   void shutdown();
 
   StreamLease acquire();
+  StreamLease acquire(StreamHandle handle);
 
 #if ORTEAF_ENABLE_TEST
   void configureForTest(const Config &config, ContextType context,
