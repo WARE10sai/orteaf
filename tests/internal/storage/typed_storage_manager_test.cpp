@@ -63,9 +63,9 @@ TEST(StorageLease, DefaultConstructedIsInvalid) {
   EXPECT_FALSE(lease.valid());
 }
 
-TEST(StorageLease, ExecutionDefaultsToMppCpu) {
+TEST(StorageLease, ExecutionThrowsWhenInvalid) {
   storage::StorageLease lease;
-  EXPECT_EQ(lease.execution(), orteaf::internal::execution::Execution::Cpu);
+  EXPECT_THROW((void)lease.execution(), std::system_error);
 }
 
 // ============================================================
