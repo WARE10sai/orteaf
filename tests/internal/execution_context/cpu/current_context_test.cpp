@@ -42,6 +42,19 @@ TEST_F(CpuCurrentContextTest, SetCurrentContextOverridesState) {
   EXPECT_EQ(current_ctx.device.payloadHandle(), cpu_exec::CpuDeviceHandle{0});
 }
 
+TEST_F(CpuCurrentContextTest, SetCurrentOverridesState) {
+  cpu_context::Context ctx{};
+  ctx.device = cpu_api::CpuExecutionApi::acquireDevice(cpu_exec::CpuDeviceHandle{0});
+
+  cpu_context::CurrentContext current{};
+  current.current = std::move(ctx);
+  cpu_context::setCurrent(std::move(current));
+
+  const auto &current_ctx = cpu_context::currentContext();
+  EXPECT_TRUE(current_ctx.device);
+  EXPECT_EQ(current_ctx.device.payloadHandle(), cpu_exec::CpuDeviceHandle{0});
+}
+
 TEST_F(CpuCurrentContextTest, ResetReacquiresDefaultDevice) {
   auto first = cpu_context::currentDevice();
   EXPECT_TRUE(first);

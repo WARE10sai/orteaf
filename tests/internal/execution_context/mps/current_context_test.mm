@@ -123,4 +123,32 @@ TEST_F(MpsCurrentContextTest, SetCurrentContextOverridesState) {
   EXPECT_EQ(current_ctx.device.payloadHandle(), mps_exec::MpsDeviceHandle{0});
 }
 
+TEST_F(MpsCurrentContextTest, SetCurrentOverridesState) {
+  std::string error;
+  if (!configureMps(&error)) {
+    GTEST_SKIP() << error;
+  }
+  mps_context::reset();
+
+  mps_context::Context ctx{};
+  ctx.device = mps_api::MpsExecutionApi::acquireDevice(mps_exec::MpsDeviceHandle{0});
+  auto *resource = ctx.device.operator->();
+  if (resource == nullptr) {
+    GTEST_SKIP() << "Failed to acquire MPS device";
+  }
+  ctx.command_queue = resource->command_queue_manager.acquire();
+  if (!ctx.command_queue) {
+    GTEST_SKIP() << "Failed to acquire MPS command queue";
+  }
+
+  mps_context::CurrentContext current{};
+  current.current = std::move(ctx);
+  mps_context::setCurrent(std::move(current));
+
+  const auto &current_ctx = mps_context::currentContext();
+  EXPECT_TRUE(current_ctx.device);
+  EXPECT_TRUE(current_ctx.command_queue);
+  EXPECT_EQ(current_ctx.device.payloadHandle(), mps_exec::MpsDeviceHandle{0});
+}
+
 #endif // ORTEAF_ENABLE_MPS
