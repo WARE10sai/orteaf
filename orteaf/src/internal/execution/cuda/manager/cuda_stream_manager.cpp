@@ -61,6 +61,25 @@ CudaStreamManager::StreamLease CudaStreamManager::acquire() {
   return core_.acquireStrongLease(handle);
 }
 
+CudaStreamManager::StreamLease
+CudaStreamManager::acquire(StreamHandle handle) {
+  core_.ensureConfigured();
+
+  if (!handle.isValid()) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
+        "Invalid stream handle");
+  }
+
+  if (!core_.isAlive(handle)) {
+    ::orteaf::internal::diagnostics::error::throwError(
+        ::orteaf::internal::diagnostics::error::OrteafErrc::OutOfRange,
+        "Stream handle does not correspond to an alive payload");
+  }
+
+  return core_.acquireStrongLease(handle);
+}
+
 StreamPayloadPoolTraits::Context
 CudaStreamManager::makePayloadContext() const noexcept {
   return StreamPayloadPoolTraits::Context{context_, ops_};

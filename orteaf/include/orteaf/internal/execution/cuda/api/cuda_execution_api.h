@@ -77,37 +77,6 @@ public:
     return context_lease;
   }
 
-  // Acquire a stream lease from the given context lease.
-  static StreamLease acquireStream(const ContextLease &context_lease) {
-    auto *context_resource = context_lease.operator->();
-    if (!context_resource) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          "CUDA context lease has no payload");
-    }
-    auto stream_lease = context_resource->stream_manager.acquire();
-    if (!stream_lease.operator->()) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          "CUDA stream lease has no payload");
-    }
-    return stream_lease;
-  }
-
-  // Acquire a stream lease for the given device with a specific stream handle.
-  static StreamLease acquireStream(DeviceHandle device,
-                                   StreamHandle stream_handle) {
-    auto context_lease = acquirePrimaryContext(device);
-    auto *context_resource = context_lease.operator->();
-    auto stream_lease = context_resource->stream_manager.acquire(stream_handle);
-    if (!stream_lease.operator->()) {
-      ::orteaf::internal::diagnostics::error::throwError(
-          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
-          "CUDA stream lease has no payload");
-    }
-    return stream_lease;
-  }
-
 private:
   // Singleton access to the execution manager (hidden from external callers).
   static ExecutionManager &manager() {
