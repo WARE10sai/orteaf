@@ -4,7 +4,9 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
+#include <type_traits>
 #include <utility>
 
 #include <orteaf/internal/kernel/access.h>
@@ -21,6 +23,23 @@ public:
 
   static constexpr std::size_t kMaxBindings = 16;
   static constexpr std::size_t kParamBytes = 1024;
+
+  template <typename Params>
+  bool setParams(const Params &params) {
+    static_assert(std::is_trivially_copyable_v<Params>,
+                  "Params must be trivially copyable.");
+    return setParamsRaw(&params, sizeof(Params), Params::kTypeId);
+  }
+
+  template <typename Params> bool getParams(Params &out) const {
+    static_assert(std::is_trivially_copyable_v<Params>,
+                  "Params must be trivially copyable.");
+    if (params_type_id_ != Params::kTypeId || params_size_ != sizeof(Params)) {
+      return false;
+    }
+    std::memcpy(&out, params_.data(), sizeof(Params));
+    return true;
+  }
 
   void addStorageLease(StorageLease lease, Access access) {
     if (storage_count_ >= kMaxBindings) {
@@ -51,11 +70,13 @@ public:
     storage_count_ = 0;
   }
 
-  bool setParams(const void *data, std::size_t size) {
+  bool setParamsRaw(const void *data, std::size_t size,
+                    std::uint64_t type_id) {
     if (size > kParamBytes) {
       return false;
     }
     params_size_ = size;
+    params_type_id_ = type_id;
     if (size > 0) {
       std::memcpy(params_.data(), data, size);
     }
@@ -63,6 +84,7 @@ public:
   }
 
   std::size_t paramsSize() const { return params_size_; }
+  std::uint64_t paramsTypeId() const { return params_type_id_; }
 
   std::size_t paramsCapacity() const { return kParamBytes; }
 
@@ -75,6 +97,7 @@ private:
   std::size_t storage_count_{0};
   alignas(std::max_align_t) std::array<std::byte, kParamBytes> params_{};
   std::size_t params_size_{0};
+  std::uint64_t params_type_id_{0};
 };
 
 } // namespace orteaf::internal::kernel::mps
