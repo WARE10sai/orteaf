@@ -2,94 +2,77 @@
 
 #include <array>
 #include <cstddef>
+#include <cstring>
 #include <utility>
 
-#include <orteaf/internal/execution/cpu/resource/cpu_buffer_view.h>
-#include <orteaf/internal/execution_context/cpu/context.h>
-#include <orteaf/internal/execution_context/cpu/current_context.h>
 #include <orteaf/internal/kernel/access.h>
-#include <orteaf/internal/storage/cpu/cpu_storage_layout.h>
 #include <orteaf/internal/storage/registry/storage_types.h>
 
 namespace orteaf::internal::kernel::cpu {
 
 /**
- * @brief CPU kernel arguments container with Host and Device nested types.
- *
- * @tparam MaxBindings Maximum number of storage bindings.
- * @tparam Params User-defined POD parameter struct.
- *
- * Common: Manages StorageLease lifetime and access metadata.
- * Host: Non-POD, manages Context.
- * Device: Kernel-visible arguments container (views/layouts + params).
+ * @brief CPU kernel arguments container.
  */
-template <std::size_t MaxBindings, typename Params> class CpuKernelArgs {
+class CpuKernelArgs {
 public:
-  using BufferView =
-      ::orteaf::internal::execution::cpu::resource::CpuBufferView;
-  using StorageLayout = ::orteaf::internal::storage::cpu::CpuStorageLayout;
   using StorageLease = ::orteaf::internal::storage::CpuStorageLease;
-  using Context = ::orteaf::internal::execution_context::cpu::Context;
 
-  class Common {
-  public:
-    void addStorageLease(StorageLease lease, Access access) {
-      if (storage_count_ < MaxBindings) {
-        storage_leases_[storage_count_] = std::move(lease);
-        storage_accesses_[storage_count_] = access;
-        ++storage_count_;
-      }
+  static constexpr std::size_t kMaxBindings = 16;
+  static constexpr std::size_t kParamBytes = 1024;
+
+  void addStorageLease(StorageLease lease, Access access) {
+    if (storage_count_ >= kMaxBindings) {
+      return;
     }
+    storage_leases_[storage_count_] = std::move(lease);
+    storage_accesses_[storage_count_] = access;
+    ++storage_count_;
+  }
 
-    std::size_t storageCount() const { return storage_count_; }
+  std::size_t storageCount() const { return storage_count_; }
 
-    const StorageLease &storageLeaseAt(std::size_t index) const {
-      return storage_leases_[index];
+  std::size_t storageCapacity() const { return kMaxBindings; }
+
+  const StorageLease &storageLeaseAt(std::size_t index) const {
+    return storage_leases_[index];
+  }
+
+  Access storageAccessAt(std::size_t index) const {
+    return storage_accesses_[index];
+  }
+
+  void clearStorages() {
+    for (std::size_t i = 0; i < storage_count_; ++i) {
+      storage_leases_[i] = StorageLease{};
+      storage_accesses_[i] = Access::None;
     }
+    storage_count_ = 0;
+  }
 
-    Access storageAccessAt(std::size_t index) const {
-      return storage_accesses_[index];
+  bool setParams(const void *data, std::size_t size) {
+    if (size > kParamBytes) {
+      return false;
     }
-
-  protected:
-    std::array<StorageLease, MaxBindings> storage_leases_{};
-    std::array<Access, MaxBindings> storage_accesses_{};
-    std::size_t storage_count_{0};
-  };
-
-  // ---- Device側（Kernelに渡す） ----
-  struct Device {
-    Params params{};
-  };
-
-  // ---- Host側（non-POD、ライフタイム管理） ----
-  class Host {
-  public:
-    Host() = default;
-    explicit Host(Context ctx) : context_(std::move(ctx)) {}
-
-    /// @brief Create Host from current thread-local context.
-    static Host fromCurrentContext() {
-      return Host(::orteaf::internal::execution_context::cpu::currentContext());
+    params_size_ = size;
+    if (size > 0) {
+      std::memcpy(params_.data(), data, size);
     }
+    return true;
+  }
 
-    Host(const Host &) = default;
-    Host &operator=(const Host &) = default;
-    Host(Host &&) = default;
-    Host &operator=(Host &&) = default;
-    ~Host() = default;
+  std::size_t paramsSize() const { return params_size_; }
 
-    const Context &context() const { return context_; }
-    Context &context() { return context_; }
+  std::size_t paramsCapacity() const { return kParamBytes; }
 
-  private:
-    Context context_{};
-  };
+  const std::byte *paramsData() const { return params_.data(); }
+  std::byte *paramsData() { return params_.data(); }
 
 private:
-  Common common_{};
-  Device device_{};
-  Host host_{};
+  std::array<StorageLease, kMaxBindings> storage_leases_{};
+  std::array<Access, kMaxBindings> storage_accesses_{};
+  std::size_t storage_count_{0};
+  alignas(std::max_align_t) std::array<std::byte, kParamBytes> params_{};
+  std::size_t params_size_{0};
 };
 
 } // namespace orteaf::internal::kernel::cpu

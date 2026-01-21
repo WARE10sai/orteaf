@@ -22,18 +22,16 @@ namespace orteaf::internal::kernel {
  * Wraps backend-specific KernelArgs (Cpu/Mps/Cuda) in a std::variant,
  * providing a unified interface similar to the Storage class pattern.
  *
- * @tparam MaxBindings Maximum number of buffer bindings.
- * @tparam Params User-defined POD parameter struct.
  */
-template <std::size_t MaxBindings, typename Params> class KernelArgs {
+class KernelArgs {
 public:
   using Execution = ::orteaf::internal::execution::Execution;
-  using CpuKernelArgsType = cpu::CpuKernelArgs<MaxBindings, Params>;
+  using CpuKernelArgsType = cpu::CpuKernelArgs;
 #if ORTEAF_ENABLE_MPS
-  using MpsKernelArgsType = mps::MpsKernelArgs<MaxBindings, Params>;
+  using MpsKernelArgsType = mps::MpsKernelArgs;
 #endif
 #if ORTEAF_ENABLE_CUDA
-  using CudaKernelArgsType = cuda::CudaKernelArgs<MaxBindings, Params>;
+  using CudaKernelArgsType = cuda::CudaKernelArgs;
 #endif
 
   // Variant type holding all backend implementations
