@@ -28,6 +28,7 @@ public:
   using Context = ::orteaf::internal::execution_context::cpu::Context;
   using StorageLease = ::orteaf::internal::storage::CpuStorageLease;
 
+  // Inline capacities; SmallVector can grow beyond these values.
   static constexpr std::size_t kMaxBindings = 16;
   static constexpr std::size_t kMaxParams = 16;
 
@@ -63,9 +64,6 @@ public:
    * @param lease Storage lease to bind
    */
   void addStorage(StorageId id, StorageLease lease) {
-    if (storages_.size() >= kMaxBindings) {
-      return;
-    }
     storages_.pushBack(CpuStorageBinding{id, std::move(lease)});
   }
 
@@ -107,9 +105,9 @@ public:
   std::size_t storageCount() const { return storages_.size(); }
 
   /**
-   * @brief Get the maximum number of storage bindings.
+   * @brief Get the current storage capacity (may exceed inline capacity).
    */
-  std::size_t storageCapacity() const { return kMaxBindings; }
+  std::size_t storageCapacity() const { return storages_.capacity(); }
 
   /**
    * @brief Clear all storage bindings.
