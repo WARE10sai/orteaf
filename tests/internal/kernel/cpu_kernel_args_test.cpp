@@ -17,6 +17,28 @@ using DType = orteaf::internal::DType;
 using Op = orteaf::internal::ops::Op;
 
 // ============================================================
+// Test Fixture for CPU Kernel Args
+// ============================================================
+
+class CpuKernelArgsTest : public ::testing::Test {
+protected:
+  void SetUp() override {
+    // Configure CPU execution API
+    namespace cpu_api = ::orteaf::internal::execution::cpu::api;
+    cpu_api::CpuExecutionApi::ExecutionManager::Config config{};
+    cpu_api::CpuExecutionApi::configure(config);
+    ::orteaf::internal::execution_context::cpu::reset();
+  }
+
+  void TearDown() override {
+    // Cleanup
+    namespace cpu_api = ::orteaf::internal::execution::cpu::api;
+    ::orteaf::internal::execution_context::cpu::reset();
+    cpu_api::CpuExecutionApi::shutdown();
+  }
+};
+
+// ============================================================
 // Access enum tests
 // ============================================================
 
@@ -33,13 +55,13 @@ TEST(Access, EnumValues) {
 
 using CpuArgs = kernel::cpu::CpuKernelArgs;
 
-TEST(CpuKernelArgs, HostDefaultConstruct) {
+TEST_F(CpuKernelArgsTest, HostDefaultConstruct) {
   CpuArgs host;
   EXPECT_EQ(host.storageCount(), 0);
   EXPECT_EQ(host.paramList().size(), 0);
 }
 
-TEST(CpuKernelArgs, AddAndFindParams) {
+TEST_F(CpuKernelArgsTest, AddAndFindParams) {
   CpuArgs args;
 
   args.addParam(kernel::Param(kernel::ParamId::Alpha, 1.5f));
@@ -61,7 +83,7 @@ TEST(CpuKernelArgs, AddAndFindParams) {
   EXPECT_EQ(*count_param->tryGet<int>(), 100);
 }
 
-TEST(CpuKernelArgs, FindNonExistentParam) {
+TEST_F(CpuKernelArgsTest, FindNonExistentParam) {
   CpuArgs args;
   args.addParam(kernel::Param(kernel::ParamId::Alpha, 1.0f));
 
@@ -69,7 +91,7 @@ TEST(CpuKernelArgs, FindNonExistentParam) {
   EXPECT_EQ(param, nullptr);
 }
 
-TEST(CpuKernelArgs, ClearParams) {
+TEST_F(CpuKernelArgsTest, ClearParams) {
   CpuArgs args;
   args.addParam(kernel::Param(kernel::ParamId::Alpha, 1.0f));
   args.addParam(kernel::Param(kernel::ParamId::Beta, 2.0f));
@@ -80,7 +102,7 @@ TEST(CpuKernelArgs, ClearParams) {
   EXPECT_EQ(args.paramList().size(), 0);
 }
 
-TEST(CpuKernelArgs, StorageManagement) {
+TEST_F(CpuKernelArgsTest, StorageManagement) {
   CpuArgs args;
   EXPECT_EQ(args.storageCount(), 0);
   EXPECT_EQ(args.storageCapacity(), CpuArgs::kMaxBindings);
@@ -90,7 +112,7 @@ TEST(CpuKernelArgs, StorageManagement) {
   EXPECT_EQ(args.storageCount(), 0);
 }
 
-TEST(CpuKernelArgs, AddStorageLease) {
+TEST_F(CpuKernelArgsTest, AddStorageLease) {
   CpuArgs args;
 
   // Add a storage lease with StorageId
@@ -105,7 +127,7 @@ TEST(CpuKernelArgs, AddStorageLease) {
   EXPECT_EQ(binding->id, kernel::StorageId::InOut);
 }
 
-TEST(CpuKernelArgs, ParamListIteration) {
+TEST_F(CpuKernelArgsTest, ParamListIteration) {
   CpuArgs args;
   args.addParam(kernel::Param(kernel::ParamId::Alpha, 1.0f));
   args.addParam(kernel::Param(kernel::ParamId::Beta, 2.0f));
@@ -118,23 +140,11 @@ TEST(CpuKernelArgs, ParamListIteration) {
   EXPECT_EQ(count, 3);
 }
 
-TEST(CpuKernelArgs, HostFromCurrentContext) {
-  // Setup: Configure CPU execution API
-  namespace cpu_api = ::orteaf::internal::execution::cpu::api;
-  cpu_api::CpuExecutionApi::ExecutionManager::Config config{};
-  cpu_api::CpuExecutionApi::configure(config);
-  ::orteaf::internal::execution_context::cpu::reset();
-
-  {
-    // fromCurrentContext should work with CPU args
-    CpuArgs args;
-    EXPECT_EQ(args.storageCount(), 0);
-    EXPECT_EQ(args.paramList().size(), 0);
-  }
-
-  // Teardown
-  ::orteaf::internal::execution_context::cpu::reset();
-  cpu_api::CpuExecutionApi::shutdown();
+TEST_F(CpuKernelArgsTest, HostFromCurrentContext) {
+  // fromCurrentContext should work with CPU args
+  CpuArgs args = CpuArgs::fromCurrentContext();
+  EXPECT_EQ(args.storageCount(), 0);
+  EXPECT_EQ(args.paramList().size(), 0);
 }
 
 // ============================================================
@@ -148,13 +158,13 @@ TEST(KernelArgs, DefaultConstructedIsInvalid) {
   EXPECT_FALSE(args.valid());
 }
 
-TEST(KernelArgs, EraseFromCpuKernelArgs) {
+TEST_F(CpuKernelArgsTest, EraseFromCpuKernelArgs) {
   CpuArgs cpu_args;
   TypeErasedArgs args = TypeErasedArgs::erase(std::move(cpu_args));
   EXPECT_TRUE(args.valid());
 }
 
-TEST(KernelArgs, TryAsCpuKernelArgs) {
+TEST_F(CpuKernelArgsTest, TryAsCpuKernelArgs) {
   CpuArgs cpu_args;
   TypeErasedArgs args = TypeErasedArgs::erase(std::move(cpu_args));
 
@@ -162,14 +172,14 @@ TEST(KernelArgs, TryAsCpuKernelArgs) {
   EXPECT_NE(ptr, nullptr);
 }
 
-TEST(KernelArgs, ExecutionReturnsCorrectBackend) {
+TEST_F(CpuKernelArgsTest, ExecutionReturnsCorrectBackend) {
   CpuArgs cpu_args;
   TypeErasedArgs args = TypeErasedArgs::erase(std::move(cpu_args));
 
   EXPECT_EQ(args.execution(), orteaf::internal::execution::Execution::Cpu);
 }
 
-TEST(KernelArgs, VisitPattern) {
+TEST_F(CpuKernelArgsTest, VisitPattern) {
   CpuArgs cpu_args;
   TypeErasedArgs args = TypeErasedArgs::erase(std::move(cpu_args));
 

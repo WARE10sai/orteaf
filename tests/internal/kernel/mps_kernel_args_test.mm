@@ -19,18 +19,80 @@ using DType = orteaf::internal::DType;
 using Op = orteaf::internal::ops::Op;
 
 // ============================================================
+// Test Fixture for MPS Kernel Args
+// ============================================================
+
+class MpsKernelArgsTest : public ::testing::Test {
+protected:
+  void SetUp() override {
+    // Configure MPS execution API
+    namespace mps_api = ::orteaf::internal::execution::mps::api;
+    namespace mps_platform = ::orteaf::internal::execution::mps::platform;
+
+    auto *ops = new mps_platform::MpsSlowOpsImpl();
+    const int device_count = ops->getDeviceCount();
+    if (device_count <= 0) {
+      delete ops;
+      GTEST_SKIP() << "No MPS devices available";
+    }
+
+    mps_api::MpsExecutionApi::ExecutionManager::Config config{};
+    config.slow_ops = ops;
+
+    const auto capacity = static_cast<std::size_t>(device_count);
+    auto &device_cfg = config.device_config;
+    device_cfg.control_block_capacity = capacity;
+    device_cfg.control_block_block_size = capacity;
+    device_cfg.control_block_growth_chunk_size = 1;
+    device_cfg.payload_capacity = capacity;
+    device_cfg.payload_block_size = capacity;
+    device_cfg.payload_growth_chunk_size = 1;
+
+    auto configure_pool = [](auto &cfg) {
+      cfg.control_block_capacity = 1;
+      cfg.control_block_block_size = 1;
+      cfg.control_block_growth_chunk_size = 1;
+      cfg.payload_capacity = 1;
+      cfg.payload_block_size = 1;
+      cfg.payload_growth_chunk_size = 1;
+    };
+    configure_pool(device_cfg.command_queue_config);
+    configure_pool(device_cfg.event_config);
+    configure_pool(device_cfg.fence_config);
+    configure_pool(device_cfg.heap_config);
+    configure_pool(device_cfg.library_config);
+    configure_pool(device_cfg.graph_config);
+
+    try {
+      mps_api::MpsExecutionApi::configure(config);
+    } catch (const std::exception &ex) {
+      delete ops;
+      GTEST_SKIP() << "Failed to configure MPS: " << ex.what();
+    }
+    ::orteaf::internal::execution_context::mps::reset();
+  }
+
+  void TearDown() override {
+    // Cleanup
+    namespace mps_api = ::orteaf::internal::execution::mps::api;
+    ::orteaf::internal::execution_context::mps::reset();
+    mps_api::MpsExecutionApi::shutdown();
+  }
+};
+
+// ============================================================
 // MpsKernelArgs tests
 // ============================================================
 
 using MpsArgs = kernel::mps::MpsKernelArgs;
 
-TEST(MpsKernelArgs, HostDefaultConstruct) {
+TEST_F(MpsKernelArgsTest, HostDefaultConstruct) {
   MpsArgs host;
   EXPECT_EQ(host.storageCount(), 0);
   EXPECT_EQ(host.paramList().size(), 0);
 }
 
-TEST(MpsKernelArgs, AddAndFindParams) {
+TEST_F(MpsKernelArgsTest, AddAndFindParams) {
   MpsArgs args;
 
   args.addParam(kernel::Param(kernel::ParamId::Alpha, 1.5f));
@@ -52,7 +114,7 @@ TEST(MpsKernelArgs, AddAndFindParams) {
   EXPECT_EQ(*count_param->tryGet<int>(), 100);
 }
 
-TEST(MpsKernelArgs, FindNonExistentParam) {
+TEST_F(MpsKernelArgsTest, FindNonExistentParam) {
   MpsArgs args;
   args.addParam(kernel::Param(kernel::ParamId::Alpha, 1.0f));
 
@@ -60,7 +122,7 @@ TEST(MpsKernelArgs, FindNonExistentParam) {
   EXPECT_EQ(param, nullptr);
 }
 
-TEST(MpsKernelArgs, ClearParams) {
+TEST_F(MpsKernelArgsTest, ClearParams) {
   MpsArgs args;
   args.addParam(kernel::Param(kernel::ParamId::Alpha, 1.0f));
   args.addParam(kernel::Param(kernel::ParamId::Beta, 2.0f));
@@ -71,7 +133,7 @@ TEST(MpsKernelArgs, ClearParams) {
   EXPECT_EQ(args.paramList().size(), 0);
 }
 
-TEST(MpsKernelArgs, StorageManagement) {
+TEST_F(MpsKernelArgsTest, StorageManagement) {
   MpsArgs args;
   EXPECT_EQ(args.storageCount(), 0);
   EXPECT_EQ(args.storageCapacity(), MpsArgs::kMaxBindings);
@@ -81,7 +143,7 @@ TEST(MpsKernelArgs, StorageManagement) {
   EXPECT_EQ(args.storageCount(), 0);
 }
 
-TEST(MpsKernelArgs, AddStorageLease) {
+TEST_F(MpsKernelArgsTest, AddStorageLease) {
   MpsArgs args;
 
   // Add a storage lease with StorageId
@@ -96,7 +158,7 @@ TEST(MpsKernelArgs, AddStorageLease) {
   EXPECT_EQ(binding->id, kernel::StorageId::Input0);
 }
 
-TEST(MpsKernelArgs, ParamListIteration) {
+TEST_F(MpsKernelArgsTest, ParamListIteration) {
   MpsArgs args;
   args.addParam(kernel::Param(kernel::ParamId::Alpha, 1.0f));
   args.addParam(kernel::Param(kernel::ParamId::Beta, 2.0f));
@@ -109,64 +171,11 @@ TEST(MpsKernelArgs, ParamListIteration) {
   EXPECT_EQ(count, 3);
 }
 
-TEST(MpsKernelArgs, HostFromCurrentContext) {
-  // Setup: Configure MPS execution API
-  namespace mps_api = ::orteaf::internal::execution::mps::api;
-  namespace mps_context = ::orteaf::internal::execution_context::mps;
-  namespace mps_platform = ::orteaf::internal::execution::mps::platform;
-
-  auto *ops = new mps_platform::MpsSlowOpsImpl();
-  const int device_count = ops->getDeviceCount();
-  if (device_count <= 0) {
-    delete ops;
-    GTEST_SKIP() << "No MPS devices available";
-  }
-
-  mps_api::MpsExecutionApi::ExecutionManager::Config config{};
-  config.slow_ops = ops;
-
-  const auto capacity = static_cast<std::size_t>(device_count);
-  auto &device_cfg = config.device_config;
-  device_cfg.control_block_capacity = capacity;
-  device_cfg.control_block_block_size = capacity;
-  device_cfg.control_block_growth_chunk_size = 1;
-  device_cfg.payload_capacity = capacity;
-  device_cfg.payload_block_size = capacity;
-  device_cfg.payload_growth_chunk_size = 1;
-
-  auto configure_pool = [](auto &cfg) {
-    cfg.control_block_capacity = 1;
-    cfg.control_block_block_size = 1;
-    cfg.control_block_growth_chunk_size = 1;
-    cfg.payload_capacity = 1;
-    cfg.payload_block_size = 1;
-    cfg.payload_growth_chunk_size = 1;
-  };
-  configure_pool(device_cfg.command_queue_config);
-  configure_pool(device_cfg.event_config);
-  configure_pool(device_cfg.fence_config);
-  configure_pool(device_cfg.heap_config);
-  configure_pool(device_cfg.library_config);
-  configure_pool(device_cfg.graph_config);
-
-  try {
-    mps_api::MpsExecutionApi::configure(config);
-  } catch (const std::exception &ex) {
-    delete ops;
-    GTEST_SKIP() << "Failed to configure MPS: " << ex.what();
-  }
-  mps_context::reset();
-
-  {
-    // Test basic MPS kernel args usage
-    MpsArgs args;
-    EXPECT_EQ(args.storageCount(), 0);
-    EXPECT_EQ(args.paramList().size(), 0);
-  }
-
-  // Teardown
-  mps_context::reset();
-  mps_api::MpsExecutionApi::shutdown();
+TEST_F(MpsKernelArgsTest, HostFromCurrentContext) {
+  // Test basic MPS kernel args usage with fromCurrentContext
+  MpsArgs args = MpsArgs::fromCurrentContext();
+  EXPECT_EQ(args.storageCount(), 0);
+  EXPECT_EQ(args.paramList().size(), 0);
 }
 
 // ============================================================
@@ -175,13 +184,13 @@ TEST(MpsKernelArgs, HostFromCurrentContext) {
 
 using TypeErasedArgs = kernel::KernelArgs;
 
-TEST(KernelArgsMps, EraseFromMpsKernelArgs) {
+TEST_F(MpsKernelArgsTest, EraseFromMpsKernelArgs) {
   MpsArgs mps_args;
   TypeErasedArgs args = TypeErasedArgs::erase(std::move(mps_args));
   EXPECT_TRUE(args.valid());
 }
 
-TEST(KernelArgsMps, TryAsMpsKernelArgs) {
+TEST_F(MpsKernelArgsTest, TryAsMpsKernelArgs) {
   MpsArgs mps_args;
   TypeErasedArgs args = TypeErasedArgs::erase(std::move(mps_args));
 
@@ -189,14 +198,14 @@ TEST(KernelArgsMps, TryAsMpsKernelArgs) {
   EXPECT_NE(ptr, nullptr);
 }
 
-TEST(KernelArgsMps, ExecutionReturnsCorrectBackend) {
+TEST_F(MpsKernelArgsTest, ExecutionReturnsCorrectBackend) {
   MpsArgs mps_args;
   TypeErasedArgs args = TypeErasedArgs::erase(std::move(mps_args));
 
   EXPECT_EQ(args.execution(), orteaf::internal::execution::Execution::Mps);
 }
 
-TEST(KernelArgsMps, VisitPattern) {
+TEST_F(MpsKernelArgsTest, VisitPattern) {
   MpsArgs mps_args;
   TypeErasedArgs args = TypeErasedArgs::erase(std::move(mps_args));
 
@@ -211,7 +220,7 @@ TEST(KernelArgsMps, VisitPattern) {
   EXPECT_TRUE(visited_mps);
 }
 
-TEST(KernelArgsMps, TryAsWrongTypeReturnsNull) {
+TEST_F(MpsKernelArgsTest, TryAsWrongTypeReturnsNull) {
   using CpuArgs = kernel::cpu::CpuKernelArgs;
 
   MpsArgs mps_args;
