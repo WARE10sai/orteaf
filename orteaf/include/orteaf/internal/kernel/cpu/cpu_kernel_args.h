@@ -2,12 +2,12 @@
 
 #include <array>
 #include <cstddef>
-#include <cstdint>
 #include <cstring>
 #include <type_traits>
 #include <utility>
 
 #include <orteaf/internal/kernel/access.h>
+#include <orteaf/internal/kernel/kernel_key.h>
 #include <orteaf/internal/storage/registry/storage_types.h>
 
 namespace orteaf::internal::kernel::cpu {
@@ -23,16 +23,17 @@ public:
   static constexpr std::size_t kParamBytes = 1024;
 
   template <typename Params>
-  bool setParams(const Params &params) {
+  bool setParams(const Params &params, KernelKey kernel_key) {
     static_assert(std::is_trivially_copyable_v<Params>,
                   "Params must be trivially copyable.");
-    return setParamsRaw(&params, sizeof(Params), Params::kTypeId);
+    return setParamsRaw(&params, sizeof(Params), kernel_key);
   }
 
-  template <typename Params> bool getParams(Params &out) const {
+  template <typename Params>
+  bool getParams(Params &out, KernelKey expected_key) const {
     static_assert(std::is_trivially_copyable_v<Params>,
                   "Params must be trivially copyable.");
-    if (params_type_id_ != Params::kTypeId || params_size_ != sizeof(Params)) {
+    if (kernel_key_ != expected_key || params_size_ != sizeof(Params)) {
       return false;
     }
     std::memcpy(&out, params_.data(), sizeof(Params));
@@ -68,13 +69,12 @@ public:
     storage_count_ = 0;
   }
 
-  bool setParamsRaw(const void *data, std::size_t size,
-                    std::uint64_t type_id) {
+  bool setParamsRaw(const void *data, std::size_t size, KernelKey kernel_key) {
     if (size > kParamBytes) {
       return false;
     }
     params_size_ = size;
-    params_type_id_ = type_id;
+    kernel_key_ = kernel_key;
     if (size > 0) {
       std::memcpy(params_.data(), data, size);
     }
@@ -82,7 +82,7 @@ public:
   }
 
   std::size_t paramsSize() const { return params_size_; }
-  std::uint64_t paramsTypeId() const { return params_type_id_; }
+  KernelKey kernelKey() const { return kernel_key_; }
 
   std::size_t paramsCapacity() const { return kParamBytes; }
 
@@ -95,7 +95,7 @@ private:
   std::size_t storage_count_{0};
   alignas(std::max_align_t) std::array<std::byte, kParamBytes> params_{};
   std::size_t params_size_{0};
-  std::uint64_t params_type_id_{0};
+  KernelKey kernel_key_{};
 };
 
 } // namespace orteaf::internal::kernel::cpu
