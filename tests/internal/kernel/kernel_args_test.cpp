@@ -1,6 +1,7 @@
 #include "orteaf/internal/kernel/access.h"
 #include "orteaf/internal/kernel/cpu/cpu_kernel_args.h"
 #include "orteaf/internal/kernel/kernel_args.h"
+#include "orteaf/internal/kernel/kernel_key.h"
 
 #include "orteaf/internal/execution/cpu/api/cpu_execution_api.h"
 #include "orteaf/internal/execution_context/cpu/current_context.h"
@@ -9,6 +10,9 @@
 #include <type_traits>
 
 namespace kernel = orteaf::internal::kernel;
+namespace kk = kernel::kernel_key;
+using Execution = orteaf::internal::execution::Execution;
+using DType = orteaf::internal::DType;
 
 // ============================================================
 // Test Params struct (POD)
@@ -55,12 +59,16 @@ TEST(CpuKernelArgs, SetAndGetParams) {
   CpuArgs args;
   TestParams params{1.0f, 2.0f, 100};
 
-  EXPECT_TRUE(args.setParams(params));
+  auto key = kk::make(static_cast<kernel::OpId>(1), Execution::Cpu,
+                      static_cast<kernel::Layout>(0), DType::F32,
+                      static_cast<kernel::Variant>(0));
+
+  EXPECT_TRUE(args.setParams(params, key));
   EXPECT_EQ(args.paramsSize(), sizeof(TestParams));
-  EXPECT_EQ(args.paramsTypeId(), TestParams::kTypeId);
+  EXPECT_EQ(args.kernelKey(), key);
 
   TestParams retrieved{};
-  EXPECT_TRUE(args.getParams(retrieved));
+  EXPECT_TRUE(args.getParams(retrieved, key));
   EXPECT_FLOAT_EQ(retrieved.alpha, 1.0f);
   EXPECT_FLOAT_EQ(retrieved.beta, 2.0f);
   EXPECT_EQ(retrieved.n, 100);
@@ -91,7 +99,11 @@ TEST(CpuKernelArgs, ParamsRawAccessors) {
   CpuArgs args;
   TestParams params{3.14f, 2.71f, 42};
 
-  EXPECT_TRUE(args.setParams(params));
+  auto key = kk::make(static_cast<kernel::OpId>(1), Execution::Cpu,
+                      static_cast<kernel::Layout>(0), DType::F32,
+                      static_cast<kernel::Variant>(0));
+
+  EXPECT_TRUE(args.setParams(params, key));
 
   // Test raw data access
   const std::byte *data = args.paramsData();
@@ -108,14 +120,17 @@ TEST(CpuKernelArgs, SetParamsRaw) {
   CpuArgs args;
   TestParams params{1.5f, 2.5f, 99};
 
-  EXPECT_TRUE(
-      args.setParamsRaw(&params, sizeof(TestParams), TestParams::kTypeId));
+  auto key = kk::make(static_cast<kernel::OpId>(2), Execution::Cpu,
+                      static_cast<kernel::Layout>(0), DType::F32,
+                      static_cast<kernel::Variant>(0));
+
+  EXPECT_TRUE(args.setParamsRaw(&params, sizeof(TestParams), key));
   EXPECT_EQ(args.paramsSize(), sizeof(TestParams));
-  EXPECT_EQ(args.paramsTypeId(), TestParams::kTypeId);
+  EXPECT_EQ(args.kernelKey(), key);
 
   // Verify we can retrieve the params
   TestParams retrieved{};
-  EXPECT_TRUE(args.getParams(retrieved));
+  EXPECT_TRUE(args.getParams(retrieved, key));
   EXPECT_FLOAT_EQ(retrieved.alpha, 1.5f);
   EXPECT_FLOAT_EQ(retrieved.beta, 2.5f);
   EXPECT_EQ(retrieved.n, 99);
@@ -124,10 +139,19 @@ TEST(CpuKernelArgs, SetParamsRaw) {
 TEST(CpuKernelArgs, GetParamsFailsWithWrongType) {
   CpuArgs args;
   TestParams params{1.0f, 2.0f, 100};
-  args.setParams(params);
+
+  auto key1 = kk::make(static_cast<kernel::OpId>(1), Execution::Cpu,
+                       static_cast<kernel::Layout>(0), DType::F32,
+                       static_cast<kernel::Variant>(0));
+
+  auto key2 = kk::make(static_cast<kernel::OpId>(2), // Different OpId
+                       Execution::Cpu, static_cast<kernel::Layout>(0),
+                       DType::F32, static_cast<kernel::Variant>(0));
+
+  args.setParams(params, key1);
 
   OtherParams other{};
-  EXPECT_FALSE(args.getParams(other));
+  EXPECT_FALSE(args.getParams(other, key2)); // Wrong key
 }
 
 TEST(CpuKernelArgs, HostFromCurrentContext) {
