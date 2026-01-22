@@ -32,7 +32,7 @@ TEST(KernelKey, RoundTripPreservesValues) {
 
   auto key = kk::make(op_id, execution, layout, dtype, variant);
 
-  EXPECT_EQ(kk::getOpId(key), op_id);
+  EXPECT_EQ(kk::getOp(key), op_id);
   EXPECT_EQ(kk::getExecution(key), execution);
   EXPECT_EQ(kk::getLayout(key), layout);
   EXPECT_EQ(kk::getDType(key), dtype);
@@ -43,12 +43,12 @@ TEST(KernelKey, RoundTripPreservesValues) {
 // KernelKey decoding tests
 // ============================================================
 
-TEST(KernelKey, GetOpIdExtractsCorrectBits) {
+TEST(KernelKey, getOpExtractsCorrectBits) {
   auto key = kk::make(static_cast<Op>(0xABCD), Execution::Cpu,
                       static_cast<kernel::Layout>(0), DType::F32,
                       static_cast<kernel::Variant>(0));
 
-  EXPECT_EQ(static_cast<std::uint64_t>(kk::getOpId(key)), 0xABCD);
+  EXPECT_EQ(static_cast<std::uint64_t>(kk::getOp(key)), 0xABCD);
 }
 
 TEST(KernelKey, GetExecutionExtractsCorrectBits) {
@@ -199,7 +199,7 @@ TEST(KernelKey, MaxValuesBoundary) {
                static_cast<kernel::Layout>(0xFF), static_cast<DType>(0xFFFF),
                static_cast<kernel::Variant>(0xFF));
 
-  EXPECT_EQ(static_cast<std::uint64_t>(kk::getOpId(key)), 0xFFFF);
+  EXPECT_EQ(static_cast<std::uint64_t>(kk::getOp(key)), 0xFFFF);
   EXPECT_EQ(static_cast<std::uint64_t>(kk::getExecution(key)), 0xF);
   EXPECT_EQ(static_cast<std::uint64_t>(kk::getLayout(key)), 0xFF);
   EXPECT_EQ(static_cast<std::uint64_t>(kk::getDType(key)), 0xFFFF);
@@ -212,7 +212,7 @@ TEST(KernelKey, ZeroValues) {
                       static_cast<kernel::Variant>(0));
 
   EXPECT_EQ(static_cast<std::uint64_t>(key), 0);
-  EXPECT_EQ(static_cast<std::uint64_t>(kk::getOpId(key)), 0);
+  EXPECT_EQ(static_cast<std::uint64_t>(kk::getOp(key)), 0);
   EXPECT_EQ(static_cast<std::uint64_t>(kk::getExecution(key)), 0);
   EXPECT_EQ(static_cast<std::uint64_t>(kk::getLayout(key)), 0);
   EXPECT_EQ(static_cast<std::uint64_t>(kk::getDType(key)), 0);
@@ -228,7 +228,7 @@ TEST(KernelKey, ConstexprSupport) {
                                 static_cast<kernel::Layout>(3), DType::F32,
                                 static_cast<kernel::Variant>(1));
 
-  constexpr auto op_id = kk::getOpId(key);
+  constexpr auto op_id = kk::getOp(key);
   constexpr auto execution = kk::getExecution(key);
   constexpr auto layout = kk::getLayout(key);
   constexpr auto dtype = kk::getDType(key);

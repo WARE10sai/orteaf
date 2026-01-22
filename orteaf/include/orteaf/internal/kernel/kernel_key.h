@@ -14,7 +14,7 @@ namespace orteaf::internal::kernel {
 /**
  * @brief KernelKey enum for packed kernel identification.
  *
- * A bit-packed key that combines OpId, Execution, Layout, DType, and Variant
+ * A bit-packed key that combines Op, Execution, Layout, DType, and Variant
  * into a single 64-bit value for efficient storage and hashing.
  *
  * Bit layout (64 bits total):
@@ -22,7 +22,7 @@ namespace orteaf::internal::kernel {
  *   [55:40] DType     (16 bits) - Data type (65536 types)
  *   [39:32] Layout    (8 bits)  - Memory layout (256 patterns)
  *   [31:28] Execution (4 bits)  - Execution backend (16 backends)
- *   [27:12] OpId      (16 bits) - Operation ID (65536 operations)
+ *   [27:12] Op        (16 bits) - Operation (65536 operations)
  *   [11:0]  Reserved  (12 bits) - Reserved for future use
  */
 enum class KernelKey : std::uint64_t {};
@@ -30,14 +30,14 @@ enum class KernelKey : std::uint64_t {};
 namespace kernel_key {
 
 // Bit shift constants
-inline constexpr int kOpIdShift = 12;
+inline constexpr int kOpShift = 12;
 inline constexpr int kExecutionShift = 28;
 inline constexpr int kLayoutShift = 32;
 inline constexpr int kDTypeShift = 40;
 inline constexpr int kVariantShift = 56;
 
 // Bit mask constants
-inline constexpr std::uint64_t kOpIdMask = 0xFFFF;
+inline constexpr std::uint64_t kOpMask = 0xFFFF;
 inline constexpr std::uint64_t kExecutionMask = 0xF;
 inline constexpr std::uint64_t kLayoutMask = 0xFF;
 inline constexpr std::uint64_t kDTypeMask = 0xFFFF;
@@ -46,19 +46,19 @@ inline constexpr std::uint64_t kVariantMask = 0xFF;
 /**
  * @brief Create a KernelKey from individual components.
  *
- * @param op_id Operation identifier
+ * @param op Operation identifier
  * @param execution Execution backend
  * @param layout Memory layout pattern
  * @param dtype Data type
  * @param variant Optimization variant
  * @return Packed KernelKey
  */
-constexpr KernelKey make(::orteaf::internal::ops::Op op_id,
+constexpr KernelKey make(::orteaf::internal::ops::Op op,
                          ::orteaf::internal::execution::Execution execution,
                          Layout layout, ::orteaf::internal::DType dtype,
                          Variant variant) noexcept {
-  const std::uint64_t op_bits = (static_cast<std::uint64_t>(op_id) & kOpIdMask)
-                                << kOpIdShift;
+  const std::uint64_t op_bits = (static_cast<std::uint64_t>(op) & kOpMask)
+                                << kOpShift;
   const std::uint64_t exec_bits =
       (static_cast<std::uint64_t>(execution) & kExecutionMask)
       << kExecutionShift;
@@ -76,10 +76,10 @@ constexpr KernelKey make(::orteaf::internal::ops::Op op_id,
 /**
  * @brief Extract Op from a KernelKey.
  */
-constexpr ::orteaf::internal::ops::Op getOpId(KernelKey key) noexcept {
+constexpr ::orteaf::internal::ops::Op getOp(KernelKey key) noexcept {
   const std::uint64_t value = static_cast<std::uint64_t>(key);
-  return static_cast<::orteaf::internal::ops::Op>((value >> kOpIdShift) &
-                                                  kOpIdMask);
+  return static_cast<::orteaf::internal::ops::Op>((value >> kOpShift) &
+                                                  kOpMask);
 }
 
 /**
