@@ -4,6 +4,7 @@
 #include "orteaf/internal/kernel/mps/mps_kernel_args.h"
 #include "orteaf/internal/kernel/param.h"
 #include "orteaf/internal/kernel/param_id.h"
+#include "orteaf/internal/kernel/storage_id.h"
 
 #include "orteaf/internal/execution/mps/api/mps_execution_api.h"
 #include "orteaf/internal/execution/mps/platform/mps_slow_ops.h"
@@ -83,12 +84,16 @@ TEST(MpsKernelArgs, StorageManagement) {
 TEST(MpsKernelArgs, AddStorageLease) {
   MpsArgs args;
 
-  // Add a storage lease (using default-constructed lease for now)
+  // Add a storage lease with StorageId
   kernel::mps::MpsKernelArgs::StorageLease lease;
-  args.addStorageLease(std::move(lease), kernel::Access::Read);
+  args.addStorage(kernel::StorageId::Input0, std::move(lease));
 
   EXPECT_EQ(args.storageCount(), 1);
-  EXPECT_EQ(args.storageAccessAt(0), kernel::Access::Read);
+
+  // Verify we can find the storage by ID
+  const auto *binding = args.findStorage(kernel::StorageId::Input0);
+  ASSERT_NE(binding, nullptr);
+  EXPECT_EQ(binding->id, kernel::StorageId::Input0);
 }
 
 TEST(MpsKernelArgs, ParamListIteration) {

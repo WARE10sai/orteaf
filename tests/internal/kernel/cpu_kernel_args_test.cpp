@@ -3,6 +3,7 @@
 #include "orteaf/internal/kernel/kernel_args.h"
 #include "orteaf/internal/kernel/param.h"
 #include "orteaf/internal/kernel/param_id.h"
+#include "orteaf/internal/kernel/storage_id.h"
 
 #include "orteaf/internal/execution/cpu/api/cpu_execution_api.h"
 #include "orteaf/internal/execution_context/cpu/current_context.h"
@@ -92,12 +93,16 @@ TEST(CpuKernelArgs, StorageManagement) {
 TEST(CpuKernelArgs, AddStorageLease) {
   CpuArgs args;
 
-  // Add a storage lease (using default-constructed lease for now)
+  // Add a storage lease with StorageId
   kernel::cpu::CpuKernelArgs::StorageLease lease;
-  args.addStorageLease(std::move(lease), kernel::Access::ReadWrite);
+  args.addStorage(kernel::StorageId::InOut, std::move(lease));
 
   EXPECT_EQ(args.storageCount(), 1);
-  EXPECT_EQ(args.storageAccessAt(0), kernel::Access::ReadWrite);
+
+  // Verify we can find the storage by ID
+  const auto *binding = args.findStorage(kernel::StorageId::InOut);
+  ASSERT_NE(binding, nullptr);
+  EXPECT_EQ(binding->id, kernel::StorageId::InOut);
 }
 
 TEST(CpuKernelArgs, ParamListIteration) {
