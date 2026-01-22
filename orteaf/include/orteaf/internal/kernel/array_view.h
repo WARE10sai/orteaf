@@ -88,10 +88,14 @@ namespace std {
 template <typename T> struct hash<::orteaf::internal::kernel::ArrayView<T>> {
   std::size_t operator()(
       const ::orteaf::internal::kernel::ArrayView<T> &view) const noexcept {
-    // Combine hash of pointer and count
+    // Combine hash of pointer and count (boost::hash_combine style).
     std::size_t h1 = std::hash<const T *>{}(view.data);
     std::size_t h2 = std::hash<std::size_t>{}(view.count);
-    return h1 ^ (h2 << 1);
+    constexpr std::size_t kHashMix =
+        static_cast<std::size_t>(0x9e3779b97f4a7c15ULL);
+    std::size_t seed = h1;
+    seed ^= h2 + kHashMix + (seed << 6) + (seed >> 2);
+    return seed;
   }
 };
 
