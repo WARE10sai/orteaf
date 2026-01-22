@@ -1,0 +1,321 @@
+#include "orteaf/internal/kernel/param_id.h"
+
+#include <gtest/gtest.h>
+
+#include <orteaf/kernel/param_id_tables.h>
+
+#include <unordered_map>
+#include <unordered_set>
+
+namespace kernel = orteaf::internal::kernel;
+namespace param_tables = orteaf::generated::param_id_tables;
+
+// ============================================================
+// ParamId basic functionality tests
+// ============================================================
+
+TEST(ParamId, DefaultConstructedIsZero) {
+  kernel::ParamId param_id{};
+  EXPECT_EQ(static_cast<std::uint64_t>(param_id), 0);
+}
+
+TEST(ParamId, ExplicitConstructionWithValue) {
+  kernel::ParamId param_id{static_cast<kernel::ParamId>(42)};
+  EXPECT_EQ(static_cast<std::uint64_t>(param_id), 42);
+}
+
+TEST(ParamId, StaticCastFromInteger) {
+  auto param_id = static_cast<kernel::ParamId>(123);
+  EXPECT_EQ(static_cast<std::uint64_t>(param_id), 123);
+}
+
+TEST(ParamId, StaticCastToInteger) {
+  kernel::ParamId param_id = static_cast<kernel::ParamId>(456);
+  std::uint64_t value = static_cast<std::uint64_t>(param_id);
+  EXPECT_EQ(value, 456);
+}
+
+// ============================================================
+// ParamId enum values from generated code
+// ============================================================
+
+TEST(ParamId, GeneratedEnumValuesExist) {
+  // Test that generated enum values can be used
+  kernel::ParamId input = kernel::ParamId::Input;
+  kernel::ParamId output = kernel::ParamId::Output;
+  kernel::ParamId alpha = kernel::ParamId::Alpha;
+
+  EXPECT_EQ(static_cast<std::uint64_t>(input), 0);
+  EXPECT_EQ(static_cast<std::uint64_t>(output), 1);
+  EXPECT_EQ(static_cast<std::uint64_t>(alpha), 10);
+}
+
+TEST(ParamId, AllDefinedParametersHaveCorrectValues) {
+  EXPECT_EQ(static_cast<std::uint64_t>(kernel::ParamId::Input), 0);
+  EXPECT_EQ(static_cast<std::uint64_t>(kernel::ParamId::Output), 1);
+  EXPECT_EQ(static_cast<std::uint64_t>(kernel::ParamId::Input0), 2);
+  EXPECT_EQ(static_cast<std::uint64_t>(kernel::ParamId::Input1), 3);
+  EXPECT_EQ(static_cast<std::uint64_t>(kernel::ParamId::Input2), 4);
+  EXPECT_EQ(static_cast<std::uint64_t>(kernel::ParamId::Alpha), 10);
+  EXPECT_EQ(static_cast<std::uint64_t>(kernel::ParamId::Beta), 11);
+  EXPECT_EQ(static_cast<std::uint64_t>(kernel::ParamId::Scale), 12);
+  EXPECT_EQ(static_cast<std::uint64_t>(kernel::ParamId::Epsilon), 13);
+  EXPECT_EQ(static_cast<std::uint64_t>(kernel::ParamId::Axis), 20);
+  EXPECT_EQ(static_cast<std::uint64_t>(kernel::ParamId::Dim), 21);
+  EXPECT_EQ(static_cast<std::uint64_t>(kernel::ParamId::Count), 22);
+  EXPECT_EQ(static_cast<std::uint64_t>(kernel::ParamId::BufferPtr), 30);
+  EXPECT_EQ(static_cast<std::uint64_t>(kernel::ParamId::DataPtr), 31);
+}
+
+// ============================================================
+// ParamId comparison operator tests
+// ============================================================
+
+TEST(ParamId, EqualityOperator) {
+  kernel::ParamId param_id1 = kernel::ParamId::Input;
+  kernel::ParamId param_id2 = kernel::ParamId::Input;
+  kernel::ParamId param_id3 = kernel::ParamId::Output;
+
+  EXPECT_TRUE(param_id1 == param_id2);
+  EXPECT_FALSE(param_id1 == param_id3);
+}
+
+TEST(ParamId, InequalityOperator) {
+  kernel::ParamId param_id1 = kernel::ParamId::Input;
+  kernel::ParamId param_id2 = kernel::ParamId::Input;
+  kernel::ParamId param_id3 = kernel::ParamId::Output;
+
+  EXPECT_FALSE(param_id1 != param_id2);
+  EXPECT_TRUE(param_id1 != param_id3);
+}
+
+TEST(ParamId, LessThanOperator) {
+  kernel::ParamId param_id1 = kernel::ParamId::Input; // 0
+  kernel::ParamId param_id2 = kernel::ParamId::Alpha; // 10
+
+  EXPECT_TRUE(param_id1 < param_id2);
+  EXPECT_FALSE(param_id2 < param_id1);
+  EXPECT_FALSE(param_id1 < param_id1);
+}
+
+TEST(ParamId, LessThanOrEqualOperator) {
+  kernel::ParamId param_id1 = kernel::ParamId::Input; // 0
+  kernel::ParamId param_id2 = kernel::ParamId::Alpha; // 10
+  kernel::ParamId param_id3 = kernel::ParamId::Input; // 0
+
+  EXPECT_TRUE(param_id1 <= param_id2);
+  EXPECT_TRUE(param_id1 <= param_id3);
+  EXPECT_FALSE(param_id2 <= param_id1);
+}
+
+TEST(ParamId, GreaterThanOperator) {
+  kernel::ParamId param_id1 = kernel::ParamId::Input; // 0
+  kernel::ParamId param_id2 = kernel::ParamId::Alpha; // 10
+
+  EXPECT_TRUE(param_id2 > param_id1);
+  EXPECT_FALSE(param_id1 > param_id2);
+  EXPECT_FALSE(param_id1 > param_id1);
+}
+
+TEST(ParamId, GreaterThanOrEqualOperator) {
+  kernel::ParamId param_id1 = kernel::ParamId::Input; // 0
+  kernel::ParamId param_id2 = kernel::ParamId::Alpha; // 10
+  kernel::ParamId param_id3 = kernel::ParamId::Input; // 0
+
+  EXPECT_TRUE(param_id2 >= param_id1);
+  EXPECT_TRUE(param_id1 >= param_id3);
+  EXPECT_FALSE(param_id1 >= param_id2);
+}
+
+// ============================================================
+// ParamId hash support tests
+// ============================================================
+
+TEST(ParamId, HashSupport) {
+  kernel::ParamId param_id1 = kernel::ParamId::Input;
+  kernel::ParamId param_id2 = kernel::ParamId::Input;
+  kernel::ParamId param_id3 = kernel::ParamId::Output;
+
+  std::hash<kernel::ParamId> hasher;
+
+  // Same values should produce same hash
+  EXPECT_EQ(hasher(param_id1), hasher(param_id2));
+
+  // Different values should (very likely) produce different hashes
+  EXPECT_NE(hasher(param_id1), hasher(param_id3));
+}
+
+TEST(ParamId, UnorderedSetUsage) {
+  std::unordered_set<kernel::ParamId> param_id_set;
+
+  kernel::ParamId param_id1 = kernel::ParamId::Input;
+  kernel::ParamId param_id2 = kernel::ParamId::Output;
+  kernel::ParamId param_id3 = kernel::ParamId::Input; // Same as param_id1
+
+  param_id_set.insert(param_id1);
+  param_id_set.insert(param_id2);
+  param_id_set.insert(param_id3); // Should not increase size
+
+  EXPECT_EQ(param_id_set.size(), 2);
+  EXPECT_TRUE(param_id_set.count(param_id1) > 0);
+  EXPECT_TRUE(param_id_set.count(param_id2) > 0);
+  EXPECT_TRUE(param_id_set.count(param_id3) > 0); // Same as param_id1
+}
+
+TEST(ParamId, UnorderedMapUsage) {
+  std::unordered_map<kernel::ParamId, std::string> param_id_map;
+
+  kernel::ParamId param_id1 = kernel::ParamId::Input;
+  kernel::ParamId param_id2 = kernel::ParamId::Alpha;
+
+  param_id_map[param_id1] = "Input tensor";
+  param_id_map[param_id2] = "Alpha scalar";
+
+  EXPECT_EQ(param_id_map.size(), 2);
+  EXPECT_EQ(param_id_map[param_id1], "Input tensor");
+  EXPECT_EQ(param_id_map[param_id2], "Alpha scalar");
+
+  // Overwrite existing key
+  param_id_map[param_id1] = "Updated Input";
+  EXPECT_EQ(param_id_map.size(), 2);
+  EXPECT_EQ(param_id_map[param_id1], "Updated Input");
+}
+
+// ============================================================
+// ParamId constexpr tests
+// ============================================================
+
+TEST(ParamId, ConstexprSupport) {
+  constexpr kernel::ParamId param_id1{};
+  static_assert(static_cast<std::uint64_t>(param_id1) == 0);
+
+  constexpr kernel::ParamId param_id2 = kernel::ParamId::Input;
+  static_assert(static_cast<std::uint64_t>(param_id2) == 0);
+
+  constexpr kernel::ParamId param_id3 = kernel::ParamId::Alpha;
+  static_assert(static_cast<std::uint64_t>(param_id3) == 10);
+
+  static_assert(param_id2 == kernel::ParamId::Input);
+  static_assert(!(param_id2 != kernel::ParamId::Input));
+}
+
+// ============================================================
+// ParamId generated tables tests
+// ============================================================
+
+TEST(ParamIdTables, ParamIdCountCorrect) {
+  EXPECT_EQ(param_tables::kParamIdCount, 14);
+}
+
+TEST(ParamIdTables, DescriptionsTableSize) {
+  EXPECT_EQ(param_tables::kParamIdDescriptions.size(),
+            param_tables::kParamIdCount);
+}
+
+TEST(ParamIdTables, CppTypesTableSize) {
+  EXPECT_EQ(param_tables::kParamIdCppTypes.size(), param_tables::kParamIdCount);
+}
+
+TEST(ParamIdTables, DescriptionsAreNonEmpty) {
+  for (const auto &desc : param_tables::kParamIdDescriptions) {
+    EXPECT_FALSE(desc.empty());
+  }
+}
+
+TEST(ParamIdTables, CppTypesAreNonEmpty) {
+  for (const auto &type : param_tables::kParamIdCppTypes) {
+    EXPECT_FALSE(type.empty());
+  }
+}
+
+TEST(ParamIdTables, SampleDescriptions) {
+  // Index 0 = Input
+  EXPECT_EQ(param_tables::kParamIdDescriptions[0], "Input tensor parameter");
+  // Index 1 = Output
+  EXPECT_EQ(param_tables::kParamIdDescriptions[1], "Output tensor parameter");
+}
+
+TEST(ParamIdTables, SampleCppTypes) {
+  // Index 0 = Input (Tensor)
+  EXPECT_EQ(param_tables::kParamIdCppTypes[0], "Tensor");
+  // Index 6 = Alpha (float)
+  EXPECT_EQ(param_tables::kParamIdCppTypes[6], "float");
+}
+
+// ============================================================
+// ParamTypeInfo tests
+// ============================================================
+
+TEST(ParamTypeInfo, InputHasCorrectTypeName) {
+  using InputInfo = param_tables::ParamTypeInfo<kernel::ParamId::Input>;
+  EXPECT_EQ(InputInfo::kTypeName, "Tensor");
+  EXPECT_FALSE(InputInfo::kDescription.empty());
+}
+
+TEST(ParamTypeInfo, AlphaHasFloatTypeName) {
+  using AlphaInfo = param_tables::ParamTypeInfo<kernel::ParamId::Alpha>;
+  EXPECT_EQ(AlphaInfo::kTypeName, "float");
+  EXPECT_FALSE(AlphaInfo::kDescription.empty());
+}
+
+TEST(ParamTypeInfo, ScaleHasDoubleTypeName) {
+  using ScaleInfo = param_tables::ParamTypeInfo<kernel::ParamId::Scale>;
+  EXPECT_EQ(ScaleInfo::kTypeName, "double");
+}
+
+TEST(ParamTypeInfo, AxisHasIntTypeName) {
+  using AxisInfo = param_tables::ParamTypeInfo<kernel::ParamId::Axis>;
+  EXPECT_EQ(AxisInfo::kTypeName, "int");
+}
+
+TEST(ParamTypeInfo, DimHasSizeTTypeName) {
+  using DimInfo = param_tables::ParamTypeInfo<kernel::ParamId::Dim>;
+  EXPECT_EQ(DimInfo::kTypeName, "std::size_t");
+}
+
+TEST(ParamTypeInfo, BufferPtrHasVoidPtrTypeName) {
+  using BufferPtrInfo = param_tables::ParamTypeInfo<kernel::ParamId::BufferPtr>;
+  EXPECT_EQ(BufferPtrInfo::kTypeName, "void*");
+}
+
+TEST(ParamTypeInfo, AllTypeInfoHaveDescription) {
+  // Test all ParamTypeInfo have non-empty descriptions
+  EXPECT_FALSE(param_tables::ParamTypeInfo<kernel::ParamId::Input>::kDescription
+                   .empty());
+  EXPECT_FALSE(
+      param_tables::ParamTypeInfo<kernel::ParamId::Output>::kDescription
+          .empty());
+  EXPECT_FALSE(param_tables::ParamTypeInfo<kernel::ParamId::Alpha>::kDescription
+                   .empty());
+  EXPECT_FALSE(
+      param_tables::ParamTypeInfo<kernel::ParamId::Beta>::kDescription.empty());
+  EXPECT_FALSE(
+      param_tables::ParamTypeInfo<kernel::ParamId::Axis>::kDescription.empty());
+}
+
+// ============================================================
+// ParamId practical use case tests
+// ============================================================
+
+TEST(ParamId, PracticalKernelParameterRegistry) {
+  // Simulate a parameter registry for kernel function signatures
+  std::unordered_map<kernel::ParamId, std::string> param_registry;
+
+  param_registry[kernel::ParamId::Input] = "input_tensor";
+  param_registry[kernel::ParamId::Output] = "output_tensor";
+  param_registry[kernel::ParamId::Alpha] = "alpha_scale";
+
+  EXPECT_EQ(param_registry.size(), 3);
+  EXPECT_EQ(param_registry[kernel::ParamId::Input], "input_tensor");
+  EXPECT_EQ(param_registry[kernel::ParamId::Alpha], "alpha_scale");
+}
+
+TEST(ParamId, TypeNameLookup) {
+  // Demonstrate type name lookup using ParamTypeInfo
+  using AlphaInfo = param_tables::ParamTypeInfo<kernel::ParamId::Alpha>;
+  using BetaInfo = param_tables::ParamTypeInfo<kernel::ParamId::Beta>;
+
+  // Both should be float
+  EXPECT_EQ(AlphaInfo::kTypeName, "float");
+  EXPECT_EQ(BetaInfo::kTypeName, "float");
+}

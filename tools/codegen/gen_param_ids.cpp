@@ -238,8 +238,7 @@ GeneratedData GenerateOutputs(const ResolvedConfig &resolved) {
   header_stream << "#include <array>\n";
   header_stream << "#include <cstddef>\n";
   header_stream << "#include <cstdint>\n";
-  header_stream << "#include <string_view>\n";
-  header_stream << "#include <type_traits>\n\n";
+  header_stream << "#include <string_view>\n\n";
   header_stream << "namespace orteaf::internal::kernel {\n";
   header_stream << "enum class ParamId : std::uint64_t;\n";
   header_stream << "}  // namespace orteaf::internal::kernel\n\n";
@@ -265,15 +264,17 @@ GeneratedData GenerateOutputs(const ResolvedConfig &resolved) {
   }
   header_stream << "};\n\n";
 
-  // Type traits (template specializations for each ParamId)
-  header_stream << "// Type traits for each ParamId\n";
+  // Type info (template specializations for each ParamId)
+  // Uses string-based type names to avoid requiring all types to be defined
+  header_stream << "// Type info for each ParamId\n";
   header_stream << "template <ParamId ID>\n";
-  header_stream << "struct ParamTraits;\n\n";
+  header_stream << "struct ParamTypeInfo;\n\n";
 
   for (const auto &param : resolved.params) {
     header_stream << "template <>\n";
-    header_stream << "struct ParamTraits<ParamId::" << param.id << "> {\n";
-    header_stream << "    using Type = " << param.cpp_type << ";\n";
+    header_stream << "struct ParamTypeInfo<ParamId::" << param.id << "> {\n";
+    header_stream << "    static constexpr std::string_view kTypeName = \""
+                  << EscapeStringLiteral(param.cpp_type) << "\";\n";
     header_stream << "    static constexpr std::string_view kDescription = \""
                   << EscapeStringLiteral(param.description) << "\";\n";
     header_stream << "};\n\n";
