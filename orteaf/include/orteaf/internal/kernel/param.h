@@ -139,8 +139,12 @@ template <> struct hash<::orteaf::internal::kernel::Param> {
     std::size_t h2 = std::visit(
         [](const auto &v) { return std::hash<std::decay_t<decltype(v)>>{}(v); },
         param.value());
-    // Simple hash combination
-    return h1 ^ (h2 << 1);
+    // Robust hash combination (boost::hash_combine style).
+    constexpr std::size_t kHashMix =
+        static_cast<std::size_t>(0x9e3779b97f4a7c15ULL);
+    std::size_t seed = h1;
+    seed ^= h2 + kHashMix + (seed << 6) + (seed >> 2);
+    return seed;
   }
 };
 
