@@ -229,10 +229,12 @@ void extractFields(const KernelArgs &args, Fields &...fields) {
 } // namespace orteaf::internal::kernel
 
 /**
- * @brief Macro to generate extractAllFields() implementation.
+ * @brief Macro to generate extractAllFields() and bindAll() implementations.
  *
- * Automatically generates the extraction logic for all listed fields.
- * Each field's extract() method is called in sequence.
+ * Automatically generates the extraction logic for all listed fields,
+ * and a bindAll() method to bind all parameters to an encoder at once.
+ * Each field's extract() method is called in sequence during extraction.
+ * Fields are bound to sequential indices starting from start_index.
  *
  * Usage:
  * @code
@@ -243,10 +245,18 @@ void extractFields(const KernelArgs &args, Fields &...fields) {
  *
  *   ORTEAF_EXTRACT_FIELDS(alpha, beta, dim)
  * };
+ *
+ * auto params = MyParams::extract(args);
+ * params.bindAll(base, encoder, 0);  // Binds alpha@0, beta@1, dim@2
  * @endcode
  */
 #define ORTEAF_EXTRACT_FIELDS(...)                                             \
   template <typename KernelArgs>                                               \
   void extractAllFields(const KernelArgs &args) {                              \
     ::orteaf::internal::kernel::detail::extractFields(args, __VA_ARGS__);     \
+  }                                                                             \
+  template <typename Base, typename Encoder>                                   \
+  void bindAll(const Base &base, Encoder encoder, std::size_t start_index = 0) const { \
+    std::size_t _orteaf_idx = start_index;                                     \
+    ((base.setParam(encoder, __VA_ARGS__, _orteaf_idx++)), ...);               \
   }

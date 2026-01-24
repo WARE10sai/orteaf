@@ -239,10 +239,12 @@ void extractStorages(const KernelArgs &args, Fields &...fields) {
 } // namespace orteaf::internal::kernel
 
 /**
- * @brief Macro to generate extractAllStorages() implementation.
+ * @brief Macro to generate extractAllStorages() and bindAll() implementations.
  *
- * Automatically generates the extraction logic for all listed storage fields.
- * Each field's extract() method is called in sequence.
+ * Automatically generates the extraction logic for all listed storage fields,
+ * and a bindAll() method to bind all storages to an encoder at once.
+ * Each field's extract() method is called in sequence during extraction.
+ * Fields are bound to sequential indices starting from start_index.
  *
  * Usage:
  * @code
@@ -253,10 +255,18 @@ void extractStorages(const KernelArgs &args, Fields &...fields) {
  *
  *   ORTEAF_EXTRACT_STORAGES(input, output, workspace)
  * };
+ *
+ * auto storages = MyStorages::extract(args);
+ * storages.bindAll(base, encoder, 0);  // Binds input@0, output@1, workspace@2
  * @endcode
  */
 #define ORTEAF_EXTRACT_STORAGES(...)                                           \
   template <typename KernelArgs>                                               \
   void extractAllStorages(const KernelArgs &args) {                            \
     ::orteaf::internal::kernel::detail::extractStorages(args, __VA_ARGS__);   \
+  }                                                                             \
+  template <typename Base, typename Encoder>                                   \
+  void bindAll(const Base &base, Encoder encoder, std::size_t start_index = 0) const { \
+    std::size_t _orteaf_idx = start_index;                                     \
+    ((base.setBuffer(encoder, __VA_ARGS__, _orteaf_idx++)), ...);              \
   }

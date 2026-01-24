@@ -16,6 +16,9 @@
 #include "orteaf/internal/execution/mps/platform/wrapper/mps_size.h"
 #include "orteaf/internal/execution_context/mps/context.h"
 #include "orteaf/internal/kernel/param.h"
+#include "orteaf/internal/kernel/kernel_param_schema.h"
+#include "orteaf/internal/kernel/kernel_storage_schema.h"
+#include "orteaf/internal/kernel/mps/mps_storage_binding.h"
 #include "orteaf/internal/storage/mps/mps_storage.h"
 
 namespace orteaf::internal::kernel::mps {
@@ -237,6 +240,31 @@ struct MpsKernelBase {
   }
 
   /**
+   * @brief Set a buffer from a storage field.
+   *
+   * Retrieves the storage from a StorageField and binds it to the encoder.
+   * This is a convenience method for use with kernel storage schemas.
+   *
+   * @tparam ID Storage identifier
+   * @param encoder Compute command encoder to bind the buffer to
+   * @param field Storage field from a storage schema
+   * @param index Binding index for the buffer
+   */
+  template <::orteaf::internal::kernel::StorageId ID>
+  void setBuffer(
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
+          encoder,
+      const ::orteaf::internal::kernel::StorageField<ID> &field,
+      std::size_t index) const {
+    if (encoder == nullptr) {
+      return;
+    }
+    const auto &binding = field.template binding<MpsStorageBinding>();
+    const auto &storage = binding.lease;
+    setBuffer(encoder, storage, index);
+  }
+
+  /**
    * @brief Set bytes on the compute command encoder.
    *
    * Binds raw bytes to the encoder at the specified index.
@@ -285,6 +313,30 @@ struct MpsKernelBase {
       ::orteaf::internal::execution::mps::platform::wrapper::setBytes(
           encoder, &value, sizeof(T), index);
     });
+  }
+
+  /**
+   * @brief Set a parameter from a field.
+   *
+   * Retrieves the value from a Field and binds it to the encoder as bytes.
+   * This is a convenience method for use with kernel parameter schemas.
+   *
+   * @tparam ID Parameter identifier
+   * @tparam T Parameter value type
+   * @param encoder Compute command encoder to bind the bytes to
+   * @param field Parameter field from a parameter schema
+   * @param index Binding index for the data
+   */
+  template <::orteaf::internal::kernel::ParamId ID, typename T>
+  void setParam(
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
+          encoder,
+      const ::orteaf::internal::kernel::Field<ID, T> &field,
+      std::size_t index) const {
+    if (encoder == nullptr) {
+      return;
+    }
+    setBytes(encoder, &field.value, sizeof(T), index);
   }
 
   /**
