@@ -591,6 +591,55 @@ TEST(MpsKernelBaseTest, DispatchThreadsWithNullptrEncoderDoesNotCrash) {
   base.dispatchThreads(nullptr, threads_per_grid, threads_per_threadgroup);
 }
 
+// =============================================================================
+// GPU Timing Tests
+// =============================================================================
+
+TEST(MpsKernelBaseTest, GetGPUTimesWithNullptrReturnsZero) {
+  mps_kernel::MpsKernelBase base;
+
+  // Should return 0.0 for null command buffer
+  EXPECT_EQ(base.getGPUStartTime(nullptr), 0.0);
+  EXPECT_EQ(base.getGPUEndTime(nullptr), 0.0);
+  EXPECT_EQ(base.getGPUDuration(nullptr), 0.0);
+}
+
+#if ORTEAF_ENABLE_MPS
+TEST(MpsKernelBaseTest, GetGPUTimesWithUnscheduledBufferReturnsZero) {
+  mps_kernel::MpsKernelBase base;
+
+  // Create a real device
+  auto device = mps_wrapper::getDevice();
+  if (device == nullptr) {
+    GTEST_SKIP() << "No Metal devices available";
+  }
+
+  // Create command queue and buffer
+  auto queue = mps_wrapper::createCommandQueue(device);
+  if (queue == nullptr) {
+    mps_wrapper::deviceRelease(device);
+    GTEST_SKIP() << "Failed to create command queue";
+  }
+
+  auto cmd_buffer = mps_wrapper::createCommandBuffer(queue);
+  if (cmd_buffer == nullptr) {
+    mps_wrapper::destroyCommandQueue(queue);
+    mps_wrapper::deviceRelease(device);
+    GTEST_SKIP() << "Failed to create command buffer";
+  }
+
+  // Unscheduled buffer should return 0.0
+  EXPECT_EQ(base.getGPUStartTime(cmd_buffer), 0.0);
+  EXPECT_EQ(base.getGPUEndTime(cmd_buffer), 0.0);
+  EXPECT_EQ(base.getGPUDuration(cmd_buffer), 0.0);
+
+  // Cleanup
+  mps_wrapper::destroyCommandBuffer(cmd_buffer);
+  mps_wrapper::destroyCommandQueue(queue);
+  mps_wrapper::deviceRelease(device);
+}
+#endif
+
 // Note: Actual dispatch requires a valid pipeline state to be set,
 // which requires shader compilation. These tests only verify the
 // method calls don't crash with valid encoders.

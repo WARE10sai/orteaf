@@ -308,6 +308,54 @@ struct MpsKernelBase {
         encoder, threads_per_grid, threads_per_threadgroup);
   }
 
+  /**
+   * @brief Get the GPU start time of a command buffer (in seconds).
+   *
+   * Returns the time when the GPU started executing the command buffer.
+   * Only valid after the command buffer has been scheduled.
+   *
+   * @param command_buffer Command buffer to query
+   * @return GPU start time in seconds, or 0.0 if not available
+   */
+  double getGPUStartTime(
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsCommandBuffer_t
+          command_buffer) const {
+    return ::orteaf::internal::execution::mps::platform::wrapper::
+        getGPUStartTime(command_buffer);
+  }
+
+  /**
+   * @brief Get the GPU end time of a command buffer (in seconds).
+   *
+   * Returns the time when the GPU finished executing the command buffer.
+   * Only valid after the command buffer has completed.
+   *
+   * @param command_buffer Command buffer to query
+   * @return GPU end time in seconds, or 0.0 if not available
+   */
+  double getGPUEndTime(
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsCommandBuffer_t
+          command_buffer) const {
+    return ::orteaf::internal::execution::mps::platform::wrapper::
+        getGPUEndTime(command_buffer);
+  }
+
+  /**
+   * @brief Get the GPU execution duration of a command buffer (in seconds).
+   *
+   * Returns the elapsed time between GPU start and end.
+   * Only valid after the command buffer has completed.
+   *
+   * @param command_buffer Command buffer to query
+   * @return GPU execution duration in seconds, or 0.0 if not available
+   */
+  double getGPUDuration(
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsCommandBuffer_t
+          command_buffer) const {
+    return ::orteaf::internal::execution::mps::platform::wrapper::
+        getGPUDuration(command_buffer);
+  }
+
 #if ORTEAF_ENABLE_TESTING
   ::orteaf::internal::base::HeapVector<Key> &keysForTest() noexcept {
     return keys_;
