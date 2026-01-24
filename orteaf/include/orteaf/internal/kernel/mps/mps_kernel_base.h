@@ -624,19 +624,35 @@ struct MpsKernelBase {
   /**
    * @brief Update fence and reuse tokens for all output storages after kernel execution.
    *
-   * Updates tokens on all output storages (Write/ReadWrite access patterns).
-   * This ensures that subsequent operations will wait for this kernel to complete.
+   * Acquires a fence lease internally, updates it on the encoder, and then updates tokens
+   * on all output storages (Write/ReadWrite access patterns). This ensures that subsequent
+   * operations will wait for this kernel to complete.
    *
    * @tparam StorageBinding The storage binding type (MpsStorageBinding)
-   * @tparam FenceLease Fence lease type
    * @tparam Fields Storage field types
-   * @param fence_lease Fence lease acquired for this kernel
+   * @param context Execution context containing the command queue
+   * @param command_buffer Command buffer being executed
+   * @param encoder Compute command encoder to update the fence on
    * @param fields Storage fields to update tokens on
    */
-  template <typename StorageBinding, typename FenceLease, typename... Fields>
+  template <typename StorageBinding, typename... Fields>
   void updateAllStorageTokens(
-      FenceLease &fence_lease,
+      ::orteaf::internal::execution_context::mps::Context &context,
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsCommandBuffer_t
+          command_buffer,
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
+          encoder,
       Fields &...fields) const {
+    // Acquire fence lease for this kernel execution
+    auto fence_lease = acquireFence(context, command_buffer);
+    
+    // Update fence on encoder so it signals when kernel completes
+    auto *payload = fence_lease.operator->();
+    if (payload && payload->hasFence()) {
+      updateFence(encoder, payload->fence());
+    }
+    
+    // Update all storage tokens
     (updateStorageToken<StorageBinding>(fence_lease, fields), ...);
   }
 

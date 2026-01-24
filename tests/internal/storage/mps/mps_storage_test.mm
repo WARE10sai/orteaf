@@ -172,7 +172,7 @@ protected:
     if (payload != nullptr) {
       payload->setCommandQueueHandle(mps::MpsCommandQueueHandle{1});
     }
-    token.addOrReplaceLease(std::move(lease));
+    token.setWriteFence(std::move(lease));
     return token;
   }
 
@@ -184,7 +184,7 @@ protected:
 
 TEST_F(MpsStorageFenceTokenTest, BuilderWithFenceTokenCreatesStorage) {
   auto token = createFenceToken();
-  EXPECT_EQ(token.size(), 1u);
+  EXPECT_TRUE(token.hasWriteFence());
 
   // Builder should accept the fence token
   auto builder =
@@ -194,19 +194,19 @@ TEST_F(MpsStorageFenceTokenTest, BuilderWithFenceTokenCreatesStorage) {
 
 TEST_F(MpsStorageFenceTokenTest, FenceTokenCopyPreservesLeases) {
   auto token = createFenceToken();
-  EXPECT_EQ(token.size(), 1u);
+  EXPECT_TRUE(token.hasWriteFence());
 
   FenceToken copied = token;
-  EXPECT_EQ(copied.size(), 1u);
-  EXPECT_EQ(token.size(), 1u);
+  EXPECT_TRUE(copied.hasWriteFence());
+  EXPECT_TRUE(token.hasWriteFence());
 }
 
 TEST_F(MpsStorageFenceTokenTest, FenceTokenMoveTransfersLeases) {
   auto token = createFenceToken();
-  EXPECT_EQ(token.size(), 1u);
+  EXPECT_TRUE(token.hasWriteFence());
 
   FenceToken moved = std::move(token);
-  EXPECT_EQ(moved.size(), 1u);
+  EXPECT_TRUE(moved.hasWriteFence());
   EXPECT_TRUE(token.empty());
 }
 
