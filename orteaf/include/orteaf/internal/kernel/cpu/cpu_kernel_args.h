@@ -4,8 +4,8 @@
 #include <cstring>
 #include <utility>
 
-#include <orteaf/internal/base/small_vector.h>
 #include <orteaf/internal/kernel/param.h>
+#include <orteaf/internal/kernel/storage_list.h>
 
 #include <orteaf/internal/execution_context/cpu/context.h>
 #include <orteaf/internal/kernel/access.h>
@@ -27,6 +27,7 @@ class CpuKernelArgs {
 public:
   using Context = ::orteaf::internal::execution_context::cpu::Context;
   using StorageLease = ::orteaf::internal::storage::CpuStorageLease;
+  using StorageListType = StorageList<CpuStorageBinding>;
 
   // Inline capacities; SmallVector can grow beyond these values.
   static constexpr std::size_t kMaxBindings = 16;
@@ -64,7 +65,7 @@ public:
    * @param lease Storage lease to bind
    */
   void addStorage(StorageId id, StorageLease lease) {
-    storages_.pushBack(CpuStorageBinding{id, std::move(lease)});
+    storages_.add(CpuStorageBinding{id, std::move(lease)});
   }
 
   /**
@@ -74,30 +75,25 @@ public:
    * @return Pointer to CpuStorageBinding if found, nullptr otherwise
    */
   const CpuStorageBinding *findStorage(StorageId id) const {
-    for (const auto &binding : storages_) {
-      if (binding.id == id) {
-        return &binding;
-      }
-    }
-    return nullptr;
+    return storages_.find(id);
   }
 
   /**
    * @brief Find a storage binding by ID (mutable version).
    */
   CpuStorageBinding *findStorage(StorageId id) {
-    for (auto &binding : storages_) {
-      if (binding.id == id) {
-        return &binding;
-      }
-    }
-    return nullptr;
+    return storages_.find(id);
   }
 
   /**
    * @brief Get the list of all storage bindings.
    */
   const auto &storageList() const { return storages_; }
+
+  /**
+   * @brief Get the storage list (mutable).
+   */
+  auto &storageList() { return storages_; }
 
   /**
    * @brief Get the number of storage bindings.
@@ -141,8 +137,7 @@ public:
 
 private:
   Context context_;
-  ::orteaf::internal::base::SmallVector<CpuStorageBinding, kMaxBindings>
-      storages_{};
+  StorageListType storages_{};
   ParamList params_{};
 };
 
