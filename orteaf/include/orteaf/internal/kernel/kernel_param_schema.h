@@ -1,10 +1,10 @@
 #pragma once
 
 #include <orteaf/internal/base/small_vector.h>
+#include <orteaf/internal/diagnostics/error/error.h>
 #include <orteaf/internal/kernel/param_list.h>
 #include <orteaf/internal/kernel/param_id.h>
 
-#include <stdexcept>
 #include <utility>
 
 namespace orteaf::internal::kernel {
@@ -67,11 +67,15 @@ struct Field {
   void extract(const ParamList &params) {
     const auto *param = findParamInList(params, kId);
     if (!param) {
-      throw std::runtime_error("Required parameter not found");
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidParameter,
+          "Required parameter not found");
     }
     const auto *val = param->template tryGet<T>();
     if (!val) {
-      throw std::runtime_error("Parameter type mismatch");
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidParameter,
+          "Parameter type mismatch");
     }
     value = *val;
   }

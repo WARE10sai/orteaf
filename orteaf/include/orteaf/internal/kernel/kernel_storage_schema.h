@@ -1,9 +1,9 @@
 #pragma once
 
+#include <orteaf/internal/diagnostics/error/error.h>
 #include <orteaf/internal/kernel/storage_id.h>
 #include <orteaf/internal/kernel/storage_list.h>
 
-#include <stdexcept>
 #include <utility>
 
 namespace orteaf::internal::kernel {
@@ -40,7 +40,9 @@ struct StorageField {
   template <typename StorageBinding>
   const StorageBinding &binding() const {
     if (!binding_) {
-      throw std::runtime_error("Required storage binding not found");
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidParameter,
+          "Required storage binding not found");
     }
     return *static_cast<const StorageBinding *>(binding_);
   }
@@ -65,7 +67,9 @@ struct StorageField {
   template <typename StorageBinding>
   auto &lease() {
     if (!binding_) {
-      throw std::runtime_error("Required storage binding not found");
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidParameter,
+          "Required storage binding not found");
     }
     return const_cast<StorageBinding *>(static_cast<const StorageBinding *>(binding_))->lease;
   }
@@ -81,7 +85,9 @@ struct StorageField {
   void extract(const StorageList<StorageBinding> &storages) {
     binding_ = storages.find(kId);
     if (!binding_) {
-      throw std::runtime_error("Required storage binding not found");
+      ::orteaf::internal::diagnostics::error::throwError(
+          ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidParameter,
+          "Required storage binding not found");
     }
   }
 
