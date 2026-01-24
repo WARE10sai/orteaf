@@ -2,9 +2,7 @@
 
 #if ORTEAF_ENABLE_MPS
 
-#include <array>
 #include <cstddef>
-#include <initializer_list>
 #include <limits>
 #include <string>
 #include <utility>
@@ -19,15 +17,14 @@ namespace orteaf::internal::kernel::mps {
 /**
  * @brief Kernel base structure that caches MPS compute pipeline states.
  *
- * Template parameter N specifies the maximum number of kernel functions
- * (library/function pairs) this base can hold. Each device has its own
- * set of initialized pipeline leases.
- *
+ * Each device has its own set of initialized pipeline leases.
  * This is analogous to CUDA's CUmodule - it caches expensive-to-create
  * resources (MTLComputePipelineState) and provides them via leases for
  * kernel execution.
+ *
+ * Each MpsKernelBase can manage multiple kernels (library/function pairs).
  */
-template <std::size_t N> struct MpsKernelBase {
+struct MpsKernelBase {
   using PipelineLease =
       ::orteaf::internal::execution::mps::manager::
           MpsComputePipelineStateManager::PipelineLease;
@@ -45,17 +42,14 @@ template <std::size_t N> struct MpsKernelBase {
   MpsKernelBase() = default;
 
   /**
-   * @brief Construct with initializer list of library/function name pairs.
+   * @brief Construct with library/function pairs.
    */
   explicit MpsKernelBase(std::initializer_list<KeyLiteral> keys) {
-    std::size_t idx = 0;
+    keys_.reserve(keys.size());
     for (const auto &k : keys) {
-      if (idx >= N)
-        break;
-      keys_[idx++] = Key{LibraryKey::Named(std::string(k.library)),
-                         FunctionKey::Named(std::string(k.function))};
+      keys_.pushBack(Key{LibraryKey::Named(std::string(k.library)),
+                         FunctionKey::Named(std::string(k.function))});
     }
-    size_ = idx;
   }
 
   MpsKernelBase(const MpsKernelBase &) = delete;
@@ -92,8 +86,8 @@ template <std::size_t N> struct MpsKernelBase {
     }
     auto &entry = device_pipelines_[entry_idx];
     entry.pipelines.clear();
-    entry.pipelines.reserve(size_);
-    for (std::size_t i = 0; i < size_; ++i) {
+    entry.pipelines.reserve(keys_.size());
+    for (std::size_t i = 0; i < keys_.size(); ++i) {
       const auto &key = keys_[i];
       entry.pipelines.pushBack(
           RuntimeApi::acquirePipeline(device, key.first, key.second));
@@ -102,10 +96,9 @@ template <std::size_t N> struct MpsKernelBase {
   }
 
   /**
-   * @brief Get a mutable pipeline lease for the specified device and index.
+   * @brief Get a mutable pipeline lease for the specified device and kernel index.
    *
-   * @return Pointer to PipelineLease, or nullptr if not initialized or
-   * invalid index
+   * @return Pointer to PipelineLease, or nullptr if not initialized or invalid index
    */
   PipelineLease *
   getPipeline(::orteaf::internal::execution::mps::MpsDeviceHandle device,
@@ -120,7 +113,7 @@ template <std::size_t N> struct MpsKernelBase {
   }
 
   /**
-   * @brief Get a const pipeline lease for the specified device and index.
+   * @brief Get a const pipeline lease for the specified device and kernel index.
    */
   const PipelineLease *
   getPipeline(::orteaf::internal::execution::mps::MpsDeviceHandle device,
@@ -135,13 +128,27 @@ template <std::size_t N> struct MpsKernelBase {
   }
 
   /**
+   * @brief Add a kernel function key.
+   */
+  void addKey(const char *library, const char *function) {
+    keys_.pushBack(Key{LibraryKey::Named(std::string(library)),
+                       FunctionKey::Named(std::string(function))});
+  }
+
+  /**
+   * @brief Reserve space for kernel function keys.
+   */
+  void reserveKeys(std::size_t count) { keys_.reserve(count); }
+
+  /**
    * @brief Get the total number of kernel functions registered.
    */
-  std::size_t kernelCount() const noexcept { return size_; }
+  std::size_t kernelCount() const noexcept { return keys_.size(); }
 
-#if ORTEAF_ENABLE_TEST
-  const std::array<Key, N> &keysForTest() const noexcept { return keys_; }
-  std::size_t sizeForTest() const noexcept { return size_; }
+#if ORTEAF_ENABLE_TESTING
+  ::orteaf::internal::base::HeapVector<Key> &keysForTest() noexcept {
+    return keys_;
+  }
   std::size_t deviceCountForTest() const noexcept {
     return device_pipelines_.size();
   }
@@ -166,8 +173,7 @@ private:
   }
 
   ::orteaf::internal::base::HeapVector<DevicePipelines> device_pipelines_{};
-  std::array<Key, N> keys_{};
-  std::size_t size_{0};
+  ::orteaf::internal::base::HeapVector<Key> keys_{};
   static constexpr std::size_t kInvalidIndex =
       std::numeric_limits<std::size_t>::max();
 };

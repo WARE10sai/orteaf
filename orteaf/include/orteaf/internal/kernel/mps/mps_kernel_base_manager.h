@@ -5,14 +5,12 @@
 #include <cstddef>
 #include <string>
 #include <unordered_map>
-#include <utility>
 
 #include "orteaf/internal/base/handle.h"
 #include "orteaf/internal/base/lease/control_block/strong.h"
 #include "orteaf/internal/base/manager/lease_lifetime_registry.h"
 #include "orteaf/internal/base/manager/pool_manager.h"
 #include "orteaf/internal/base/pool/fixed_slot_store.h"
-#include "orteaf/internal/execution/mps/manager/mps_library_manager.h"
 #include "orteaf/internal/execution/mps/mps_handles.h"
 #include "orteaf/internal/kernel/mps/mps_kernel_base.h"
 
@@ -49,12 +47,10 @@ struct KernelBaseKeyHasher {
  * This manager follows the same pattern as MpsLibraryManager - it uses
  * PoolManager to manage KernelBase resources with leasing and lifetime
  * tracking.
- *
- * @tparam N Maximum number of kernels per KernelBase
  */
-template <std::size_t N> class MpsKernelBaseManager {
+class MpsKernelBaseManager {
 public:
-  using KernelBase = MpsKernelBase<N>;
+  using KernelBase = MpsKernelBase;
 
   // Payload pool traits
   struct PayloadPoolTraits {
@@ -63,7 +59,7 @@ public:
 
     struct Request {
       KernelBaseKey key{};
-      typename KernelBase::KeyLiteral *keys{nullptr};
+      KernelBase::KeyLiteral *keys{nullptr};
       std::size_t key_count{0};
     };
 
@@ -73,21 +69,10 @@ public:
     };
 
     static bool create(Payload &payload, const Request &request,
-                       const Context &) {
-      if (request.keys == nullptr || request.key_count == 0) {
-        return false;
-      }
-      // Create KernelBase with the provided keys
-      std::initializer_list<typename KernelBase::KeyLiteral> key_list(
-          request.keys, request.keys + request.key_count);
-      payload = KernelBase(key_list);
-      return true;
-    }
+                       const Context &context);
 
-    static void destroy(Payload &payload, const Request &, const Context &) {
-      // KernelBase destructor handles cleanup automatically
-      payload = KernelBase{};
-    }
+    static void destroy(Payload &payload, const Request &request,
+                        const Context &context);
   };
 
   using PayloadPool =
@@ -130,25 +115,9 @@ public:
     std::size_t payload_growth_chunk_size{1};
   };
 
-  void configure(const Config &config) {
-    typename Core::Config core_config{};
-    core_config.control_block_capacity = config.control_block_capacity;
-    core_config.control_block_block_size = config.control_block_block_size;
-    core_config.control_block_growth_chunk_size =
-        config.control_block_growth_chunk_size;
-    core_config.payload_capacity = config.payload_capacity;
-    core_config.payload_block_size = config.payload_block_size;
-    core_config.payload_growth_chunk_size = config.payload_growth_chunk_size;
-    core_.configure(core_config);
-    configured_ = true;
-  }
+  void configure(const Config &config);
 
-  void shutdown() {
-    lifetime_.clear();
-    key_to_index_.clear();
-    core_.shutdown();
-    configured_ = false;
-  }
+  void shutdown();
 
   /**
    * @brief Acquire a KernelBase by key.
@@ -157,64 +126,13 @@ public:
    * a new KernelBase with the provided kernel function keys.
    */
   KernelBaseLease acquire(const KernelBaseKey &key,
-                          typename KernelBase::KeyLiteral *keys,
-                          std::size_t key_count) {
-    if (!configured_) {
-      return KernelBaseLease{};
-    }
-
-    // Check cache
-    if (auto it = key_to_index_.find(key); it != key_to_index_.end()) {
-      auto handle = KernelBaseHandle{it->second};
-      auto cached = lifetime_.get(handle);
-      if (cached) {
-        return cached;
-      }
-      // Cached lease expired, acquire again
-      auto lease = core_.acquireStrongLease(handle);
-      lifetime_.set(lease);
-      return lease;
-    }
-
-    // Create new
-    typename PayloadPoolTraits::Request request{};
-    request.key = key;
-    request.keys = keys;
-    request.key_count = key_count;
-
-    typename PayloadPoolTraits::Context context{};
-
-    auto handle = core_.reserveUncreatedPayloadOrGrow();
-    if (!core_.emplacePayload(handle, request, context)) {
-      core_.releasePayload(handle);
-      return KernelBaseLease{};
-    }
-
-    key_to_index_.emplace(key, handle.index);
-    auto lease = core_.acquireStrongLease(handle);
-    lifetime_.set(lease);
-    return lease;
-  }
+                          KernelBase::KeyLiteral *keys,
+                          std::size_t key_count);
 
   /**
    * @brief Acquire an existing KernelBase by handle.
    */
-  KernelBaseLease acquire(KernelBaseHandle handle) {
-    if (!configured_ || !core_.isAlive(handle)) {
-      return KernelBaseLease{};
-    }
-
-    auto cached = lifetime_.get(handle);
-    if (cached) {
-      return cached;
-    }
-
-    auto lease = core_.acquireStrongLease(handle);
-    lifetime_.set(lease);
-    return lease;
-  }
-
-  void release(KernelBaseLease &lease) noexcept { lease.release(); }
+  KernelBaseLease acquire(KernelBaseHandle handle);
 
 #if ORTEAF_ENABLE_TEST
   bool isConfiguredForTest() const noexcept { return configured_; }
