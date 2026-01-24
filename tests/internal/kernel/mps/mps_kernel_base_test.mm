@@ -9,9 +9,11 @@
 #include <orteaf/internal/execution/mps/mps_handles.h>
 #include <orteaf/internal/execution/mps/platform/wrapper/mps_command_buffer.h>
 #include <orteaf/internal/execution/mps/platform/wrapper/mps_compute_command_encoder.h>
+#include <orteaf/internal/execution/mps/platform/wrapper/mps_device.h>
 #include <orteaf/internal/execution/mps/resource/mps_command_queue_resource.h>
 #include <orteaf/internal/execution_context/mps/context.h>
 #include <orteaf/internal/kernel/mps/mps_kernel_base.h>
+#include <orteaf/internal/storage/mps/mps_storage.h>
 
 namespace mps_kernel = orteaf::internal::kernel::mps;
 namespace mps_manager = orteaf::internal::execution::mps::manager;
@@ -19,6 +21,7 @@ namespace mps_exec = orteaf::internal::execution::mps;
 namespace mps_context = orteaf::internal::execution_context::mps;
 namespace mps_resource = orteaf::internal::execution::mps::resource;
 namespace mps_wrapper = orteaf::internal::execution::mps::platform::wrapper;
+namespace mps_storage = orteaf::internal::storage::mps;
 
 namespace {
 
@@ -268,6 +271,62 @@ TEST(MpsKernelBaseTest, CreateComputeCommandEncoderSucceeds) {
     mps_wrapper::destroyComputeCommandEncoder(encoder);
   }
   mps_wrapper::destroyCommandBuffer(buffer);
+  mps_wrapper::destroyCommandQueue(queue);
+  mps_wrapper::deviceRelease(device);
+}
+#endif
+
+// =============================================================================
+// setBuffer Tests
+// =============================================================================
+
+TEST(MpsKernelBaseTest, SetBufferWithNullptrEncoderDoesNotCrash) {
+  mps_kernel::MpsKernelBase base;
+  mps_storage::MpsStorage storage;
+
+  // Should not crash with null encoder
+  base.setBuffer(nullptr, storage, 0);
+}
+
+#if ORTEAF_ENABLE_MPS
+TEST(MpsKernelBaseTest, SetBufferWithInvalidStorageDoesNotCrash) {
+  mps_kernel::MpsKernelBase base;
+
+  // Create a real device
+  auto device = mps_wrapper::getDevice();
+  if (device == nullptr) {
+    GTEST_SKIP() << "No Metal devices available";
+  }
+
+  // Create command queue and buffer
+  auto queue = mps_wrapper::createCommandQueue(device);
+  if (queue == nullptr) {
+    mps_wrapper::deviceRelease(device);
+    GTEST_SKIP() << "Failed to create command queue";
+  }
+
+  auto cmd_buffer = mps_wrapper::createCommandBuffer(queue);
+  if (cmd_buffer == nullptr) {
+    mps_wrapper::destroyCommandQueue(queue);
+    mps_wrapper::deviceRelease(device);
+    GTEST_SKIP() << "Failed to create command buffer";
+  }
+
+  auto encoder = mps_wrapper::createComputeCommandEncoder(cmd_buffer);
+  if (encoder == nullptr) {
+    mps_wrapper::destroyCommandBuffer(cmd_buffer);
+    mps_wrapper::destroyCommandQueue(queue);
+    mps_wrapper::deviceRelease(device);
+    GTEST_SKIP() << "Failed to create encoder";
+  }
+
+  // Empty storage should not crash
+  mps_storage::MpsStorage empty_storage;
+  base.setBuffer(encoder, empty_storage, 0);
+
+  // Cleanup
+  mps_wrapper::destroyComputeCommandEncoder(encoder);
+  mps_wrapper::destroyCommandBuffer(cmd_buffer);
   mps_wrapper::destroyCommandQueue(queue);
   mps_wrapper::deviceRelease(device);
 }

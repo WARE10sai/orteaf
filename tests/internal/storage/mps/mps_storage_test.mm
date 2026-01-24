@@ -105,6 +105,26 @@ TEST_F(MpsStorageBuilderTest, StorageIsCopyAssignable) {
   SUCCEED();
 }
 
+// ============================================================
+// Buffer view accessor tests
+// ============================================================
+
+TEST_F(MpsStorageBuilderTest, DefaultStorageHasEmptyBufferView) {
+  mps_storage::MpsStorage storage;
+  auto view = storage.bufferView();
+  EXPECT_FALSE(view);
+}
+
+TEST_F(MpsStorageBuilderTest, DefaultStorageHasNullBuffer) {
+  mps_storage::MpsStorage storage;
+  EXPECT_EQ(storage.buffer(), nullptr);
+}
+
+TEST_F(MpsStorageBuilderTest, DefaultStorageHasZeroOffset) {
+  mps_storage::MpsStorage storage;
+  EXPECT_EQ(storage.bufferOffset(), 0u);
+}
+
 // =============================================================================
 // withFenceToken Tests
 // =============================================================================

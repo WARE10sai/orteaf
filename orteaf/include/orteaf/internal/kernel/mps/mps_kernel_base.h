@@ -14,6 +14,7 @@
 #include "orteaf/internal/execution/mps/platform/wrapper/mps_command_buffer.h"
 #include "orteaf/internal/execution/mps/platform/wrapper/mps_compute_command_encoder.h"
 #include "orteaf/internal/execution_context/mps/context.h"
+#include "orteaf/internal/storage/mps/mps_storage.h"
 
 namespace orteaf::internal::kernel::mps {
 
@@ -151,6 +152,33 @@ struct MpsKernelBase {
     }
     return ::orteaf::internal::execution::mps::platform::wrapper::
         createComputeCommandEncoder(command_buffer);
+  }
+
+  /**
+   * @brief Set a buffer on the compute command encoder.
+   *
+   * Retrieves the buffer from the storage and binds it to the encoder
+   * at the specified index. The buffer offset from the storage is automatically used.
+   *
+   * @param encoder Compute command encoder to bind the buffer to
+   * @param storage MPS storage containing the buffer to bind
+   * @param index Binding index for the buffer
+   */
+  void setBuffer(
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
+          encoder,
+      const ::orteaf::internal::storage::mps::MpsStorage &storage,
+      std::size_t index) const {
+    if (encoder == nullptr) {
+      return;
+    }
+    auto buffer = storage.buffer();
+    if (buffer == nullptr) {
+      return;
+    }
+    const std::size_t offset = storage.bufferOffset();
+    ::orteaf::internal::execution::mps::platform::wrapper::setBuffer(
+        encoder, buffer, offset, index);
   }
 
 #if ORTEAF_ENABLE_TESTING
