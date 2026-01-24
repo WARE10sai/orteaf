@@ -12,6 +12,7 @@
 #include "orteaf/internal/execution/mps/manager/mps_library_manager.h"
 #include "orteaf/internal/execution/mps/mps_handles.h"
 #include "orteaf/internal/execution/mps/platform/wrapper/mps_command_buffer.h"
+#include "orteaf/internal/execution/mps/platform/wrapper/mps_compute_command_encoder.h"
 #include "orteaf/internal/execution_context/mps/context.h"
 
 namespace orteaf::internal::kernel::mps {
@@ -133,6 +134,23 @@ struct MpsKernelBase {
     }
     return ::orteaf::internal::execution::mps::platform::wrapper::
         createCommandBuffer(queue_resource->queue());
+  }
+
+  /**
+   * @brief Create a compute command encoder from a command buffer.
+   *
+   * @param command_buffer Command buffer to create the encoder from
+   * @return Opaque compute command encoder handle, or nullptr when unavailable/disabled
+   */
+  ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
+  createComputeCommandEncoder(
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsCommandBuffer_t
+          command_buffer) const {
+    if (command_buffer == nullptr) {
+      return nullptr;
+    }
+    return ::orteaf::internal::execution::mps::platform::wrapper::
+        createComputeCommandEncoder(command_buffer);
   }
 
 #if ORTEAF_ENABLE_TESTING

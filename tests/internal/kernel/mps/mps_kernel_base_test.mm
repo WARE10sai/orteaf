@@ -8,6 +8,7 @@
 #include <orteaf/internal/execution/mps/manager/mps_compute_pipeline_state_manager.h>
 #include <orteaf/internal/execution/mps/mps_handles.h>
 #include <orteaf/internal/execution/mps/platform/wrapper/mps_command_buffer.h>
+#include <orteaf/internal/execution/mps/platform/wrapper/mps_compute_command_encoder.h>
 #include <orteaf/internal/execution/mps/resource/mps_command_queue_resource.h>
 #include <orteaf/internal/execution_context/mps/context.h>
 #include <orteaf/internal/kernel/mps/mps_kernel_base.h>
@@ -182,6 +183,91 @@ TEST(MpsKernelBaseTest, CreateCommandBufferWithRealHardware) {
   if (buffer != nullptr) {
     mps_wrapper::destroyCommandBuffer(buffer);
   }
+  mps_wrapper::destroyCommandQueue(queue);
+  mps_wrapper::deviceRelease(device);
+}
+#endif
+
+// =============================================================================
+// createComputeCommandEncoder Tests
+// =============================================================================
+
+TEST(MpsKernelBaseTest, CreateComputeCommandEncoderReturnsNullptrForNullBuffer) {
+  mps_kernel::MpsKernelBase base;
+
+  auto encoder = base.createComputeCommandEncoder(nullptr);
+  EXPECT_EQ(encoder, nullptr);
+}
+
+#if ORTEAF_ENABLE_MPS
+TEST(MpsKernelBaseTest, CreateComputeCommandEncoderWithRealHardware) {
+  mps_kernel::MpsKernelBase base;
+
+  // Create a real device
+  auto device = mps_wrapper::getDevice();
+  if (device == nullptr) {
+    GTEST_SKIP() << "No Metal devices available";
+  }
+
+  // Create command queue
+  auto queue = mps_wrapper::createCommandQueue(device);
+  if (queue == nullptr) {
+    mps_wrapper::deviceRelease(device);
+    GTEST_SKIP() << "Failed to create command queue";
+  }
+
+  // Create command buffer
+  auto buffer = mps_wrapper::createCommandBuffer(queue);
+  ASSERT_NE(buffer, nullptr);
+
+  // Create compute command encoder using the base method
+  auto encoder = base.createComputeCommandEncoder(buffer);
+  EXPECT_NE(encoder, nullptr);
+
+  // Cleanup
+  if (encoder != nullptr) {
+    mps_wrapper::destroyComputeCommandEncoder(encoder);
+  }
+  if (buffer != nullptr) {
+    mps_wrapper::destroyCommandBuffer(buffer);
+  }
+  mps_wrapper::destroyCommandQueue(queue);
+  mps_wrapper::deviceRelease(device);
+}
+
+TEST(MpsKernelBaseTest, CreateComputeCommandEncoderSucceeds) {
+  mps_kernel::MpsKernelBase base;
+
+  // Create a real device
+  auto device = mps_wrapper::getDevice();
+  if (device == nullptr) {
+    GTEST_SKIP() << "No Metal devices available";
+  }
+
+  // Create command queue
+  auto queue = mps_wrapper::createCommandQueue(device);
+  if (queue == nullptr) {
+    mps_wrapper::deviceRelease(device);
+    GTEST_SKIP() << "Failed to create command queue";
+  }
+
+  // Create command buffer
+  auto buffer = mps_wrapper::createCommandBuffer(queue);
+  if (buffer == nullptr) {
+    mps_wrapper::destroyCommandQueue(queue);
+    mps_wrapper::deviceRelease(device);
+    GTEST_SKIP() << "Failed to create command buffer";
+  }
+
+  // Create encoder directly to verify the wrapper works
+  auto encoder = mps_wrapper::createComputeCommandEncoder(buffer);
+  EXPECT_NE(encoder, nullptr);
+
+  // Cleanup
+  if (encoder != nullptr) {
+    mps_wrapper::destroyComputeCommandEncoder(encoder);
+  }
+  mps_wrapper::destroyCommandBuffer(buffer);
   mps_wrapper::destroyCommandQueue(queue);
   mps_wrapper::deviceRelease(device);
 }
