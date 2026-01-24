@@ -332,4 +332,67 @@ TEST(MpsKernelBaseTest, SetBufferWithInvalidStorageDoesNotCrash) {
 }
 #endif
 
+// =============================================================================
+// setBytes Tests
+// =============================================================================
+
+TEST(MpsKernelBaseTest, SetBytesWithNullptrEncoderDoesNotCrash) {
+  mps_kernel::MpsKernelBase base;
+  int data = 42;
+
+  // Should not crash with null encoder
+  base.setBytes(nullptr, &data, sizeof(data), 0);
+}
+
+TEST(MpsKernelBaseTest, SetBytesWithNullptrDataDoesNotCrash) {
+  mps_kernel::MpsKernelBase base;
+
+  // Should not crash with null data
+  base.setBytes(reinterpret_cast<mps_wrapper::MpsComputeCommandEncoder_t>(0x1), nullptr, 4, 0);
+}
+
+#if ORTEAF_ENABLE_MPS
+TEST(MpsKernelBaseTest, SetBytesWithValidEncoder) {
+  mps_kernel::MpsKernelBase base;
+
+  // Create a real device
+  auto device = mps_wrapper::getDevice();
+  if (device == nullptr) {
+    GTEST_SKIP() << "No Metal devices available";
+  }
+
+  // Create command queue and buffer
+  auto queue = mps_wrapper::createCommandQueue(device);
+  if (queue == nullptr) {
+    mps_wrapper::deviceRelease(device);
+    GTEST_SKIP() << "Failed to create command queue";
+  }
+
+  auto cmd_buffer = mps_wrapper::createCommandBuffer(queue);
+  if (cmd_buffer == nullptr) {
+    mps_wrapper::destroyCommandQueue(queue);
+    mps_wrapper::deviceRelease(device);
+    GTEST_SKIP() << "Failed to create command buffer";
+  }
+
+  auto encoder = mps_wrapper::createComputeCommandEncoder(cmd_buffer);
+  if (encoder == nullptr) {
+    mps_wrapper::destroyCommandBuffer(cmd_buffer);
+    mps_wrapper::destroyCommandQueue(queue);
+    mps_wrapper::deviceRelease(device);
+    GTEST_SKIP() << "Failed to create encoder";
+  }
+
+  // Test with actual data
+  int data = 42;
+  base.setBytes(encoder, &data, sizeof(data), 0);
+
+  // Cleanup
+  mps_wrapper::destroyComputeCommandEncoder(encoder);
+  mps_wrapper::destroyCommandBuffer(cmd_buffer);
+  mps_wrapper::destroyCommandQueue(queue);
+  mps_wrapper::deviceRelease(device);
+}
+#endif
+
 } // namespace

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <orteaf/internal/base/small_vector.h>
-#include <orteaf/internal/kernel/param.h>
+#include <orteaf/internal/kernel/param_list.h>
 #include <orteaf/internal/kernel/param_id.h>
 
 #include <stdexcept>

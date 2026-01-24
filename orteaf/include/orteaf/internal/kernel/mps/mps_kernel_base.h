@@ -181,6 +181,31 @@ struct MpsKernelBase {
         encoder, buffer, offset, index);
   }
 
+  /**
+   * @brief Set bytes on the compute command encoder.
+   *
+   * Binds raw bytes to the encoder at the specified index.
+   * Useful for passing small constant data directly without creating a buffer.
+   *
+   * @param encoder Compute command encoder to bind the bytes to
+   * @param bytes Pointer to the data to bind
+   * @param length Size of the data in bytes
+   * @param index Binding index for the data
+   */
+  void setBytes(
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
+          encoder,
+      const void *bytes, std::size_t length, std::size_t index) const {
+    if (encoder == nullptr) {
+      return;
+    }
+    if (bytes == nullptr) {
+      return;
+    }
+    ::orteaf::internal::execution::mps::platform::wrapper::setBytes(
+        encoder, bytes, length, index);
+  }
+
 #if ORTEAF_ENABLE_TESTING
   ::orteaf::internal::base::HeapVector<Key> &keysForTest() noexcept {
     return keys_;
