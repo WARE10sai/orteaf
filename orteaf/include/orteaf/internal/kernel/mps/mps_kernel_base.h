@@ -257,6 +257,30 @@ struct MpsKernelBase {
         encoder, threadgroups, threads_per_threadgroup);
   }
 
+  /**
+   * @brief Dispatch threads for compute kernel execution (grid-stride).
+   *
+   * Specifies the total number of threads to execute (grid size).
+   * The system automatically calculates the number of threadgroups.
+   * This is useful for kernels using grid-stride loops.
+   *
+   * @param encoder Compute command encoder to dispatch on
+   * @param threads_per_grid Total number of threads to execute
+   * @param threads_per_threadgroup Number of threads in each threadgroup
+   */
+  void dispatchThreads(
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
+          encoder,
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsSize_t threads_per_grid,
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsSize_t
+          threads_per_threadgroup) const {
+    if (encoder == nullptr) {
+      return;
+    }
+    ::orteaf::internal::execution::mps::platform::wrapper::dispatchThreads(
+        encoder, threads_per_grid, threads_per_threadgroup);
+  }
+
 #if ORTEAF_ENABLE_TESTING
   ::orteaf::internal::base::HeapVector<Key> &keysForTest() noexcept {
     return keys_;

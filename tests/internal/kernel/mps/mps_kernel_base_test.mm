@@ -555,6 +555,19 @@ TEST(MpsKernelBaseTest, DispatchThreadgroupsWithNullptrEncoderDoesNotCrash) {
   base.dispatchThreadgroups(nullptr, threadgroups, threads_per_threadgroup);
 }
 
+// =============================================================================
+// dispatchThreads Tests
+// =============================================================================
+
+TEST(MpsKernelBaseTest, DispatchThreadsWithNullptrEncoderDoesNotCrash) {
+  mps_kernel::MpsKernelBase base;
+  auto threads_per_grid = mps_wrapper::makeSize(1024, 1, 1);
+  auto threads_per_threadgroup = mps_wrapper::makeSize(256, 1, 1);
+
+  // Should not crash with null encoder
+  base.dispatchThreads(nullptr, threads_per_grid, threads_per_threadgroup);
+}
+
 // Note: Actual dispatch requires a valid pipeline state to be set,
 // which requires shader compilation. These tests only verify the
 // method calls don't crash with valid encoders.
