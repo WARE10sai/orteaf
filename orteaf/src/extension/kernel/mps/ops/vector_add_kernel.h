@@ -86,12 +86,15 @@ inline void vectorAddExecute(mps_kernel::MpsKernelBase &base,
   }
   base.setPipelineState(encoder, *pipeline);
 
-  // Bind buffers using storage schema (indices match Metal shader)
+  // Bind buffers with explicit indices matching Metal shader [[buffer(N)]]
   // buffer(0) = a, buffer(1) = b, buffer(2) = c
-  storages.bindAll(base, encoder, 0);
+  base.bindStoragesAt(encoder, mps_kernel::MpsKernelBase::Indices<0, 1, 2>{},
+                      storages.a, storages.b, storages.c);
 
-  // Bind parameters (index 3 = num_elements)
-  params.bindAll(base, encoder, 3);
+  // Bind parameters with explicit index
+  // buffer(3) = num_elements
+  base.bindParamsAt(encoder, mps_kernel::MpsKernelBase::Indices<3>{},
+                    params.num_elements);
 
   // Calculate thread dimensions
   const std::size_t num_elements = params.num_elements;
@@ -106,9 +109,12 @@ inline void vectorAddExecute(mps_kernel::MpsKernelBase &base,
   base.dispatchThreads(encoder, threads_per_grid, threads_per_threadgroup);
 
   // Update storage tokens for WAW/WAR hazards
-  base.updateAllStorageTokens<mps_kernel::MpsStorageBinding>(
-      args.context(), command_buffer, encoder, storages.a, storages.b,
-      storages.c);
+  // Note: If fence acquisition fails, we still end encoding and commit.
+  // The storage tokens won't be updated but kernel execution continues.
+  [[maybe_unused]] bool fence_ok =
+      base.updateAllStorageTokens<mps_kernel::MpsStorageBinding>(
+          args.context(), command_buffer, encoder, storages.a, storages.b,
+          storages.c);
 
   // End encoding and commit
   base.endEncoding(encoder);

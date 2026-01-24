@@ -16,10 +16,10 @@
 #include "orteaf/internal/execution/mps/platform/wrapper/mps_fence.h"
 #include "orteaf/internal/execution/mps/platform/wrapper/mps_size.h"
 #include "orteaf/internal/execution_context/mps/context.h"
-#include "orteaf/internal/kernel/param.h"
 #include "orteaf/internal/kernel/kernel_param_schema.h"
 #include "orteaf/internal/kernel/kernel_storage_schema.h"
 #include "orteaf/internal/kernel/mps/mps_storage_binding.h"
+#include "orteaf/internal/kernel/param.h"
 #include "orteaf/internal/storage/mps/mps_storage.h"
 
 namespace orteaf::internal::kernel::mps {
@@ -35,13 +35,10 @@ namespace orteaf::internal::kernel::mps {
  * Each MpsKernelBase can manage multiple kernels (library/function pairs).
  */
 struct MpsKernelBase {
-  using PipelineLease =
-      ::orteaf::internal::execution::mps::manager::
-          MpsComputePipelineStateManager::PipelineLease;
-  using LibraryKey =
-      ::orteaf::internal::execution::mps::manager::LibraryKey;
-  using FunctionKey =
-      ::orteaf::internal::execution::mps::manager::FunctionKey;
+  using PipelineLease = ::orteaf::internal::execution::mps::manager::
+      MpsComputePipelineStateManager::PipelineLease;
+  using LibraryKey = ::orteaf::internal::execution::mps::manager::LibraryKey;
+  using FunctionKey = ::orteaf::internal::execution::mps::manager::FunctionKey;
   using Key = std::pair<LibraryKey, FunctionKey>;
 
   MpsKernelBase() = default;
@@ -55,9 +52,8 @@ struct MpsKernelBase {
   /**
    * @brief Check if pipelines are configured for the given device.
    */
-  bool configured(
-      ::orteaf::internal::execution::mps::MpsDeviceHandle device) const
-      noexcept {
+  bool configured(::orteaf::internal::execution::mps::MpsDeviceHandle device)
+      const noexcept {
     const auto idx = findDeviceIndex(device);
     return idx != kInvalidIndex && device_pipelines_[idx].configured;
   }
@@ -65,18 +61,19 @@ struct MpsKernelBase {
   /**
    * @brief Configure all pipeline leases for the given context's device.
    *
-   * Acquires pipeline leases from the device resource's library and pipeline managers.
-   * If already configured for this device, clears and re-configures.
+   * Acquires pipeline leases from the device resource's library and pipeline
+   * managers. If already configured for this device, clears and re-configures.
    *
    * @param context Execution context containing device lease
    */
-  void configure(
-      ::orteaf::internal::execution_context::mps::Context &context);
+  void configure(::orteaf::internal::execution_context::mps::Context &context);
 
   /**
-   * @brief Get a mutable pipeline lease for the specified device and kernel index.
+   * @brief Get a mutable pipeline lease for the specified device and kernel
+   * index.
    *
-   * @return Pointer to PipelineLease, or nullptr if not initialized or invalid index
+   * @return Pointer to PipelineLease, or nullptr if not initialized or invalid
+   * index
    */
   PipelineLease *
   getPipeline(::orteaf::internal::execution::mps::MpsDeviceHandle device,
@@ -91,7 +88,8 @@ struct MpsKernelBase {
   }
 
   /**
-   * @brief Get a const pipeline lease for the specified device and kernel index.
+   * @brief Get a const pipeline lease for the specified device and kernel
+   * index.
    */
   const PipelineLease *
   getPipeline(::orteaf::internal::execution::mps::MpsDeviceHandle device,
@@ -147,12 +145,14 @@ struct MpsKernelBase {
    * @brief Create a compute command encoder from a command buffer.
    *
    * @param command_buffer Command buffer to create the encoder from
-   * @return Opaque compute command encoder handle, or nullptr when unavailable/disabled
+   * @return Opaque compute command encoder handle, or nullptr when
+   * unavailable/disabled
    */
-  ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
-  createComputeCommandEncoder(
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsCommandBuffer_t
-          command_buffer) const {
+  ::orteaf::internal::execution::mps::platform::wrapper::
+      MpsComputeCommandEncoder_t
+      createComputeCommandEncoder(
+          ::orteaf::internal::execution::mps::platform::wrapper::
+              MpsCommandBuffer_t command_buffer) const {
     if (command_buffer == nullptr) {
       return nullptr;
     }
@@ -168,9 +168,8 @@ struct MpsKernelBase {
    *
    * @param encoder Compute command encoder to end encoding on
    */
-  void endEncoding(
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
-          encoder) const {
+  void endEncoding(::orteaf::internal::execution::mps::platform::wrapper::
+                       MpsComputeCommandEncoder_t encoder) const {
     if (encoder == nullptr) {
       return;
     }
@@ -251,14 +250,16 @@ struct MpsKernelBase {
    * @param encoder Compute command encoder to update the fence on
    * @param fence Fence to update
    */
-  void updateFence(
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
-          encoder,
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsFence_t fence) const {
+  void
+  updateFence(::orteaf::internal::execution::mps::platform::wrapper::
+                  MpsComputeCommandEncoder_t encoder,
+              ::orteaf::internal::execution::mps::platform::wrapper::MpsFence_t
+                  fence) const {
     if (encoder == nullptr || fence == nullptr) {
       return;
     }
-    ::orteaf::internal::execution::mps::platform::wrapper::updateFence(encoder, fence);
+    ::orteaf::internal::execution::mps::platform::wrapper::updateFence(encoder,
+                                                                       fence);
   }
 
   /**
@@ -270,31 +271,33 @@ struct MpsKernelBase {
    * @param encoder Compute command encoder to wait on
    * @param fence Fence to wait for
    */
-  void waitForFence(
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
-          encoder,
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsFence_t fence) const {
+  void
+  waitForFence(::orteaf::internal::execution::mps::platform::wrapper::
+                   MpsComputeCommandEncoder_t encoder,
+               ::orteaf::internal::execution::mps::platform::wrapper::MpsFence_t
+                   fence) const {
     if (encoder == nullptr || fence == nullptr) {
       return;
     }
-    ::orteaf::internal::execution::mps::platform::wrapper::waitForFence(encoder, fence);
+    ::orteaf::internal::execution::mps::platform::wrapper::waitForFence(encoder,
+                                                                        fence);
   }
 
   /**
    * @brief Set a buffer on the compute command encoder.
    *
    * Retrieves the buffer from the storage and binds it to the encoder
-   * at the specified index. The buffer offset from the storage is automatically used.
+   * at the specified index. The buffer offset from the storage is automatically
+   * used.
    *
    * @param encoder Compute command encoder to bind the buffer to
    * @param storage MPS storage containing the buffer to bind
    * @param index Binding index for the buffer
    */
-  void setBuffer(
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
-          encoder,
-      const ::orteaf::internal::storage::mps::MpsStorage &storage,
-      std::size_t index) const {
+  void setBuffer(::orteaf::internal::execution::mps::platform::wrapper::
+                     MpsComputeCommandEncoder_t encoder,
+                 const ::orteaf::internal::storage::mps::MpsStorage &storage,
+                 std::size_t index) const {
     if (encoder == nullptr) {
       return;
     }
@@ -319,11 +322,10 @@ struct MpsKernelBase {
    * @param index Binding index for the buffer
    */
   template <::orteaf::internal::kernel::StorageId ID>
-  void setBuffer(
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
-          encoder,
-      const ::orteaf::internal::kernel::StorageField<ID> &field,
-      std::size_t index) const {
+  void setBuffer(::orteaf::internal::execution::mps::platform::wrapper::
+                     MpsComputeCommandEncoder_t encoder,
+                 const ::orteaf::internal::kernel::StorageField<ID> &field,
+                 std::size_t index) const {
     if (encoder == nullptr) {
       return;
     }
@@ -333,6 +335,64 @@ struct MpsKernelBase {
     if (storage_ptr) {
       setBuffer(encoder, *storage_ptr, index);
     }
+  }
+
+  /**
+   * @brief Type alias for compile-time index sequence.
+   *
+   * Use this to specify explicit buffer binding indices that match
+   * Metal shader [[buffer(N)]] declarations.
+   *
+   * Example:
+   * @code
+   * base.bindStoragesAt(encoder, base.Indices<0, 1, 2>{}, a, b, c);
+   * @endcode
+   */
+  template <std::size_t... Is> using Indices = std::index_sequence<Is...>;
+
+  /**
+   * @brief Bind multiple storage fields at explicit indices.
+   *
+   * Binds storage fields to the encoder at compile-time specified indices.
+   * This is safer than bindAll() because the indices are explicit and
+   * match the Metal shader [[buffer(N)]] declarations.
+   *
+   * @tparam Is... Buffer binding indices (must match Metal shader)
+   * @tparam Fields Storage field types
+   * @param encoder Compute command encoder
+   * @param indices Index sequence (e.g., Indices<0, 1, 2>{})
+   * @param fields Storage fields to bind
+   */
+  template <std::size_t... Is, typename... Fields>
+  void bindStoragesAt(::orteaf::internal::execution::mps::platform::wrapper::
+                          MpsComputeCommandEncoder_t encoder,
+                      std::index_sequence<Is...>,
+                      const Fields &...fields) const {
+    static_assert(sizeof...(Is) == sizeof...(Fields),
+                  "Number of indices must match number of fields");
+    (setBuffer(encoder, fields, Is), ...);
+  }
+
+  /**
+   * @brief Bind multiple parameter fields at explicit indices.
+   *
+   * Binds parameter fields to the encoder at compile-time specified indices.
+   * This is safer than bindAll() because the indices are explicit and
+   * match the Metal shader [[buffer(N)]] declarations.
+   *
+   * @tparam Is... Buffer binding indices (must match Metal shader)
+   * @tparam Fields Parameter field types
+   * @param encoder Compute command encoder
+   * @param indices Index sequence (e.g., Indices<3>{})
+   * @param fields Parameter fields to bind
+   */
+  template <std::size_t... Is, typename... Fields>
+  void bindParamsAt(::orteaf::internal::execution::mps::platform::wrapper::
+                        MpsComputeCommandEncoder_t encoder,
+                    std::index_sequence<Is...>, const Fields &...fields) const {
+    static_assert(sizeof...(Is) == sizeof...(Fields),
+                  "Number of indices must match number of fields");
+    (setParam(encoder, fields, Is), ...);
   }
 
   /**
@@ -346,10 +406,10 @@ struct MpsKernelBase {
    * @param length Size of the data in bytes
    * @param index Binding index for the data
    */
-  void setBytes(
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
-          encoder,
-      const void *bytes, std::size_t length, std::size_t index) const {
+  void setBytes(::orteaf::internal::execution::mps::platform::wrapper::
+                    MpsComputeCommandEncoder_t encoder,
+                const void *bytes, std::size_t length,
+                std::size_t index) const {
     if (encoder == nullptr) {
       return;
     }
@@ -371,11 +431,10 @@ struct MpsKernelBase {
    * @param param Parameter containing the data to bind
    * @param index Binding index for the data
    */
-  void setParam(
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
-          encoder,
-      const ::orteaf::internal::kernel::Param &param,
-      std::size_t index) const {
+  void setParam(::orteaf::internal::execution::mps::platform::wrapper::
+                    MpsComputeCommandEncoder_t encoder,
+                const ::orteaf::internal::kernel::Param &param,
+                std::size_t index) const {
     if (encoder == nullptr) {
       return;
     }
@@ -399,11 +458,10 @@ struct MpsKernelBase {
    * @param index Binding index for the data
    */
   template <::orteaf::internal::kernel::ParamId ID, typename T>
-  void setParam(
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
-          encoder,
-      const ::orteaf::internal::kernel::Field<ID, T> &field,
-      std::size_t index) const {
+  void setParam(::orteaf::internal::execution::mps::platform::wrapper::
+                    MpsComputeCommandEncoder_t encoder,
+                const ::orteaf::internal::kernel::Field<ID, T> &field,
+                std::size_t index) const {
     if (encoder == nullptr) {
       return;
     }
@@ -419,10 +477,9 @@ struct MpsKernelBase {
    * @param encoder Compute command encoder to bind the pipeline state to
    * @param pipeline Pipeline lease containing the pipeline state
    */
-  void setPipelineState(
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
-          encoder,
-      const PipelineLease &pipeline) const {
+  void setPipelineState(::orteaf::internal::execution::mps::platform::wrapper::
+                            MpsComputeCommandEncoder_t encoder,
+                        const PipelineLease &pipeline) const {
     if (encoder == nullptr) {
       return;
     }
@@ -448,9 +505,10 @@ struct MpsKernelBase {
    * @param threads_per_threadgroup Number of threads in each threadgroup
    */
   void dispatchThreadgroups(
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
-          encoder,
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsSize_t threadgroups,
+      ::orteaf::internal::execution::mps::platform::wrapper::
+          MpsComputeCommandEncoder_t encoder,
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsSize_t
+          threadgroups,
       ::orteaf::internal::execution::mps::platform::wrapper::MpsSize_t
           threads_per_threadgroup) const {
     if (encoder == nullptr) {
@@ -472,9 +530,10 @@ struct MpsKernelBase {
    * @param threads_per_threadgroup Number of threads in each threadgroup
    */
   void dispatchThreads(
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
-          encoder,
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsSize_t threads_per_grid,
+      ::orteaf::internal::execution::mps::platform::wrapper::
+          MpsComputeCommandEncoder_t encoder,
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsSize_t
+          threads_per_grid,
       ::orteaf::internal::execution::mps::platform::wrapper::MpsSize_t
           threads_per_threadgroup) const {
     if (encoder == nullptr) {
@@ -512,8 +571,8 @@ struct MpsKernelBase {
   double getGPUEndTime(
       ::orteaf::internal::execution::mps::platform::wrapper::MpsCommandBuffer_t
           command_buffer) const {
-    return ::orteaf::internal::execution::mps::platform::wrapper::
-        getGPUEndTime(command_buffer);
+    return ::orteaf::internal::execution::mps::platform::wrapper::getGPUEndTime(
+        command_buffer);
   }
 
   /**
@@ -535,7 +594,8 @@ struct MpsKernelBase {
   /**
    * @brief Create a 3D size for grid dimensions.
    *
-   * Helper function to create MpsSize_t for threadgroup counts or thread counts.
+   * Helper function to create MpsSize_t for threadgroup counts or thread
+   * counts.
    *
    * @param width Width dimension
    * @param height Height dimension (default 1)
@@ -546,12 +606,15 @@ struct MpsKernelBase {
   makeGridSize(std::size_t width, std::size_t height = 1,
                std::size_t depth = 1) {
     return ::orteaf::internal::execution::mps::platform::wrapper::makeSize(
-        static_cast<::orteaf::internal::execution::mps::platform::wrapper::
-                        MpsInt_t>(width),
-        static_cast<::orteaf::internal::execution::mps::platform::wrapper::
-                        MpsInt_t>(height),
-        static_cast<::orteaf::internal::execution::mps::platform::wrapper::
-                        MpsInt_t>(depth));
+        static_cast<
+            ::orteaf::internal::execution::mps::platform::wrapper::MpsInt_t>(
+            width),
+        static_cast<
+            ::orteaf::internal::execution::mps::platform::wrapper::MpsInt_t>(
+            height),
+        static_cast<
+            ::orteaf::internal::execution::mps::platform::wrapper::MpsInt_t>(
+            depth));
   }
 
   /**
@@ -569,12 +632,15 @@ struct MpsKernelBase {
   makeThreadsPerThreadgroup(std::size_t width, std::size_t height = 1,
                             std::size_t depth = 1) {
     return ::orteaf::internal::execution::mps::platform::wrapper::makeSize(
-        static_cast<::orteaf::internal::execution::mps::platform::wrapper::
-                        MpsInt_t>(width),
-        static_cast<::orteaf::internal::execution::mps::platform::wrapper::
-                        MpsInt_t>(height),
-        static_cast<::orteaf::internal::execution::mps::platform::wrapper::
-                        MpsInt_t>(depth));
+        static_cast<
+            ::orteaf::internal::execution::mps::platform::wrapper::MpsInt_t>(
+            width),
+        static_cast<
+            ::orteaf::internal::execution::mps::platform::wrapper::MpsInt_t>(
+            height),
+        static_cast<
+            ::orteaf::internal::execution::mps::platform::wrapper::MpsInt_t>(
+            depth));
   }
 
   /**
@@ -593,13 +659,15 @@ struct MpsKernelBase {
           total_threads,
       ::orteaf::internal::execution::mps::platform::wrapper::MpsSize_t
           threads_per_threadgroup) {
-    const auto grid_width = (total_threads.width + threads_per_threadgroup.width - 1) /
-                            threads_per_threadgroup.width;
+    const auto grid_width =
+        (total_threads.width + threads_per_threadgroup.width - 1) /
+        threads_per_threadgroup.width;
     const auto grid_height =
         (total_threads.height + threads_per_threadgroup.height - 1) /
         threads_per_threadgroup.height;
-    const auto grid_depth = (total_threads.depth + threads_per_threadgroup.depth - 1) /
-                            threads_per_threadgroup.depth;
+    const auto grid_depth =
+        (total_threads.depth + threads_per_threadgroup.depth - 1) /
+        threads_per_threadgroup.depth;
     return makeGridSize(static_cast<std::size_t>(grid_width),
                         static_cast<std::size_t>(grid_height),
                         static_cast<std::size_t>(grid_depth));
@@ -609,7 +677,8 @@ struct MpsKernelBase {
    * @brief Wait for all storage dependencies before kernel execution.
    *
    * Waits for fences on all input storages (Read/ReadWrite access patterns).
-   * This ensures that previous operations writing to these storages have completed.
+   * This ensures that previous operations writing to these storages have
+   * completed.
    *
    * @tparam StorageBinding The storage binding type (MpsStorageBinding)
    * @tparam Fields Storage field types
@@ -617,19 +686,21 @@ struct MpsKernelBase {
    * @param fields Storage fields to check for dependencies
    */
   template <typename StorageBinding, typename... Fields>
-  void waitAllStorageDependencies(
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
-          encoder,
-      Fields &...fields) const {
+  void
+  waitAllStorageDependencies(::orteaf::internal::execution::mps::platform::
+                                 wrapper::MpsComputeCommandEncoder_t encoder,
+                             Fields &...fields) const {
     (waitStorageDependency<StorageBinding>(encoder, fields), ...);
   }
 
   /**
-   * @brief Update fence and reuse tokens for all output storages after kernel execution.
+   * @brief Update fence and reuse tokens for all output storages after kernel
+   * execution.
    *
-   * Acquires a fence lease internally, updates it on the encoder, and then updates tokens
-   * on all output storages (Write/ReadWrite access patterns). This ensures that subsequent
-   * operations will wait for this kernel to complete.
+   * Acquires a fence lease internally, updates it on the encoder, and then
+   * updates tokens on all output storages (Write/ReadWrite access patterns).
+   * This ensures that subsequent operations will wait for this kernel to
+   * complete.
    *
    * @tparam StorageBinding The storage binding type (MpsStorageBinding)
    * @tparam Fields Storage field types
@@ -637,26 +708,31 @@ struct MpsKernelBase {
    * @param command_buffer Command buffer being executed
    * @param encoder Compute command encoder to update the fence on
    * @param fields Storage fields to update tokens on
+   * @return true if fence was acquired and updated successfully, false
+   * otherwise
    */
   template <typename StorageBinding, typename... Fields>
-  void updateAllStorageTokens(
+  [[nodiscard]] bool updateAllStorageTokens(
       ::orteaf::internal::execution_context::mps::Context &context,
       ::orteaf::internal::execution::mps::platform::wrapper::MpsCommandBuffer_t
           command_buffer,
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
-          encoder,
+      ::orteaf::internal::execution::mps::platform::wrapper::
+          MpsComputeCommandEncoder_t encoder,
       Fields &...fields) const {
     // Acquire fence lease for this kernel execution
     auto fence_lease = acquireFence(context, command_buffer);
-    
+
     // Update fence on encoder so it signals when kernel completes
     auto *payload = fence_lease.operator->();
-    if (payload && payload->hasFence()) {
-      updateFence(encoder, payload->fence());
+    if (!payload || !payload->hasFence()) {
+      return false;
     }
-    
+
+    updateFence(encoder, payload->fence());
+
     // Update all storage tokens
     (updateStorageToken<StorageBinding>(fence_lease, fields), ...);
+    return true;
   }
 
 #if ORTEAF_ENABLE_TESTING
@@ -675,9 +751,9 @@ private:
     bool configured{false};
   };
 
-  std::size_t findDeviceIndex(
-      ::orteaf::internal::execution::mps::MpsDeviceHandle device) const
-      noexcept {
+  std::size_t
+  findDeviceIndex(::orteaf::internal::execution::mps::MpsDeviceHandle device)
+      const noexcept {
     for (std::size_t i = 0; i < device_pipelines_.size(); ++i) {
       if (device_pipelines_[i].device == device) {
         return i;
@@ -698,28 +774,28 @@ private:
    * @param field Storage field to check for dependencies
    */
   template <typename StorageBinding, typename Field>
-  void waitStorageDependency(
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsComputeCommandEncoder_t
-          encoder,
-      const Field &field) const {
+  void waitStorageDependency(::orteaf::internal::execution::mps::platform::
+                                 wrapper::MpsComputeCommandEncoder_t encoder,
+                             const Field &field) const {
     using Access = ::orteaf::internal::kernel::Access;
     constexpr auto access = Field::access();
-    
+
     if (!field) {
       return; // Optional field not present
     }
-    
+
     auto &storage_lease = field.template lease<StorageBinding>();
     auto *storage_ptr = storage_lease.operator->();
     if (!storage_ptr) {
       return; // Invalid storage lease
     }
     auto &fence_token = storage_ptr->fenceToken();
-    
+
     // For Read: wait for the last write (RAW hazard)
-    // For Write: wait for the last write (WAW hazard) and all reads (WAR hazard)
-    // For ReadWrite: wait for the last write (RAW/WAW hazard) and all reads (WAR hazard)
-    
+    // For Write: wait for the last write (WAW hazard) and all reads (WAR
+    // hazard) For ReadWrite: wait for the last write (RAW/WAW hazard) and all
+    // reads (WAR hazard)
+
     if constexpr (access == Access::Read) {
       // Read-after-Write: wait for the last write to complete
       if (fence_token.hasWriteFence()) {
@@ -728,7 +804,8 @@ private:
           waitForFence(encoder, payload->fence());
         }
       }
-    } else if constexpr (access == Access::Write || access == Access::ReadWrite) {
+    } else if constexpr (access == Access::Write ||
+                         access == Access::ReadWrite) {
       // Write-after-Write: wait for the last write to complete
       if (fence_token.hasWriteFence()) {
         auto *payload = fence_token.writeFence().operator->();
@@ -749,8 +826,8 @@ private:
   /**
    * @brief Update a single storage's tokens.
    *
-   * Helper for updateAllStorageTokens. Updates fence and reuse tokens if the storage
-   * has Write or ReadWrite access pattern.
+   * Helper for updateAllStorageTokens. Updates fence and reuse tokens if the
+   * storage has Write or ReadWrite access pattern.
    *
    * @tparam StorageBinding The storage binding type
    * @tparam FenceLease Fence lease type
@@ -759,28 +836,26 @@ private:
    * @param field Storage field to update tokens on
    */
   template <typename StorageBinding, typename FenceLease, typename Field>
-  void updateStorageToken(
-      FenceLease &fence_lease,
-      Field &field) const {
+  void updateStorageToken(FenceLease &fence_lease, Field &field) const {
     using Access = ::orteaf::internal::kernel::Access;
     constexpr auto access = Field::access();
-    
+
     if (!field) {
       return; // Optional field not present
     }
-    
+
     auto &storage_lease = field.template lease<StorageBinding>();
     auto *storage_ptr = storage_lease.operator->();
     if (!storage_ptr) {
       return; // Invalid storage lease
     }
     auto &fence_token = storage_ptr->fenceToken();
-    
+
     // Update fence token based on access pattern:
     // - Read: Add to read fences (for WAR hazard detection)
     // - Write: Set as write fence (for RAW/WAW hazard detection)
     // - ReadWrite: Both add to read fences and set as write fence
-    
+
     if constexpr (access == Access::Read) {
       fence_token.addReadFence(FenceLease(fence_lease));
     } else if constexpr (access == Access::Write) {
@@ -789,7 +864,7 @@ private:
       fence_token.addReadFence(FenceLease(fence_lease));
       fence_token.setWriteFence(FenceLease(fence_lease));
     }
-    
+
     // Update reuse token for all access patterns
     auto &reuse_token = storage_ptr->reuseToken();
     auto *payload = fence_lease.operator->();

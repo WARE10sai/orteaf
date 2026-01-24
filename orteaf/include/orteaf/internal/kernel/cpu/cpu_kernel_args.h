@@ -49,6 +49,23 @@ public:
   explicit CpuKernelArgs(Context context);
 
   /**
+   * @brief Tag type for no-init construction.
+   *
+   * Use this tag to construct CpuKernelArgs without initializing the context.
+   * Primarily intended for testing purposes where full runtime setup is not
+   * needed.
+   */
+  struct NoInit {};
+
+  /**
+   * @brief Construct without initializing context (for testing).
+   *
+   * Creates a CpuKernelArgs with an empty context. Useful for unit testing
+   * kernel schemas without requiring full CPU runtime configuration.
+   */
+  explicit CpuKernelArgs(NoInit) noexcept {}
+
+  /**
    * @brief Get the execution context.
    */
   const Context &context() const { return context_; }
@@ -81,9 +98,7 @@ public:
   /**
    * @brief Find a storage binding by ID (mutable version).
    */
-  CpuStorageBinding *findStorage(StorageId id) {
-    return storages_.find(id);
-  }
+  CpuStorageBinding *findStorage(StorageId id) { return storages_.find(id); }
 
   /**
    * @brief Get the list of all storage bindings.
