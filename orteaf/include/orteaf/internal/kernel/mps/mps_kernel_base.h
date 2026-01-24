@@ -356,6 +356,79 @@ struct MpsKernelBase {
         getGPUDuration(command_buffer);
   }
 
+  /**
+   * @brief Create a 3D size for grid dimensions.
+   *
+   * Helper function to create MpsSize_t for threadgroup counts or thread counts.
+   *
+   * @param width Width dimension
+   * @param height Height dimension (default 1)
+   * @param depth Depth dimension (default 1)
+   * @return MpsSize_t with specified dimensions
+   */
+  static ::orteaf::internal::execution::mps::platform::wrapper::MpsSize_t
+  makeGridSize(std::size_t width, std::size_t height = 1,
+               std::size_t depth = 1) {
+    return ::orteaf::internal::execution::mps::platform::wrapper::makeSize(
+        static_cast<::orteaf::internal::execution::mps::platform::wrapper::
+                        MpsInt_t>(width),
+        static_cast<::orteaf::internal::execution::mps::platform::wrapper::
+                        MpsInt_t>(height),
+        static_cast<::orteaf::internal::execution::mps::platform::wrapper::
+                        MpsInt_t>(depth));
+  }
+
+  /**
+   * @brief Create threads per threadgroup size.
+   *
+   * Helper function to create MpsSize_t for threads per threadgroup.
+   * Common values are (256, 1, 1) for 1D, (16, 16, 1) for 2D, etc.
+   *
+   * @param width Width dimension
+   * @param height Height dimension (default 1)
+   * @param depth Depth dimension (default 1)
+   * @return MpsSize_t with specified dimensions
+   */
+  static ::orteaf::internal::execution::mps::platform::wrapper::MpsSize_t
+  makeThreadsPerThreadgroup(std::size_t width, std::size_t height = 1,
+                            std::size_t depth = 1) {
+    return ::orteaf::internal::execution::mps::platform::wrapper::makeSize(
+        static_cast<::orteaf::internal::execution::mps::platform::wrapper::
+                        MpsInt_t>(width),
+        static_cast<::orteaf::internal::execution::mps::platform::wrapper::
+                        MpsInt_t>(height),
+        static_cast<::orteaf::internal::execution::mps::platform::wrapper::
+                        MpsInt_t>(depth));
+  }
+
+  /**
+   * @brief Calculate grid size from total threads and threads per threadgroup.
+   *
+   * Computes the number of threadgroups needed to cover the total number
+   * of threads, rounding up to ensure all threads are covered.
+   *
+   * @param total_threads Total number of threads to execute
+   * @param threads_per_threadgroup Number of threads in each threadgroup
+   * @return Grid size (number of threadgroups)
+   */
+  static ::orteaf::internal::execution::mps::platform::wrapper::MpsSize_t
+  calculateGridSize(
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsSize_t
+          total_threads,
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsSize_t
+          threads_per_threadgroup) {
+    const auto grid_width = (total_threads.width + threads_per_threadgroup.width - 1) /
+                            threads_per_threadgroup.width;
+    const auto grid_height =
+        (total_threads.height + threads_per_threadgroup.height - 1) /
+        threads_per_threadgroup.height;
+    const auto grid_depth = (total_threads.depth + threads_per_threadgroup.depth - 1) /
+                            threads_per_threadgroup.depth;
+    return makeGridSize(static_cast<std::size_t>(grid_width),
+                        static_cast<std::size_t>(grid_height),
+                        static_cast<std::size_t>(grid_depth));
+  }
+
 #if ORTEAF_ENABLE_TESTING
   ::orteaf::internal::base::HeapVector<Key> &keysForTest() noexcept {
     return keys_;

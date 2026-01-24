@@ -640,6 +640,89 @@ TEST(MpsKernelBaseTest, GetGPUTimesWithUnscheduledBufferReturnsZero) {
 }
 #endif
 
+// =============================================================================
+// Grid Size Helper Tests
+// =============================================================================
+
+TEST(MpsKernelBaseTest, MakeGridSizeCreates1DSize) {
+  auto size = mps_kernel::MpsKernelBase::makeGridSize(256);
+  EXPECT_EQ(size.width, 256);
+  EXPECT_EQ(size.height, 1);
+  EXPECT_EQ(size.depth, 1);
+}
+
+TEST(MpsKernelBaseTest, MakeGridSizeCreates2DSize) {
+  auto size = mps_kernel::MpsKernelBase::makeGridSize(16, 16);
+  EXPECT_EQ(size.width, 16);
+  EXPECT_EQ(size.height, 16);
+  EXPECT_EQ(size.depth, 1);
+}
+
+TEST(MpsKernelBaseTest, MakeGridSizeCreates3DSize) {
+  auto size = mps_kernel::MpsKernelBase::makeGridSize(8, 8, 8);
+  EXPECT_EQ(size.width, 8);
+  EXPECT_EQ(size.height, 8);
+  EXPECT_EQ(size.depth, 8);
+}
+
+TEST(MpsKernelBaseTest, MakeThreadsPerThreadgroupCreates1DSize) {
+  auto size = mps_kernel::MpsKernelBase::makeThreadsPerThreadgroup(256);
+  EXPECT_EQ(size.width, 256);
+  EXPECT_EQ(size.height, 1);
+  EXPECT_EQ(size.depth, 1);
+}
+
+TEST(MpsKernelBaseTest, MakeThreadsPerThreadgroupCreates2DSize) {
+  auto size = mps_kernel::MpsKernelBase::makeThreadsPerThreadgroup(16, 16);
+  EXPECT_EQ(size.width, 16);
+  EXPECT_EQ(size.height, 16);
+  EXPECT_EQ(size.depth, 1);
+}
+
+TEST(MpsKernelBaseTest, CalculateGridSizeRoundsUp) {
+  auto total_threads = mps_kernel::MpsKernelBase::makeGridSize(1000);
+  auto threads_per_threadgroup = mps_kernel::MpsKernelBase::makeThreadsPerThreadgroup(256);
+  auto grid_size = mps_kernel::MpsKernelBase::calculateGridSize(total_threads, threads_per_threadgroup);
+  
+  // 1000 / 256 = 3.90625, should round up to 4
+  EXPECT_EQ(grid_size.width, 4);
+  EXPECT_EQ(grid_size.height, 1);
+  EXPECT_EQ(grid_size.depth, 1);
+}
+
+TEST(MpsKernelBaseTest, CalculateGridSizeExactDivision) {
+  auto total_threads = mps_kernel::MpsKernelBase::makeGridSize(1024);
+  auto threads_per_threadgroup = mps_kernel::MpsKernelBase::makeThreadsPerThreadgroup(256);
+  auto grid_size = mps_kernel::MpsKernelBase::calculateGridSize(total_threads, threads_per_threadgroup);
+  
+  // 1024 / 256 = 4 exactly
+  EXPECT_EQ(grid_size.width, 4);
+  EXPECT_EQ(grid_size.height, 1);
+  EXPECT_EQ(grid_size.depth, 1);
+}
+
+TEST(MpsKernelBaseTest, CalculateGridSize2D) {
+  auto total_threads = mps_kernel::MpsKernelBase::makeGridSize(1920, 1080);
+  auto threads_per_threadgroup = mps_kernel::MpsKernelBase::makeThreadsPerThreadgroup(16, 16);
+  auto grid_size = mps_kernel::MpsKernelBase::calculateGridSize(total_threads, threads_per_threadgroup);
+  
+  // 1920 / 16 = 120, 1080 / 16 = 67.5 -> 68
+  EXPECT_EQ(grid_size.width, 120);
+  EXPECT_EQ(grid_size.height, 68);
+  EXPECT_EQ(grid_size.depth, 1);
+}
+
+TEST(MpsKernelBaseTest, CalculateGridSize3D) {
+  auto total_threads = mps_kernel::MpsKernelBase::makeGridSize(100, 100, 100);
+  auto threads_per_threadgroup = mps_kernel::MpsKernelBase::makeThreadsPerThreadgroup(8, 8, 8);
+  auto grid_size = mps_kernel::MpsKernelBase::calculateGridSize(total_threads, threads_per_threadgroup);
+  
+  // 100 / 8 = 12.5 -> 13 for each dimension
+  EXPECT_EQ(grid_size.width, 13);
+  EXPECT_EQ(grid_size.height, 13);
+  EXPECT_EQ(grid_size.depth, 13);
+}
+
 // Note: Actual dispatch requires a valid pipeline state to be set,
 // which requires shader compilation. These tests only verify the
 // method calls don't crash with valid encoders.
