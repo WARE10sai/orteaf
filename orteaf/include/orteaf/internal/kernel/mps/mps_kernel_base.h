@@ -689,16 +689,36 @@ private:
     using Access = ::orteaf::internal::kernel::Access;
     constexpr auto access = Field::access();
     
-    // Wait only for Read and ReadWrite storages (inputs)
-    if constexpr (access == Access::Read || access == Access::ReadWrite) {
-      if (!field) {
-        return; // Optional field not present
+    if (!field) {
+      return; // Optional field not present
+    }
+    
+    auto &storage = field.template lease<StorageBinding>();
+    auto &fence_token = storage.fenceToken();
+    
+    // For Read: wait for the last write (RAW hazard)
+    // For Write: wait for the last write (WAW hazard) and all reads (WAR hazard)
+    // For ReadWrite: wait for the last write (RAW/WAW hazard) and all reads (WAR hazard)
+    
+    if constexpr (access == Access::Read) {
+      // Read-after-Write: wait for the last write to complete
+      if (fence_token.hasWriteFence()) {
+        auto *payload = fence_token.writeFence().operator->();
+        if (payload && payload->hasFence()) {
+          waitForFence(encoder, payload->fence());
+        }
       }
-      
-      auto &storage = field.template lease<StorageBinding>();
-      auto &fence_token = storage.fenceToken();
-      for (const auto &fence_lease : fence_token) {
-        auto *payload = fence_lease.operator->();
+    } else if constexpr (access == Access::Write || access == Access::ReadWrite) {
+      // Write-after-Write: wait for the last write to complete
+      if (fence_token.hasWriteFence()) {
+        auto *payload = fence_token.writeFence().operator->();
+        if (payload && payload->hasFence()) {
+          waitForFence(encoder, payload->fence());
+        }
+      }
+      // Write-after-Read: wait for all pending reads to complete
+      for (std::size_t i = 0; i < fence_token.readFenceCount(); ++i) {
+        auto *payload = fence_token.readFence(i).operator->();
         if (payload && payload->hasFence()) {
           waitForFence(encoder, payload->fence());
         }
@@ -728,27 +748,35 @@ private:
     using Access = ::orteaf::internal::kernel::Access;
     constexpr auto access = Field::access();
     
-    // Update only Write and ReadWrite storages (outputs)
-    if constexpr (access == Access::Write || access == Access::ReadWrite) {
-      if (!field) {
-        return; // Optional field not present
-      }
-      
-      auto &storage = field.template lease<StorageBinding>();
-      
-      // Update fence token
-      auto &fence_token = storage.fenceToken();
-      fence_token.addOrReplaceLease(FenceLease(fence_lease));
-      
-      // Update reuse token
-      auto &reuse_token = storage.reuseToken();
-      auto *payload = fence_lease.operator->();
-      if (payload) {
-        typename decltype(reuse_token)::Hazard hazard;
-        hazard.setCommandQueueHandle(payload->commandQueueHandle());
-        hazard.setCommandBuffer(command_buffer);
-        reuse_token.addOrReplaceHazard(std::move(hazard));
-      }
+    if (!field) {
+      return; // Optional field not present
+    }
+    
+    auto &storage = field.template lease<StorageBinding>();
+    auto &fence_token = storage.fenceToken();
+    
+    // Update fence token based on access pattern:
+    // - Read: Add to read fences (for WAR hazard detection)
+    // - Write: Set as write fence (for RAW/WAW hazard detection)
+    // - ReadWrite: Both add to read fences and set as write fence
+    
+    if constexpr (access == Access::Read) {
+      fence_token.addReadFence(FenceLease(fence_lease));
+    } else if constexpr (access == Access::Write) {
+      fence_token.setWriteFence(FenceLease(fence_lease));
+    } else if constexpr (access == Access::ReadWrite) {
+      fence_token.addReadFence(FenceLease(fence_lease));
+      fence_token.setWriteFence(FenceLease(fence_lease));
+    }
+    
+    // Update reuse token for all access patterns
+    auto &reuse_token = storage.reuseToken();
+    auto *payload = fence_lease.operator->();
+    if (payload) {
+      typename decltype(reuse_token)::Hazard hazard;
+      hazard.setCommandQueueHandle(payload->commandQueueHandle());
+      hazard.setCommandBuffer(command_buffer);
+      reuse_token.addOrReplaceHazard(std::move(hazard));
     }
   }
 
