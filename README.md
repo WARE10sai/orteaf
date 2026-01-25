@@ -3,7 +3,7 @@ ORTEAF(Orchestrated Tensor Execution Adapter Framework) is an orchestration fram
 
 ## 🧠 Philosophy
 
-ORTEAF is designed primarily to support **Spiking Neural Networks (SNNs)**, enabling efficient learning and inference even on edge devices.  
+ORTEAF is designed to enable efficient learning and inference even on edge devices.  
 The goal is to achieve high-speed, low-power computation while maintaining flexibility across heterogeneous hardware.
 
 ## 🔍 Motivation
@@ -17,7 +17,7 @@ This framework serves as the backbone for research and engineering required to b
   Provides a consistent interface across CUDA, MPS, and CPU runtimes.
 - **Extension-ready Learning:**  
   Exposes hooks for custom learning algorithms without coupling them to the core.
-- **SNN Optimization:**  
+- **Resource-efficient Execution:**  
   Designed for high-speed inference and learning on resource-constrained devices.
 - **PyTorch-like API:**  
   Easy to learn and use; familiar structure for PyTorch users.
