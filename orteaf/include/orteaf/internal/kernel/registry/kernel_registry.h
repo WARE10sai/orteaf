@@ -228,7 +228,7 @@ private:
     // Touch in Cache LRU
     auto node_it = cache_nodes_.find(key);
     if (node_it != cache_nodes_.end()) {
-      cache_lru_.touch(&node_it->second);
+      cache_lru_.touch(node_it->second.get());
     }
     return it->second;
   }
@@ -239,7 +239,7 @@ private:
     if (it != cache_.end()) {
       auto node_it = cache_nodes_.find(key);
       if (node_it != cache_nodes_.end()) {
-        cache_lru_.touch(&node_it->second);
+        cache_lru_.touch(node_it->second.get());
       }
       return;
     }
@@ -251,8 +251,8 @@ private:
 
     // Insert into Cache
     cache_[key] = entry;
-    cache_nodes_[key] = LruNode(key);
-    cache_lru_.pushFront(&cache_nodes_[key]);
+    auto node_it = cache_nodes_.emplace(key, std::make_unique<LruNode>(key)).first;
+    cache_lru_.pushFront(node_it->second.get());
   }
 
   void evictFromCache() {
@@ -280,7 +280,7 @@ private:
   void touchMainMemory(Key key) {
     auto node_it = main_memory_nodes_.find(key);
     if (node_it != main_memory_nodes_.end()) {
-      main_memory_lru_.touch(&node_it->second);
+      main_memory_lru_.touch(node_it->second.get());
     }
   }
 
@@ -303,7 +303,7 @@ private:
     cache_.erase(key);
     auto cache_node_it = cache_nodes_.find(key);
     if (cache_node_it != cache_nodes_.end()) {
-      cache_lru_.remove(&cache_node_it->second);
+      cache_lru_.remove(cache_node_it->second.get());
       cache_nodes_.erase(cache_node_it);
     }
   }
@@ -327,8 +327,9 @@ private:
 
     // Insert into Main Memory
     main_memory_[key] = std::make_unique<Entry>(std::move(rebuilt));
-    main_memory_nodes_[key] = LruNode(key);
-    main_memory_lru_.pushFront(&main_memory_nodes_[key]);
+    auto node_it =
+        main_memory_nodes_.emplace(key, std::make_unique<LruNode>(key)).first;
+    main_memory_lru_.pushFront(node_it->second.get());
 
     return main_memory_[key].get();
   }
@@ -337,12 +338,12 @@ private:
 
   // Cache tier: pointers to Main Memory entries
   std::unordered_map<Key, Entry *> cache_;
-  std::unordered_map<Key, LruNode> cache_nodes_;
+  std::unordered_map<Key, std::unique_ptr<LruNode>> cache_nodes_;
   LruList cache_lru_;
 
   // Main Memory tier: owned entries
   std::unordered_map<Key, std::unique_ptr<Entry>> main_memory_;
-  std::unordered_map<Key, LruNode> main_memory_nodes_;
+  std::unordered_map<Key, std::unique_ptr<LruNode>> main_memory_nodes_;
   LruList main_memory_lru_;
 
   // Secondary Storage tier: lightweight metadata
