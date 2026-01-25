@@ -77,11 +77,11 @@ public:
    */
   explicit KernelRegistry(KernelRegistryConfig config) : config_(config) {}
 
-  // Non-copyable
+  // Non-copyable and non-movable (LRU list is intrusive)
   KernelRegistry(const KernelRegistry &) = delete;
   KernelRegistry &operator=(const KernelRegistry &) = delete;
-  KernelRegistry(KernelRegistry &&) = default;
-  KernelRegistry &operator=(KernelRegistry &&) = default;
+  KernelRegistry(KernelRegistry &&) = delete;
+  KernelRegistry &operator=(KernelRegistry &&) = delete;
 
   /**
    * @brief Look up a kernel by key.

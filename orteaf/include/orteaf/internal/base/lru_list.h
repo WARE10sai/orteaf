@@ -52,8 +52,8 @@ public:
 
   LruList(const LruList &) = delete;
   LruList &operator=(const LruList &) = delete;
-  LruList(LruList &&) = default;
-  LruList &operator=(LruList &&) = default;
+  LruList(LruList &&) = delete;
+  LruList &operator=(LruList &&) = delete;
 
   /**
    * @brief Check if list is empty.
