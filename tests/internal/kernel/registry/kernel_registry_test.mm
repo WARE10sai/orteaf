@@ -4,6 +4,8 @@
 
 #include <gtest/gtest.h>
 
+#include <type_traits>
+
 #include "orteaf/internal/kernel/core/kernel_key.h"
 #include "orteaf/internal/kernel/mps/mps_kernel_metadata.h"
 #include "orteaf/internal/kernel/registry/kernel_registry_config.h"
@@ -29,6 +31,9 @@ registry::MpsKernelMetadata makeMetadata(const char *lib, const char *func) {
   return metadata;
 }
 
+static_assert(!std::is_move_constructible_v<registry::MpsKernelRegistry>);
+static_assert(!std::is_move_assignable_v<registry::MpsKernelRegistry>);
+
 // ============================================================
 // Basic construction tests
 // ============================================================
@@ -53,6 +58,62 @@ TEST(KernelRegistryTest, CustomConfiguration) {
   EXPECT_EQ(reg.config().cache_capacity, 4u);
   EXPECT_EQ(reg.config().main_memory_capacity, 16u);
 }
+
+#if ORTEAF_ENABLE_TESTING
+TEST(KernelRegistryTest, CacheNodePointerStableAcrossRehash) {
+  registry::KernelRegistryConfig config;
+  config.cache_capacity = 128;
+  config.main_memory_capacity = 128;
+
+  registry::MpsKernelRegistry reg(config);
+  auto key = makeKey(1);
+  reg.registerKernel(key, makeMetadata("lib1", "func1"));
+  ASSERT_NE(reg.lookup(key), nullptr);
+
+  auto &nodes = reg.cacheNodesForTest();
+  auto node_it = nodes.find(key);
+  ASSERT_NE(node_it, nodes.end());
+
+  auto *node_ptr = node_it->second.get();
+  ASSERT_NE(node_ptr, nullptr);
+
+  auto before_buckets = nodes.bucket_count();
+  nodes.rehash(before_buckets * 2 + 1);
+  EXPECT_GT(nodes.bucket_count(), before_buckets);
+
+  auto node_it_after = nodes.find(key);
+  ASSERT_NE(node_it_after, nodes.end());
+  EXPECT_EQ(node_it_after->second.get(), node_ptr);
+  EXPECT_NE(reg.lookup(key), nullptr);
+}
+
+TEST(KernelRegistryTest, MainMemoryNodePointerStableAcrossRehash) {
+  registry::KernelRegistryConfig config;
+  config.cache_capacity = 128;
+  config.main_memory_capacity = 128;
+
+  registry::MpsKernelRegistry reg(config);
+  auto key = makeKey(1);
+  reg.registerKernel(key, makeMetadata("lib1", "func1"));
+  ASSERT_NE(reg.lookup(key), nullptr);
+
+  auto &nodes = reg.mainMemoryNodesForTest();
+  auto node_it = nodes.find(key);
+  ASSERT_NE(node_it, nodes.end());
+
+  auto *node_ptr = node_it->second.get();
+  ASSERT_NE(node_ptr, nullptr);
+
+  auto before_buckets = nodes.bucket_count();
+  nodes.rehash(before_buckets * 2 + 1);
+  EXPECT_GT(nodes.bucket_count(), before_buckets);
+
+  auto node_it_after = nodes.find(key);
+  ASSERT_NE(node_it_after, nodes.end());
+  EXPECT_EQ(node_it_after->second.get(), node_ptr);
+  EXPECT_NE(reg.lookup(key), nullptr);
+}
+#endif
 
 // ============================================================
 // Register and lookup tests (Demand Paging)

@@ -3,11 +3,15 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <type_traits>
 #include <vector>
 
 namespace base = orteaf::internal::base;
 
 namespace {
+
+static_assert(!std::is_move_constructible_v<base::LruList<int>>);
+static_assert(!std::is_move_assignable_v<base::LruList<int>>);
 
 // ============================================================
 // LruNode tests

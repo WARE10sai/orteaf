@@ -214,6 +214,11 @@ public:
     return config_;
   }
 
+#if ORTEAF_ENABLE_TESTING
+  auto &cacheNodesForTest() noexcept { return cache_nodes_; }
+  auto &mainMemoryNodesForTest() noexcept { return main_memory_nodes_; }
+#endif
+
 private:
   using LruNode = base::LruNode<Key>;
   using LruList = base::LruList<Key>;
