@@ -9,15 +9,25 @@
 namespace orteaf::internal::kernel::key_resolver {
 
 /**
- * @brief Get candidate rules for the given fixed components.
+ * @brief Context for key resolution, built from a KeyRequest.
  *
- * Phase 1: Returns a list of KeyRules in priority order (highest priority
- * first). This does NOT check the KernelArgs - that happens in verify().
- *
- * @param fixed The fixed key components (Op, DType, Execution)
- * @return Priority-ordered list of candidate rules
+ * Contains the fixed components and the prioritized list of rules to try.
  */
-base::SmallVector<KeyRule, 8> getRules(const FixedKeyComponents &fixed);
+struct ResolveContext {
+  FixedKeyComponents fixed;
+  base::SmallVector<KeyRule, 8> rules;
+};
+
+/**
+ * @brief Build a resolution context from a key request.
+ *
+ * Extracts fixed components and generates prioritized rules based on
+ * the request's architecture (specific → generic fallback).
+ *
+ * @param request The key request (Op, DType, Architecture)
+ * @return Context containing fixed components and rules
+ */
+ResolveContext buildContext(const KeyRequest &request);
 
 /**
  * @brief Default verification logic based on variable components.
@@ -35,8 +45,7 @@ bool defaultVerify(const VariableKeyComponents &components,
 /**
  * @brief Verify if a rule is applicable for the given args.
  *
- * Phase 2: Uses custom predicate if provided, otherwise falls back to
- * defaultVerify.
+ * Uses custom predicate if provided, otherwise falls back to defaultVerify.
  *
  * @param rule The rule to verify
  * @param args The kernel arguments to check against
@@ -52,8 +61,7 @@ inline bool verify(const KeyRule &rule, const KernelArgs &args) {
 /**
  * @brief Resolve the best matching KernelKey.
  *
- * Combines Phase 1 and Phase 2:
- * 1. Get rules from fixed components
+ * 1. Build context from request
  * 2. For each rule (in priority order):
  *    - Verify against args (custom predicate or default)
  *    - Check if key exists in registry
@@ -61,19 +69,19 @@ inline bool verify(const KeyRule &rule, const KernelArgs &args) {
  *
  * @tparam Registry Type that supports contains(KernelKey) method
  * @param registry The kernel registry to check for existence
- * @param fixed The fixed key components
+ * @param request The key request (Op, DType, Architecture)
  * @param args The kernel arguments for verification
  * @return The resolved KernelKey, or nullopt if none found
  */
 template <typename Registry>
 std::optional<KernelKey> resolve(const Registry &registry,
-                                 const FixedKeyComponents &fixed,
+                                 const KeyRequest &request,
                                  const KernelArgs &args) {
-  auto rules = getRules(fixed);
+  auto context = buildContext(request);
 
-  for (const auto &rule : rules) {
+  for (const auto &rule : context.rules) {
     if (verify(rule, args)) {
-      auto key = makeKey(fixed, rule.components);
+      auto key = makeKey(context.fixed, rule.components);
       if (registry.contains(key)) {
         return key;
       }

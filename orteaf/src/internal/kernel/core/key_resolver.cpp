@@ -6,49 +6,63 @@ namespace orteaf::internal::kernel::key_resolver {
 
 namespace arch = ::orteaf::internal::architecture;
 
-base::SmallVector<KeyRule, 8> getRules(const FixedKeyComponents &fixed) {
-  base::SmallVector<KeyRule, 8> rules;
+ResolveContext buildContext(const KeyRequest &request) {
+  ResolveContext context;
+
+  // Extract fixed components from request
+  context.fixed.op = request.op;
+  context.fixed.dtype = request.dtype;
+
+  // Get execution from architecture
+  auto execution = arch::executionOf(request.architecture);
 
   // Get all architectures for this execution backend
-  auto architectures = arch::architecturesOf(fixed.execution);
+  auto architectures = arch::architecturesOf(execution);
 
-  // Add rules in reverse order (specific architectures first, then generic)
-  // For each architecture, add Default layout and variant first
-  // TODO: Expand with more Layout/Variant combinations based on Op
+  // Find the index of the requested architecture
+  std::size_t request_arch_index = 0;
+  for (std::size_t i = 0; i < architectures.size(); ++i) {
+    if (architectures[i] == request.architecture) {
+      request_arch_index = i;
+      break;
+    }
+  }
 
-  // Specific architectures first (skip index 0 which is Generic)
+  // Add rules: requested architecture first, then fallback to less specific
+  // Order: requested arch → other specific archs → generic (index 0)
+
+  // Start with the requested architecture
+  context.rules.pushBack({
+      {request.architecture, static_cast<Layout>(0), static_cast<Variant>(0)},
+      nullptr,
+  });
+
+  // Add other specific architectures (indices > 0, excluding requested)
   for (std::size_t i = architectures.size(); i > 1; --i) {
     auto architecture = architectures[i - 1];
-    rules.pushBack({
-        {architecture, static_cast<Layout>(0), static_cast<Variant>(0)},
-        nullptr // Use default verify logic
+    if (architecture != request.architecture) {
+      context.rules.pushBack({
+          {architecture, static_cast<Layout>(0), static_cast<Variant>(0)},
+          nullptr,
+      });
+    }
+  }
+
+  // Add generic architecture last (index 0) if not already the requested one
+  if (!architectures.empty() && architectures[0] != request.architecture) {
+    context.rules.pushBack({
+        {architectures[0], static_cast<Layout>(0), static_cast<Variant>(0)},
+        nullptr,
     });
   }
 
-  // Generic architecture last (fallback)
-  if (!architectures.empty()) {
-    auto generic = architectures[0]; // Index 0 is always Generic
-    rules.pushBack({
-        {generic, static_cast<Layout>(0), static_cast<Variant>(0)},
-        nullptr // Use default verify logic
-    });
-  }
-
-  return rules;
+  return context;
 }
 
 bool defaultVerify(const VariableKeyComponents & /*components*/,
                    const KernelArgs & /*args*/) {
   // TODO: Implement actual verification logic based on Layout/Variant
   // For now, always return true (accept all candidates)
-  // Future: Check layout compatibility, tensor contiguity, etc.
-  //
-  // Example logic:
-  // switch (components.layout) {
-  //   case Layout::ContiguousNHWC: return isNHWCContiguous(args);
-  //   case Layout::Contiguous: return isContiguous(args);
-  //   default: return true;
-  // }
   return true;
 }
 

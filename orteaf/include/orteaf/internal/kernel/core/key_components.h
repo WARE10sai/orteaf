@@ -2,7 +2,6 @@
 
 #include <orteaf/internal/architecture/architecture.h>
 #include <orteaf/internal/dtype/dtype.h>
-#include <orteaf/internal/execution/execution.h>
 #include <orteaf/internal/kernel/core/kernel_key.h>
 #include <orteaf/internal/kernel/core/layout.h>
 #include <orteaf/internal/kernel/core/variant.h>
@@ -11,22 +10,45 @@
 namespace orteaf::internal::kernel {
 
 /**
- * @brief Fixed key components that cannot be changed without altering
- * semantics.
+ * @brief Input request for key resolution.
  *
- * Changing these would change the meaning of the computation:
+ * Provided by the caller to specify what kernel they need:
+ * - Op: The operation to perform
+ * - DType: Data type for the operation
+ * - Architecture: Starting architecture (e.g., current device)
+ *
+ * Execution is derived from Architecture.
+ */
+struct KeyRequest {
+  ops::Op op;
+  DType dtype;
+  architecture::Architecture architecture;
+
+  constexpr bool operator==(const KeyRequest &other) const noexcept {
+    return op == other.op && dtype == other.dtype &&
+           architecture == other.architecture;
+  }
+
+  constexpr bool operator!=(const KeyRequest &other) const noexcept {
+    return !(*this == other);
+  }
+};
+
+/**
+ * @brief Fixed key components that cannot be changed.
+ *
+ * These are truly fixed - changing them would change the computation:
  * - Op: The operation being performed
  * - DType: Data type (changing requires cast)
- * - Execution: Backend (changing requires device transfer)
+ *
+ * Note: Execution is derived from Architecture in the rules.
  */
 struct FixedKeyComponents {
   ops::Op op;
   DType dtype;
-  execution::Execution execution;
 
   constexpr bool operator==(const FixedKeyComponents &other) const noexcept {
-    return op == other.op && dtype == other.dtype &&
-           execution == other.execution;
+    return op == other.op && dtype == other.dtype;
   }
 
   constexpr bool operator!=(const FixedKeyComponents &other) const noexcept {

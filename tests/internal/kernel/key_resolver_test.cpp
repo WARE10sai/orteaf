@@ -9,7 +9,6 @@
 namespace kernel = orteaf::internal::kernel;
 namespace resolver = kernel::key_resolver;
 using Architecture = orteaf::internal::architecture::Architecture;
-using Execution = orteaf::internal::execution::Execution;
 using DType = orteaf::internal::DType;
 using Op = orteaf::internal::ops::Op;
 
@@ -27,13 +26,29 @@ private:
 };
 
 // ============================================================
+// KeyRequest tests
+// ============================================================
+
+TEST(KeyComponents, KeyRequestEquality) {
+  kernel::KeyRequest a{static_cast<Op>(1), DType::F32,
+                       Architecture::CpuGeneric};
+  kernel::KeyRequest b{static_cast<Op>(1), DType::F32,
+                       Architecture::CpuGeneric};
+  kernel::KeyRequest c{static_cast<Op>(2), DType::F32,
+                       Architecture::CpuGeneric};
+
+  EXPECT_EQ(a, b);
+  EXPECT_NE(a, c);
+}
+
+// ============================================================
 // FixedKeyComponents tests
 // ============================================================
 
 TEST(KeyComponents, FixedKeyComponentsEquality) {
-  kernel::FixedKeyComponents a{static_cast<Op>(1), DType::F32, Execution::Cpu};
-  kernel::FixedKeyComponents b{static_cast<Op>(1), DType::F32, Execution::Cpu};
-  kernel::FixedKeyComponents c{static_cast<Op>(2), DType::F32, Execution::Cpu};
+  kernel::FixedKeyComponents a{static_cast<Op>(1), DType::F32};
+  kernel::FixedKeyComponents b{static_cast<Op>(1), DType::F32};
+  kernel::FixedKeyComponents c{static_cast<Op>(2), DType::F32};
 
   EXPECT_EQ(a, b);
   EXPECT_NE(a, c);
@@ -82,8 +97,7 @@ TEST(KeyComponents, KeyRuleEquality) {
 // ============================================================
 
 TEST(KeyComponents, MakeKeyCreatesValidKey) {
-  kernel::FixedKeyComponents fixed{static_cast<Op>(42), DType::F32,
-                                   Execution::Cpu};
+  kernel::FixedKeyComponents fixed{static_cast<Op>(42), DType::F32};
   kernel::VariableKeyComponents variable{Architecture::CpuGeneric,
                                          static_cast<kernel::Layout>(3),
                                          static_cast<kernel::Variant>(1)};
@@ -98,46 +112,40 @@ TEST(KeyComponents, MakeKeyCreatesValidKey) {
 }
 
 // ============================================================
-// getRules tests
+// buildContext tests
 // ============================================================
 
-TEST(KeyResolver, GetRulesReturnsCpuArchitectures) {
-  kernel::FixedKeyComponents fixed{static_cast<Op>(1), DType::F32,
-                                   Execution::Cpu};
+TEST(KeyResolver, BuildContextExtractsFixed) {
+  kernel::KeyRequest request{static_cast<Op>(42), DType::F32,
+                             Architecture::CpuGeneric};
 
-  auto rules = resolver::getRules(fixed);
+  auto context = resolver::buildContext(request);
 
-  EXPECT_GT(rules.size(), 0u);
-
-  // Last rule should be Generic (fallback)
-  EXPECT_EQ(rules.back().components.arch, Architecture::CpuGeneric);
+  EXPECT_EQ(context.fixed.op, request.op);
+  EXPECT_EQ(context.fixed.dtype, request.dtype);
 }
 
-TEST(KeyResolver, GetRulesOrdersSpecificBeforeGeneric) {
-  kernel::FixedKeyComponents fixed{static_cast<Op>(1), DType::F32,
-                                   Execution::Cpu};
+TEST(KeyResolver, BuildContextGeneratesRules) {
+  kernel::KeyRequest request{static_cast<Op>(1), DType::F32,
+                             Architecture::CpuGeneric};
 
-  auto rules = resolver::getRules(fixed);
+  auto context = resolver::buildContext(request);
 
-  // If there are multiple rules, Generic should be last
-  if (rules.size() > 1) {
-    // First rule should NOT be generic
-    EXPECT_NE(rules.front().components.arch, Architecture::CpuGeneric);
-    // Last rule should be generic
-    EXPECT_EQ(rules.back().components.arch, Architecture::CpuGeneric);
-  }
+  EXPECT_GT(context.rules.size(), 0u);
+  // First rule should be the requested architecture
+  EXPECT_EQ(context.rules.front().components.arch, request.architecture);
 }
 
-TEST(KeyResolver, GetRulesReturnsNullPredicates) {
-  kernel::FixedKeyComponents fixed{static_cast<Op>(1), DType::F32,
-                                   Execution::Cpu};
+TEST(KeyResolver, BuildContextPutsRequestedArchFirst) {
+  kernel::KeyRequest request{static_cast<Op>(1), DType::F32,
+                             Architecture::CpuZen4};
 
-  auto rules = resolver::getRules(fixed);
+  auto context = resolver::buildContext(request);
 
-  // All default rules should have null predicates (use defaultVerify)
-  for (const auto &rule : rules) {
-    EXPECT_EQ(rule.predicate, nullptr);
-  }
+  // First rule should be CpuZen4 (the requested one)
+  EXPECT_EQ(context.rules.front().components.arch, Architecture::CpuZen4);
+  // Last rule should be CpuGeneric (fallback)
+  EXPECT_EQ(context.rules.back().components.arch, Architecture::CpuGeneric);
 }
 
 // ============================================================
@@ -151,12 +159,10 @@ TEST(KeyResolver, VerifyWithNullPredicateUsesDefaultVerify) {
                        nullptr};
   kernel::KernelArgs args;
 
-  // null predicate falls back to defaultVerify
   EXPECT_TRUE(resolver::verify(rule, args));
 }
 
 TEST(KeyResolver, VerifyWithCustomPredicateUsesIt) {
-  // Custom predicate that always returns false
   auto alwaysFalse = [](const kernel::KernelArgs &) { return false; };
 
   kernel::KeyRule rule{{Architecture::CpuGeneric,
@@ -165,18 +171,7 @@ TEST(KeyResolver, VerifyWithCustomPredicateUsesIt) {
                        alwaysFalse};
   kernel::KernelArgs args;
 
-  // Should use custom predicate
   EXPECT_FALSE(resolver::verify(rule, args));
-}
-
-TEST(KeyResolver, DefaultVerifyAcceptsAllCurrently) {
-  kernel::VariableKeyComponents components{Architecture::CpuGeneric,
-                                           static_cast<kernel::Layout>(0),
-                                           static_cast<kernel::Variant>(0)};
-  kernel::KernelArgs args;
-
-  // Currently defaultVerify always returns true
-  EXPECT_TRUE(resolver::defaultVerify(components, args));
 }
 
 // ============================================================
@@ -185,39 +180,39 @@ TEST(KeyResolver, DefaultVerifyAcceptsAllCurrently) {
 
 TEST(KeyResolver, ResolveFindsRegisteredKey) {
   MockRegistry registry;
-  kernel::FixedKeyComponents fixed{static_cast<Op>(1), DType::F32,
-                                   Execution::Cpu};
+  kernel::KeyRequest request{static_cast<Op>(1), DType::F32,
+                             Architecture::CpuGeneric};
   kernel::VariableKeyComponents variable{Architecture::CpuGeneric,
                                          static_cast<kernel::Layout>(0),
                                          static_cast<kernel::Variant>(0)};
 
-  auto expected_key = kernel::makeKey(fixed, variable);
+  auto expected_key = kernel::makeKey({request.op, request.dtype}, variable);
   registry.add(expected_key);
 
   kernel::KernelArgs args;
-  auto result = resolver::resolve(registry, fixed, args);
+  auto result = resolver::resolve(registry, request, args);
 
   ASSERT_TRUE(result.has_value());
   EXPECT_EQ(*result, expected_key);
 }
 
 TEST(KeyResolver, ResolveReturnsNulloptWhenNotFound) {
-  MockRegistry registry; // Empty registry
-  kernel::FixedKeyComponents fixed{static_cast<Op>(1), DType::F32,
-                                   Execution::Cpu};
+  MockRegistry registry;
+  kernel::KeyRequest request{static_cast<Op>(1), DType::F32,
+                             Architecture::CpuGeneric};
   kernel::KernelArgs args;
 
-  auto result = resolver::resolve(registry, fixed, args);
+  auto result = resolver::resolve(registry, request, args);
 
   EXPECT_FALSE(result.has_value());
 }
 
-TEST(KeyResolver, ResolvePrefersSpecificOverGeneric) {
+TEST(KeyResolver, ResolvePrefersRequestedArchitecture) {
   MockRegistry registry;
-  kernel::FixedKeyComponents fixed{static_cast<Op>(1), DType::F32,
-                                   Execution::Cpu};
+  kernel::KeyRequest request{static_cast<Op>(1), DType::F32,
+                             Architecture::CpuZen4};
 
-  // Register both a specific and generic key
+  kernel::FixedKeyComponents fixed{request.op, request.dtype};
   kernel::VariableKeyComponents specific{Architecture::CpuZen4,
                                          static_cast<kernel::Layout>(0),
                                          static_cast<kernel::Variant>(0)};
@@ -232,29 +227,28 @@ TEST(KeyResolver, ResolvePrefersSpecificOverGeneric) {
   registry.add(generic_key);
 
   kernel::KernelArgs args;
-  auto result = resolver::resolve(registry, fixed, args);
+  auto result = resolver::resolve(registry, request, args);
 
   ASSERT_TRUE(result.has_value());
-  // Should prefer specific architecture over generic
   EXPECT_EQ(*result, specific_key);
 }
 
-TEST(KeyResolver, ResolveSkipsRulesFailingVerify) {
+TEST(KeyResolver, ResolveFallsBackToGeneric) {
   MockRegistry registry;
-  kernel::FixedKeyComponents fixed{static_cast<Op>(1), DType::F32,
-                                   Execution::Cpu};
+  kernel::KeyRequest request{static_cast<Op>(1), DType::F32,
+                             Architecture::CpuZen4};
 
-  // Register only generic key
+  kernel::FixedKeyComponents fixed{request.op, request.dtype};
   kernel::VariableKeyComponents generic{Architecture::CpuGeneric,
                                         static_cast<kernel::Layout>(0),
                                         static_cast<kernel::Variant>(0)};
+
   auto generic_key = kernel::makeKey(fixed, generic);
   registry.add(generic_key);
 
   kernel::KernelArgs args;
-  auto result = resolver::resolve(registry, fixed, args);
+  auto result = resolver::resolve(registry, request, args);
 
-  // Should find generic since specific rules fail registry check
   ASSERT_TRUE(result.has_value());
   EXPECT_EQ(*result, generic_key);
 }
