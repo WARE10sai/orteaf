@@ -1,0 +1,70 @@
+#pragma once
+
+#include <optional>
+
+#include <orteaf/internal/base/small_vector.h>
+#include <orteaf/internal/kernel/core/kernel_args.h>
+#include <orteaf/internal/kernel/core/key_components.h>
+
+namespace orteaf::internal::kernel::key_resolver {
+
+/**
+ * @brief Get candidate variable components for the given fixed components.
+ *
+ * Phase 1: Returns a list of possible (Architecture, Layout, Variant)
+ * combinations in priority order (highest priority first).
+ * This does NOT check the KernelArgs - that happens in verify().
+ *
+ * @param fixed The fixed key components (Op, DType, Execution)
+ * @return Priority-ordered list of candidate variable components
+ */
+base::SmallVector<VariableKeyComponents, 8>
+getCandidates(const FixedKeyComponents &fixed);
+
+/**
+ * @brief Verify if a candidate is applicable for the given args.
+ *
+ * Phase 2: Checks if the candidate variable components are valid
+ * for the given kernel arguments (e.g., layout compatibility).
+ *
+ * @param candidate The candidate variable components to verify
+ * @param args The kernel arguments to check against
+ * @return true if the candidate is applicable
+ */
+bool verify(const VariableKeyComponents &candidate, const KernelArgs &args);
+
+/**
+ * @brief Resolve the best matching KernelKey.
+ *
+ * Combines Phase 1 and Phase 2:
+ * 1. Get candidates from fixed components
+ * 2. For each candidate (in priority order):
+ *    - Verify against args
+ *    - Check if key exists in registry
+ *    - Return first match
+ *
+ * @tparam Registry Type that supports contains(KernelKey) method
+ * @param registry The kernel registry to check for existence
+ * @param fixed The fixed key components
+ * @param args The kernel arguments for verification
+ * @return The resolved KernelKey, or nullopt if none found
+ */
+template <typename Registry>
+std::optional<KernelKey> resolve(const Registry &registry,
+                                 const FixedKeyComponents &fixed,
+                                 const KernelArgs &args) {
+  auto candidates = getCandidates(fixed);
+
+  for (const auto &candidate : candidates) {
+    if (verify(candidate, args)) {
+      auto key = makeKey(fixed, candidate);
+      if (registry.contains(key)) {
+        return key;
+      }
+    }
+  }
+
+  return std::nullopt;
+}
+
+} // namespace orteaf::internal::kernel::key_resolver
