@@ -477,23 +477,31 @@ GenerateOutputs(const std::vector<ExecutionInfo> &executions,
     const auto &execution = executions[execution_index];
     execution_offsets.push_back(resolved.size());
 
+    // Build the reserved generic ID for this execution (e.g., "CpuGeneric").
+    const std::string reserved_generic_id = execution.id + "Generic";
+    std::string reserved_generic_lower = reserved_generic_id;
+    std::transform(reserved_generic_lower.begin(), reserved_generic_lower.end(),
+                   reserved_generic_lower.begin(), [](unsigned char ch) {
+                     return static_cast<char>(std::tolower(ch));
+                   });
+
     const auto duplicate_it = by_execution.find(execution.id);
     if (duplicate_it != by_execution.end()) {
       const auto &entries = duplicate_it->second;
-      if (std::any_of(entries.begin(), entries.end(),
-                      [](const ArchitectureInput &input) {
-                        std::string lower = input.id;
-                        std::transform(lower.begin(), lower.end(),
-                                       lower.begin(), [](unsigned char ch) {
-                                         return static_cast<char>(
-                                             std::tolower(ch));
-                                       });
-                        return lower == "generic";
-                      })) {
+      if (std::any_of(
+              entries.begin(), entries.end(),
+              [&reserved_generic_lower](const ArchitectureInput &input) {
+                std::string lower = input.id;
+                std::transform(lower.begin(), lower.end(), lower.begin(),
+                               [](unsigned char ch) {
+                                 return static_cast<char>(std::tolower(ch));
+                               });
+                return lower == reserved_generic_lower;
+              })) {
         std::ostringstream oss;
-        oss << "Execution '" << execution.id
-            << "' defines architecture id 'generic', which is reserved for the "
-               "auto-generated fallback";
+        oss << "Execution '" << execution.id << "' defines architecture id '"
+            << reserved_generic_id
+            << "', which is reserved for the auto-generated fallback";
         Fail(oss.str());
       }
     }
