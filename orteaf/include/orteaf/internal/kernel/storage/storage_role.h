@@ -12,10 +12,9 @@ namespace orteaf::internal::kernel {
  * (e.g., data vs. indices). The default role is Data.
  */
 enum class StorageRole : std::uint8_t {
-  Data = 0,
-  Index = 1,
-  Indptr = 2,
-  Meta = 3,
+#define STORAGE_ROLE(name, value) name = value,
+#include <orteaf/kernel/storage_role.def>
+#undef STORAGE_ROLE
 };
 
 } // namespace orteaf::internal::kernel

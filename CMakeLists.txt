@@ -58,6 +58,7 @@ set(ARCHITECTURE_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/orteaf/architectu
 set(DEVICE_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/orteaf/device CACHE INTERNAL "")
 set(PARAM_ID_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/orteaf/kernel CACHE INTERNAL "")
 set(STORAGE_ID_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/orteaf/kernel CACHE INTERNAL "")
+set(STORAGE_ROLE_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/orteaf/kernel CACHE INTERNAL "")
 
 
 orteaf_add_cuda_kernel_binaries()
@@ -210,6 +211,26 @@ add_custom_target(generate_storage_ids
         ${STORAGE_ID_GEN_DIR}/storage_id_tables.h
 )
 
+add_custom_command(
+    OUTPUT
+        ${STORAGE_ROLE_GEN_DIR}/storage_role.def
+        ${STORAGE_ROLE_GEN_DIR}/storage_role_tables.h
+    COMMAND $<TARGET_FILE:gen_storage_roles>
+            ${CMAKE_CURRENT_SOURCE_DIR}/configs/kernel/storage_roles.yml
+            ${STORAGE_ROLE_GEN_DIR}
+    DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/configs/kernel/storage_roles.yml
+        gen_storage_roles
+    COMMENT "Generating storage_role metadata"
+    VERBATIM
+)
+
+add_custom_target(generate_storage_roles
+    DEPENDS
+        ${STORAGE_ROLE_GEN_DIR}/storage_role.def
+        ${STORAGE_ROLE_GEN_DIR}/storage_role_tables.h
+)
+
 
 # Warn if CPU execution is disabled (unusual)
 if(NOT ENABLE_CPU)
@@ -355,7 +376,7 @@ endforeach()
 message(STATUS "==========================================")
 
 add_subdirectory(orteaf)
-add_dependencies(orteaf generate_executions generate_ops generate_dtypes generate_architectures generate_devices generate_param_ids generate_storage_ids)
+add_dependencies(orteaf generate_executions generate_ops generate_dtypes generate_architectures generate_devices generate_param_ids generate_storage_ids generate_storage_roles)
 
 
 if(TARGET orteaf)
@@ -385,7 +406,6 @@ endif()
 if(ENABLE_TEST)
     add_subdirectory(tests)
     if(TARGET orteaf_tests)
-        add_dependencies(orteaf_tests generate_executions generate_ops generate_dtypes generate_architectures generate_devices generate_param_ids generate_storage_ids)
+        add_dependencies(orteaf_tests generate_executions generate_ops generate_dtypes generate_architectures generate_devices generate_param_ids generate_storage_ids generate_storage_roles)
     endif()
 endif()
-

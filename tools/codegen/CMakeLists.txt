@@ -70,3 +70,12 @@ target_link_libraries(gen_storage_ids
 )
 
 target_compile_features(gen_storage_ids PRIVATE cxx_std_20)
+
+add_executable(gen_storage_roles gen_storage_roles.cpp)
+
+target_link_libraries(gen_storage_roles
+    PRIVATE
+        "${YAML_CPP_TARGET}"
+)
+
+target_compile_features(gen_storage_roles PRIVATE cxx_std_20)
