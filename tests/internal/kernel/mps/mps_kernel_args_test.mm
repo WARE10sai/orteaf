@@ -166,7 +166,8 @@ TEST_F(MpsKernelArgsTest, AddStorageLease) {
   // Verify we can find the storage by ID
   const auto *binding = args.findStorage(kernel::StorageId::Input0);
   ASSERT_NE(binding, nullptr);
-  EXPECT_EQ(binding->id, kernel::StorageId::Input0);
+  EXPECT_EQ(binding->key.id, kernel::StorageId::Input0);
+  EXPECT_EQ(binding->key.role, kernel::StorageRole::Data);
 }
 
 TEST_F(MpsKernelArgsTest, ParamListIteration) {

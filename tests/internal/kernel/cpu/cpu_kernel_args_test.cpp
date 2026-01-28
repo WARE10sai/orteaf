@@ -135,7 +135,8 @@ TEST_F(CpuKernelArgsTest, AddStorageLease) {
   // Verify we can find the storage by ID
   const auto *binding = args.findStorage(kernel::StorageId::InOut);
   ASSERT_NE(binding, nullptr);
-  EXPECT_EQ(binding->id, kernel::StorageId::InOut);
+  EXPECT_EQ(binding->key.id, kernel::StorageId::InOut);
+  EXPECT_EQ(binding->key.role, kernel::StorageRole::Data);
 }
 
 TEST_F(CpuKernelArgsTest, ParamListIteration) {
