@@ -8,6 +8,7 @@
 #include <functional>
 #include <initializer_list>
 #include <iostream>
+#include <limits>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -573,6 +574,15 @@ GenerateOutputs(const std::vector<ExecutionInfo> &executions,
   // Resolve parent_id to parent_index.
   // kInvalidParent (0xFFFF) means no parent (Generic architectures).
   constexpr std::uint16_t kInvalidParent = 0xFFFF;
+  const auto max_parent_index =
+      static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max());
+  if (resolved.size() > max_parent_index) {
+    std::ostringstream oss;
+    oss << "Too many architectures (" << resolved.size()
+        << ") to fit in 16-bit parent indices; maximum supported is "
+        << max_parent_index << ".";
+    Fail(oss.str());
+  }
   std::vector<std::uint16_t> parent_indices(resolved.size(), kInvalidParent);
 
   for (std::size_t i = 0; i < resolved.size(); ++i) {
