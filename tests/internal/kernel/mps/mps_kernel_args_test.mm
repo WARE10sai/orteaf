@@ -225,49 +225,28 @@ TEST_F(MpsKernelArgsTest, HostFromCurrentContext) {
 
 using TypeErasedArgs = kernel::KernelArgs;
 
-TEST_F(MpsKernelArgsTest, EraseFromMpsKernelArgs) {
-  MpsArgs mps_args;
-  TypeErasedArgs args = TypeErasedArgs::erase(std::move(mps_args));
+TEST_F(MpsKernelArgsTest, ContextFromMpsContext) {
+  auto ctx =
+      kernel::ContextAny::erase(::orteaf::internal::execution_context::mps::Context{});
+  TypeErasedArgs args(std::move(ctx));
+
   EXPECT_TRUE(args.valid());
-}
-
-TEST_F(MpsKernelArgsTest, TryAsMpsKernelArgs) {
-  MpsArgs mps_args;
-  TypeErasedArgs args = TypeErasedArgs::erase(std::move(mps_args));
-
-  auto *ptr = args.tryAs<MpsArgs>();
-  EXPECT_NE(ptr, nullptr);
-}
-
-TEST_F(MpsKernelArgsTest, ExecutionReturnsCorrectBackend) {
-  MpsArgs mps_args;
-  TypeErasedArgs args = TypeErasedArgs::erase(std::move(mps_args));
-
   EXPECT_EQ(args.execution(), orteaf::internal::execution::Execution::Mps);
+  auto *mps_ctx = args.context().tryAs<
+      ::orteaf::internal::execution_context::mps::Context>();
+  EXPECT_NE(mps_ctx, nullptr);
 }
 
-TEST_F(MpsKernelArgsTest, VisitPattern) {
-  MpsArgs mps_args;
-  TypeErasedArgs args = TypeErasedArgs::erase(std::move(mps_args));
+TEST_F(MpsKernelArgsTest, ContextVisitOnInvalid) {
+  TypeErasedArgs args;
 
-  bool visited_mps = false;
-  args.visit([&](auto &ka) {
-    using T = std::decay_t<decltype(ka)>;
-    if constexpr (std::is_same_v<T, MpsArgs>) {
-      visited_mps = true;
+  bool visited_monostate = false;
+  args.context().visit([&](const auto &ctx) {
+    using T = std::decay_t<decltype(ctx)>;
+    if constexpr (std::is_same_v<T, std::monostate>) {
+      visited_monostate = true;
     }
   });
 
-  EXPECT_TRUE(visited_mps);
-}
-
-TEST_F(MpsKernelArgsTest, TryAsWrongTypeReturnsNull) {
-  using CpuArgs = kernel::cpu::CpuKernelArgs;
-
-  MpsArgs mps_args;
-  TypeErasedArgs args = TypeErasedArgs::erase(std::move(mps_args));
-
-  // Trying to get as CPU should return nullptr
-  auto *ptr = args.tryAs<CpuArgs>();
-  EXPECT_EQ(ptr, nullptr);
+  EXPECT_TRUE(visited_monostate);
 }

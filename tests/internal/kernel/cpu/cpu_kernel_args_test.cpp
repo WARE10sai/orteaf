@@ -199,48 +199,24 @@ TEST(KernelArgs, DefaultConstructedIsInvalid) {
   EXPECT_FALSE(args.valid());
 }
 
-TEST_F(CpuKernelArgsTest, EraseFromCpuKernelArgs) {
-  CpuArgs cpu_args;
-  TypeErasedArgs args = TypeErasedArgs::erase(std::move(cpu_args));
+TEST_F(CpuKernelArgsTest, ContextFromCpuContext) {
+  auto ctx =
+      kernel::ContextAny::erase(::orteaf::internal::execution_context::cpu::Context{});
+  TypeErasedArgs args(std::move(ctx));
+
   EXPECT_TRUE(args.valid());
-}
-
-TEST_F(CpuKernelArgsTest, TryAsCpuKernelArgs) {
-  CpuArgs cpu_args;
-  TypeErasedArgs args = TypeErasedArgs::erase(std::move(cpu_args));
-
-  auto *ptr = args.tryAs<CpuArgs>();
-  EXPECT_NE(ptr, nullptr);
-}
-
-TEST_F(CpuKernelArgsTest, ExecutionReturnsCorrectBackend) {
-  CpuArgs cpu_args;
-  TypeErasedArgs args = TypeErasedArgs::erase(std::move(cpu_args));
-
   EXPECT_EQ(args.execution(), orteaf::internal::execution::Execution::Cpu);
+  auto *cpu_ctx = args.context().tryAs<
+      ::orteaf::internal::execution_context::cpu::Context>();
+  EXPECT_NE(cpu_ctx, nullptr);
 }
 
-TEST_F(CpuKernelArgsTest, VisitPattern) {
-  CpuArgs cpu_args;
-  TypeErasedArgs args = TypeErasedArgs::erase(std::move(cpu_args));
-
-  bool visited_cpu = false;
-  args.visit([&](auto &ka) {
-    using T = std::decay_t<decltype(ka)>;
-    if constexpr (std::is_same_v<T, CpuArgs>) {
-      visited_cpu = true;
-    }
-  });
-
-  EXPECT_TRUE(visited_cpu);
-}
-
-TEST(KernelArgs, VisitPatternOnInvalid) {
+TEST(KernelArgs, ContextVisitOnInvalid) {
   TypeErasedArgs args;
 
   bool visited_monostate = false;
-  args.visit([&](auto &ka) {
-    using T = std::decay_t<decltype(ka)>;
+  args.context().visit([&](const auto &ctx) {
+    using T = std::decay_t<decltype(ctx)>;
     if constexpr (std::is_same_v<T, std::monostate>) {
       visited_monostate = true;
     }
