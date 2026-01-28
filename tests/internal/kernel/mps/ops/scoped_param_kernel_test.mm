@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include <orteaf/internal/kernel/mps/mps_kernel_args.h>
+#include <orteaf/internal/kernel/core/kernel_args.h>
 #include <orteaf/internal/kernel/mps/mps_kernel_base.h>
 #include <orteaf/internal/kernel/param/param.h>
 #include <orteaf/internal/kernel/param/param_id.h>
@@ -30,7 +30,7 @@ TEST(ScopedParamKernelTest, ParamSchemaIsScopedToInput0) {
 
 TEST(ScopedParamKernelTest, ExecuteExtractsScopedParam) {
   mps_kernel::MpsKernelBase base;
-  mps_kernel::MpsKernelArgs args{mps_kernel::MpsKernelArgs::NoInit{}};
+  kernel::KernelArgs args;
 
   const auto key = kernel::ParamKey::scoped(
       kernel::ParamId::NumElements,

@@ -1,5 +1,5 @@
 #include "orteaf/internal/kernel/schema/kernel_param_schema.h"
-#include "orteaf/internal/kernel/cpu/cpu_kernel_args.h"
+#include "orteaf/internal/kernel/core/kernel_args.h"
 
 #include <gtest/gtest.h>
 
@@ -9,7 +9,7 @@ namespace kernel = orteaf::internal::kernel;
 // CPU Kernel Parameter Schema Tests
 // ============================================================
 
-// Test that generic schema works with CpuKernelArgs
+// Test that generic schema works with KernelArgs
 struct CpuTestSchema : kernel::ParamSchema<CpuTestSchema> {
   kernel::Field<kernel::ParamId::Alpha, float> alpha;
   kernel::Field<kernel::ParamId::Beta, float> beta;
@@ -34,7 +34,7 @@ struct SharedSchema : kernel::ParamSchema<SharedSchema> {
 };
 
 // Test extracting directly from ParamList (no device manager needed)
-TEST(CpuKernelParamSchemaTest, ExtractFromParamList) {
+TEST(KernelParamSchemaTest, ExtractFromParamList) {
   kernel::ParamList params;
   params.pushBack(kernel::Param(kernel::ParamId::Alpha, 9.5f));
   params.pushBack(kernel::Param(kernel::ParamId::Beta, 10.5f));
@@ -47,7 +47,7 @@ TEST(CpuKernelParamSchemaTest, ExtractFromParamList) {
 }
 
 // Test extracting with individual field calls
-TEST(CpuKernelParamSchemaTest, DirectFieldExtraction) {
+TEST(KernelParamSchemaTest, DirectFieldExtraction) {
   kernel::ParamList params;
   params.pushBack(kernel::Param(kernel::ParamId::Epsilon, 1e-5f));
   params.pushBack(kernel::Param(kernel::ParamId::Dim, std::size_t{512}));

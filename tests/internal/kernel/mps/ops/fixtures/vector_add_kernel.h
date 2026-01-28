@@ -7,7 +7,7 @@
 
 #include <orteaf/internal/kernel/schema/kernel_param_schema.h>
 #include <orteaf/internal/kernel/schema/kernel_storage_schema.h>
-#include <orteaf/internal/kernel/mps/mps_kernel_args.h>
+#include <orteaf/internal/kernel/core/kernel_args.h>
 #include <orteaf/internal/kernel/mps/mps_kernel_base.h>
 #include <orteaf/internal/kernel/mps/mps_kernel_entry.h>
 #include <orteaf/internal/kernel/mps/mps_kernel_session.h>
@@ -57,7 +57,7 @@ struct VectorAddParams : kernel::ParamSchema<VectorAddParams> {
  * @param args Kernel arguments containing storages and parameters
  */
 inline void vectorAddExecute(mps_kernel::MpsKernelBase &base,
-                             mps_kernel::MpsKernelArgs &args) {
+                             ::orteaf::internal::kernel::KernelArgs &args) {
   // Extract storages and params
   auto storages = VectorAddStorages::extract(args);
   auto params = VectorAddParams::extract(args);

@@ -6,7 +6,7 @@
 #include <cstdint>
 
 #include <orteaf/internal/kernel/schema/kernel_param_schema.h>
-#include <orteaf/internal/kernel/mps/mps_kernel_args.h>
+#include <orteaf/internal/kernel/core/kernel_args.h>
 #include <orteaf/internal/kernel/mps/mps_kernel_base.h>
 #include <orteaf/internal/kernel/mps/mps_kernel_entry.h>
 #include <orteaf/internal/kernel/param/param_id.h>
@@ -36,7 +36,7 @@ struct ScopedParamParams : kernel::ParamSchema<ScopedParamParams> {
  * Extracts a scoped parameter and writes a global Count param as a side effect.
  */
 inline void scopedParamExecute(mps_kernel::MpsKernelBase & /*base*/,
-                               mps_kernel::MpsKernelArgs &args) {
+                               ::orteaf::internal::kernel::KernelArgs &args) {
   auto params = ScopedParamParams::extract(args);
   args.addParam(kernel::Param(kernel::ParamId::Count,
                               static_cast<std::size_t>(params.num_elements)));

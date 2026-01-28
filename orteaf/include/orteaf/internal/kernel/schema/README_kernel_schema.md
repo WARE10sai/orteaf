@@ -1,6 +1,6 @@
 # Kernel Schema (Parameter & Storage)
 
-型安全なカーネルパラメータ・ストレージ抽出機構。カーネル引数（`CpuKernelArgs`, `MpsKernelArgs`, `CudaKernelArgs`など）から特定のパラメータ・ストレージセットを構造体として一括取得できます。
+型安全なカーネルパラメータ・ストレージ抽出機構。カーネル引数（`KernelArgs`）から特定のパラメータ・ストレージセットを構造体として一括取得できます。
 
 ## 目次
 - [パラメータスキーマ (`ParamSchema`)](#パラメータスキーマ-paramschema)
@@ -39,9 +39,9 @@ struct MyKernelParams : ParamSchema<MyKernelParams> {
 
 #### CPU Kernel
 ```cpp
-#include <orteaf/internal/kernel/cpu/cpu_kernel_args.h>
+#include <orteaf/internal/kernel/core/kernel_args.h>
 
-void executeMyCpuKernel(CpuKernelArgs& args) {
+void executeMyCpuKernel(KernelArgs& args) {
   // パラメータを一括抽出
   auto params = MyKernelParams::extract(args);
   
@@ -55,9 +55,9 @@ void executeMyCpuKernel(CpuKernelArgs& args) {
 
 #### MPS Kernel
 ```cpp
-#include <orteaf/internal/kernel/mps/mps_kernel_args.h>
+#include <orteaf/internal/kernel/core/kernel_args.h>
 
-void executeMyMpsKernel(MpsKernelBase& base, MpsKernelArgs& args) {
+void executeMyMpsKernel(MpsKernelBase& base, KernelArgs& args) {
   // 同じスキーマを使用
   auto params = MyKernelParams::extract(args);
   
@@ -71,9 +71,9 @@ void executeMyMpsKernel(MpsKernelBase& base, MpsKernelArgs& args) {
 
 #### CUDA Kernel (将来対応)
 ```cpp
-#include <orteaf/internal/kernel/cuda/cuda_kernel_args.h>
+#include <orteaf/internal/kernel/core/kernel_args.h>
 
-void executeMyCudaKernel(CudaKernelArgs& args) {
+void executeMyCudaKernel(KernelArgs& args) {
   // 同じスキーマを使用
   auto params = MyKernelParams::extract(args);
   
@@ -155,13 +155,13 @@ struct NormParams : ParamSchema<NormParams> {
 各バックエンドで使用：
 ```cpp
 // CPU実装
-void cpuScale(CpuKernelArgs& args) {
+void cpuScale(KernelArgs& args) {
   auto params = ScaleParams::extract(args);
   // ...
 }
 
 // MPS実装
-void mpsScale(MpsKernelBase& base, MpsKernelArgs& args) {
+void mpsScale(MpsKernelBase& base, KernelArgs& args) {
   auto params = ScaleParams::extract(args);  // 同じスキーマ
   // ...
 }
@@ -285,19 +285,19 @@ struct MyKernelStorages : StorageSchema<MyKernelStorages> {
 
 #### MPS Kernel
 ```cpp
-#include <orteaf/internal/kernel/mps/mps_kernel_args.h>
+#include <orteaf/internal/kernel/core/kernel_args.h>
 
-void executeMyMpsKernel(MpsKernelBase& base, MpsKernelArgs& args) {
+void executeMyMpsKernel(MpsKernelBase& base, KernelArgs& args) {
   // ストレージを一括抽出
   auto storages = MyKernelStorages::extract(args);
   
   // ストレージリースへのアクセス
-  auto& input_lease = storages.input.lease<MpsStorageBinding>();
-  auto& output_lease = storages.output.lease<MpsStorageBinding>();
+  auto& input_lease = storages.input.lease<StorageBinding<StorageLease>>();
+  auto& output_lease = storages.output.lease<StorageBinding<StorageLease>>();
   
   // オプショナルストレージのチェック
   if (storages.workspace) {
-    auto& workspace_lease = storages.workspace.lease<MpsStorageBinding>();
+    auto& workspace_lease = storages.workspace.lease<StorageBinding<StorageLease>>();
     // Workspaceを使用...
   }
   
@@ -307,13 +307,13 @@ void executeMyMpsKernel(MpsKernelBase& base, MpsKernelArgs& args) {
 
 #### CPU Kernel
 ```cpp
-#include <orteaf/internal/kernel/cpu/cpu_kernel_args.h>
+#include <orteaf/internal/kernel/core/kernel_args.h>
 
-void executeMyCpuKernel(CpuKernelArgs& args) {
+void executeMyCpuKernel(KernelArgs& args) {
   auto storages = MyKernelStorages::extract(args);
   
-  auto& input_lease = storages.input.lease<CpuStorageBinding>();
-  auto& output_lease = storages.output.lease<CpuStorageBinding>();
+  auto& input_lease = storages.input.lease<StorageBinding<StorageLease>>();
+  auto& output_lease = storages.output.lease<StorageBinding<StorageLease>>();
   
   // カーネル実行処理...
 }
@@ -442,7 +442,7 @@ void executeKernel(auto& args) {
 template <typename KernelArgs>
 void extract(const KernelArgs &args) {
   // KernelArgs::StorageListType::Storage::value_type から
-  // CpuStorageBinding / MpsStorageBinding を自動推論
+  // StorageBinding<StorageLease> を自動推論
   using StorageBinding = typename KernelArgs::StorageListType::Storage::value_type;
   extract<StorageBinding>(args.storageList());
 }
@@ -481,7 +481,7 @@ struct NormalizationStorages : StorageSchema<NormalizationStorages> {
 };
 
 // カーネル実装
-void executeNormalization(MpsKernelBase& base, MpsKernelArgs& args) {
+void executeNormalization(MpsKernelBase& base, KernelArgs& args) {
   // パラメータとストレージを一括抽出
   auto params = NormalizationParams::extract(args);
   auto storages = NormalizationStorages::extract(args);
@@ -492,12 +492,12 @@ void executeNormalization(MpsKernelBase& base, MpsKernelArgs& args) {
   double scale = params.scale.valueOr(1.0);
   
   // ストレージへのアクセス
-  auto& input_lease = storages.input.lease<MpsStorageBinding>();
-  auto& output_lease = storages.output.lease<MpsStorageBinding>();
+  auto& input_lease = storages.input.lease<StorageBinding<StorageLease>>();
+  auto& output_lease = storages.output.lease<StorageBinding<StorageLease>>();
   
   // Workspaceの条件付き使用
   if (storages.workspace) {
-    auto& workspace_lease = storages.workspace.lease<MpsStorageBinding>();
+    auto& workspace_lease = storages.workspace.lease<StorageBinding<StorageLease>>();
     // Workspaceを使った高速パス...
   } else {
     // Workspaceなしの通常パス...
@@ -534,24 +534,24 @@ struct NormalizationStorages : StorageSchema<NormalizationStorages> {
 
 // CPU実装
 namespace orteaf::internal::kernel::cpu {
-void cpuNormalization(CpuKernelArgs& args) {
+void cpuNormalization(KernelArgs& args) {
   auto params = NormalizationParams::extract(args);
   auto storages = NormalizationStorages::extract(args);
   
-  auto& input = storages.input.lease<CpuStorageBinding>();
-  auto& output = storages.output.lease<CpuStorageBinding>();
+  auto& input = storages.input.lease<StorageBinding<StorageLease>>();
+  auto& output = storages.output.lease<StorageBinding<StorageLease>>();
   // CPU実装...
 }
 }
 
 // MPS実装
 namespace orteaf::internal::kernel::mps {
-void mpsNormalization(MpsKernelBase& base, MpsKernelArgs& args) {
+void mpsNormalization(MpsKernelBase& base, KernelArgs& args) {
   auto params = NormalizationParams::extract(args);
   auto storages = NormalizationStorages::extract(args);
   
-  auto& input = storages.input.lease<MpsStorageBinding>();
-  auto& output = storages.output.lease<MpsStorageBinding>();
+  auto& input = storages.input.lease<StorageBinding<StorageLease>>();
+  auto& output = storages.output.lease<StorageBinding<StorageLease>>();
   // MPS実装...
 }
 }

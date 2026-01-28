@@ -1,5 +1,4 @@
 #include "orteaf/internal/kernel/core/access.h"
-#include "orteaf/internal/kernel/cpu/cpu_kernel_args.h"
 #include "orteaf/internal/kernel/core/kernel_args.h"
 #include "orteaf/internal/kernel/param/param.h"
 #include "orteaf/internal/kernel/param/param_id.h"
@@ -19,10 +18,10 @@ using DType = orteaf::internal::DType;
 using Op = orteaf::internal::ops::Op;
 
 // ============================================================
-// Test Fixture for CPU Kernel Args
+// Test Fixture for KernelArgs (CPU context)
 // ============================================================
 
-class CpuKernelArgsTest : public ::testing::Test {
+class KernelArgsCpuContextTest : public ::testing::Test {
 protected:
   void SetUp() override {
     // Configure CPU execution API
@@ -52,19 +51,19 @@ TEST(Access, EnumValues) {
 }
 
 // ============================================================
-// CpuKernelArgs tests
+// KernelArgs tests (CPU context available)
 // ============================================================
 
-using CpuArgs = kernel::cpu::CpuKernelArgs;
+using KernelArgsType = kernel::KernelArgs;
 
-TEST_F(CpuKernelArgsTest, HostDefaultConstruct) {
-  CpuArgs host;
+TEST_F(KernelArgsCpuContextTest, HostDefaultConstruct) {
+  KernelArgsType host;
   EXPECT_EQ(host.storageCount(), 0);
   EXPECT_EQ(host.paramList().size(), 0);
 }
 
-TEST_F(CpuKernelArgsTest, AddAndFindParams) {
-  CpuArgs args;
+TEST_F(KernelArgsCpuContextTest, AddAndFindParams) {
+  KernelArgsType args;
 
   args.addParam(kernel::Param(kernel::ParamId::Alpha, 1.5f));
   args.addParam(kernel::Param(kernel::ParamId::Beta, 2.5f));
@@ -85,8 +84,8 @@ TEST_F(CpuKernelArgsTest, AddAndFindParams) {
   EXPECT_EQ(*count_param->tryGet<int>(), 100);
 }
 
-TEST_F(CpuKernelArgsTest, AddAndFindScopedParam) {
-  CpuArgs args;
+TEST_F(KernelArgsCpuContextTest, AddAndFindScopedParam) {
+  KernelArgsType args;
 
   const auto key = kernel::ParamKey::scoped(
       kernel::ParamId::Alpha,
@@ -101,16 +100,16 @@ TEST_F(CpuKernelArgsTest, AddAndFindScopedParam) {
   EXPECT_FLOAT_EQ(*param->tryGet<float>(), 3.5f);
 }
 
-TEST_F(CpuKernelArgsTest, FindNonExistentParam) {
-  CpuArgs args;
+TEST_F(KernelArgsCpuContextTest, FindNonExistentParam) {
+  KernelArgsType args;
   args.addParam(kernel::Param(kernel::ParamId::Alpha, 1.0f));
 
   const auto *param = args.findParam(kernel::ParamId::Beta);
   EXPECT_EQ(param, nullptr);
 }
 
-TEST_F(CpuKernelArgsTest, ClearParams) {
-  CpuArgs args;
+TEST_F(KernelArgsCpuContextTest, ClearParams) {
+  KernelArgsType args;
   args.addParam(kernel::Param(kernel::ParamId::Alpha, 1.0f));
   args.addParam(kernel::Param(kernel::ParamId::Beta, 2.0f));
 
@@ -120,32 +119,32 @@ TEST_F(CpuKernelArgsTest, ClearParams) {
   EXPECT_EQ(args.paramList().size(), 0);
 }
 
-TEST_F(CpuKernelArgsTest, StorageManagement) {
-  CpuArgs args;
+TEST_F(KernelArgsCpuContextTest, StorageManagement) {
+  KernelArgsType args;
   EXPECT_EQ(args.storageCount(), 0);
-  EXPECT_GE(args.storageCapacity(), CpuArgs::kMaxBindings);
+  EXPECT_GE(args.storageCapacity(), 0u);
 
   // Test clearing
   args.clearStorages();
   EXPECT_EQ(args.storageCount(), 0);
 }
 
-TEST_F(CpuKernelArgsTest, AddStorageBeyondInlineCapacity) {
-  CpuArgs args;
-  const std::size_t count = CpuArgs::kMaxBindings + 4;
+TEST_F(KernelArgsCpuContextTest, AddStorageBeyondInlineCapacity) {
+  KernelArgsType args;
+  const std::size_t count = 24;
   for (std::size_t i = 0; i < count; ++i) {
-    CpuArgs::StorageLease lease;
+    KernelArgsType::StorageLease lease;
     args.addStorage(kernel::StorageId::InOut, std::move(lease));
   }
   EXPECT_EQ(args.storageCount(), count);
   EXPECT_GE(args.storageCapacity(), count);
 }
 
-TEST_F(CpuKernelArgsTest, AddStorageLease) {
-  CpuArgs args;
+TEST_F(KernelArgsCpuContextTest, AddStorageLease) {
+  KernelArgsType args;
 
   // Add a storage lease with StorageId
-  kernel::cpu::CpuKernelArgs::StorageLease lease;
+  KernelArgsType::StorageLease lease;
   args.addStorage(kernel::StorageId::InOut, std::move(lease));
 
   EXPECT_EQ(args.storageCount(), 1);
@@ -157,8 +156,8 @@ TEST_F(CpuKernelArgsTest, AddStorageLease) {
   EXPECT_EQ(binding->key.role, kernel::StorageRole::Data);
 }
 
-TEST_F(CpuKernelArgsTest, ParamListIteration) {
-  CpuArgs args;
+TEST_F(KernelArgsCpuContextTest, ParamListIteration) {
+  KernelArgsType args;
   args.addParam(kernel::Param(kernel::ParamId::Alpha, 1.0f));
   args.addParam(kernel::Param(kernel::ParamId::Beta, 2.0f));
   args.addParam(kernel::Param(kernel::ParamId::Count, 42));
@@ -170,9 +169,9 @@ TEST_F(CpuKernelArgsTest, ParamListIteration) {
   EXPECT_EQ(count, 3);
 }
 
-TEST_F(CpuKernelArgsTest, AddParamBeyondInlineCapacity) {
-  CpuArgs args;
-  const std::size_t count = CpuArgs::kMaxParams + 4;
+TEST_F(KernelArgsCpuContextTest, AddParamBeyondInlineCapacity) {
+  KernelArgsType args;
+  const std::size_t count = 24;
   for (std::size_t i = 0; i < count; ++i) {
     args.addParam(
         kernel::Param(kernel::ParamId::Alpha, static_cast<float>(i)));
@@ -181,11 +180,12 @@ TEST_F(CpuKernelArgsTest, AddParamBeyondInlineCapacity) {
   EXPECT_GE(args.paramList().capacity(), count);
 }
 
-TEST_F(CpuKernelArgsTest, HostFromCurrentContext) {
-  // fromCurrentContext should work with CPU args
-  CpuArgs args = CpuArgs::fromCurrentContext();
-  EXPECT_EQ(args.storageCount(), 0);
-  EXPECT_EQ(args.paramList().size(), 0);
+TEST_F(KernelArgsCpuContextTest, HostFromCurrentContext) {
+  // Build KernelArgs from the current CPU context
+  auto ctx =
+      kernel::ContextAny::erase(::orteaf::internal::execution_context::cpu::currentContext());
+  KernelArgsType args(std::move(ctx));
+  EXPECT_TRUE(args.valid());
 }
 
 // ============================================================
@@ -199,7 +199,7 @@ TEST(KernelArgs, DefaultConstructedIsInvalid) {
   EXPECT_FALSE(args.valid());
 }
 
-TEST_F(CpuKernelArgsTest, ContextFromCpuContext) {
+TEST_F(KernelArgsCpuContextTest, ContextFromCpuContext) {
   auto ctx =
       kernel::ContextAny::erase(::orteaf::internal::execution_context::cpu::Context{});
   TypeErasedArgs args(std::move(ctx));

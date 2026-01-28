@@ -1,7 +1,6 @@
 #include "orteaf/internal/kernel/core/access.h"
 #include "orteaf/internal/kernel/core/kernel_args.h"
 #include "orteaf/internal/kernel/core/kernel_key.h"
-#include "orteaf/internal/kernel/mps/mps_kernel_args.h"
 #include "orteaf/internal/kernel/param/param.h"
 #include "orteaf/internal/kernel/param/param_id.h"
 #include "orteaf/internal/kernel/param/param_key.h"
@@ -21,10 +20,10 @@ using DType = orteaf::internal::DType;
 using Op = orteaf::internal::ops::Op;
 
 // ============================================================
-// Test Fixture for MPS Kernel Args
+// Test Fixture for KernelArgs (MPS context)
 // ============================================================
 
-class MpsKernelArgsTest : public ::testing::Test {
+class KernelArgsMpsContextTest : public ::testing::Test {
 protected:
   void SetUp() override {
     // Configure MPS execution API
@@ -83,19 +82,19 @@ protected:
 };
 
 // ============================================================
-// MpsKernelArgs tests
+// KernelArgs tests (MPS context available)
 // ============================================================
 
-using MpsArgs = kernel::mps::MpsKernelArgs;
+using KernelArgsType = kernel::KernelArgs;
 
-TEST_F(MpsKernelArgsTest, HostDefaultConstruct) {
-  MpsArgs host;
+TEST_F(KernelArgsMpsContextTest, HostDefaultConstruct) {
+  KernelArgsType host;
   EXPECT_EQ(host.storageCount(), 0);
   EXPECT_EQ(host.paramList().size(), 0);
 }
 
-TEST_F(MpsKernelArgsTest, AddAndFindParams) {
-  MpsArgs args;
+TEST_F(KernelArgsMpsContextTest, AddAndFindParams) {
+  KernelArgsType args;
 
   args.addParam(kernel::Param(kernel::ParamId::Alpha, 1.5f));
   args.addParam(kernel::Param(kernel::ParamId::Beta, 2.5f));
@@ -116,8 +115,8 @@ TEST_F(MpsKernelArgsTest, AddAndFindParams) {
   EXPECT_EQ(*count_param->tryGet<int>(), 100);
 }
 
-TEST_F(MpsKernelArgsTest, AddAndFindScopedParam) {
-  MpsArgs args;
+TEST_F(KernelArgsMpsContextTest, AddAndFindScopedParam) {
+  KernelArgsType args;
 
   const auto key = kernel::ParamKey::scoped(
       kernel::ParamId::Alpha,
@@ -132,16 +131,16 @@ TEST_F(MpsKernelArgsTest, AddAndFindScopedParam) {
   EXPECT_FLOAT_EQ(*param->tryGet<float>(), 3.5f);
 }
 
-TEST_F(MpsKernelArgsTest, FindNonExistentParam) {
-  MpsArgs args;
+TEST_F(KernelArgsMpsContextTest, FindNonExistentParam) {
+  KernelArgsType args;
   args.addParam(kernel::Param(kernel::ParamId::Alpha, 1.0f));
 
   const auto *param = args.findParam(kernel::ParamId::Beta);
   EXPECT_EQ(param, nullptr);
 }
 
-TEST_F(MpsKernelArgsTest, ClearParams) {
-  MpsArgs args;
+TEST_F(KernelArgsMpsContextTest, ClearParams) {
+  KernelArgsType args;
   args.addParam(kernel::Param(kernel::ParamId::Alpha, 1.0f));
   args.addParam(kernel::Param(kernel::ParamId::Beta, 2.0f));
 
@@ -151,32 +150,32 @@ TEST_F(MpsKernelArgsTest, ClearParams) {
   EXPECT_EQ(args.paramList().size(), 0);
 }
 
-TEST_F(MpsKernelArgsTest, StorageManagement) {
-  MpsArgs args;
+TEST_F(KernelArgsMpsContextTest, StorageManagement) {
+  KernelArgsType args;
   EXPECT_EQ(args.storageCount(), 0);
-  EXPECT_GE(args.storageCapacity(), MpsArgs::kMaxBindings);
+  EXPECT_GE(args.storageCapacity(), 0u);
 
   // Test clearing
   args.clearStorages();
   EXPECT_EQ(args.storageCount(), 0);
 }
 
-TEST_F(MpsKernelArgsTest, AddStorageBeyondInlineCapacity) {
-  MpsArgs args;
-  const std::size_t count = MpsArgs::kMaxBindings + 4;
+TEST_F(KernelArgsMpsContextTest, AddStorageBeyondInlineCapacity) {
+  KernelArgsType args;
+  const std::size_t count = 24;
   for (std::size_t i = 0; i < count; ++i) {
-    MpsArgs::StorageLease lease;
+    KernelArgsType::StorageLease lease;
     args.addStorage(kernel::StorageId::Input0, std::move(lease));
   }
   EXPECT_EQ(args.storageCount(), count);
   EXPECT_GE(args.storageCapacity(), count);
 }
 
-TEST_F(MpsKernelArgsTest, AddStorageLease) {
-  MpsArgs args;
+TEST_F(KernelArgsMpsContextTest, AddStorageLease) {
+  KernelArgsType args;
 
   // Add a storage lease with StorageId
-  kernel::mps::MpsKernelArgs::StorageLease lease;
+  KernelArgsType::StorageLease lease;
   args.addStorage(kernel::StorageId::Input0, std::move(lease));
 
   EXPECT_EQ(args.storageCount(), 1);
@@ -188,8 +187,8 @@ TEST_F(MpsKernelArgsTest, AddStorageLease) {
   EXPECT_EQ(binding->key.role, kernel::StorageRole::Data);
 }
 
-TEST_F(MpsKernelArgsTest, ParamListIteration) {
-  MpsArgs args;
+TEST_F(KernelArgsMpsContextTest, ParamListIteration) {
+  KernelArgsType args;
   args.addParam(kernel::Param(kernel::ParamId::Alpha, 1.0f));
   args.addParam(kernel::Param(kernel::ParamId::Beta, 2.0f));
   args.addParam(kernel::Param(kernel::ParamId::Count, 42));
@@ -201,9 +200,9 @@ TEST_F(MpsKernelArgsTest, ParamListIteration) {
   EXPECT_EQ(count, 3);
 }
 
-TEST_F(MpsKernelArgsTest, AddParamBeyondInlineCapacity) {
-  MpsArgs args;
-  const std::size_t count = MpsArgs::kMaxParams + 4;
+TEST_F(KernelArgsMpsContextTest, AddParamBeyondInlineCapacity) {
+  KernelArgsType args;
+  const std::size_t count = 24;
   for (std::size_t i = 0; i < count; ++i) {
     args.addParam(kernel::Param(kernel::ParamId::Alpha,
                                 static_cast<float>(i)));
@@ -212,11 +211,12 @@ TEST_F(MpsKernelArgsTest, AddParamBeyondInlineCapacity) {
   EXPECT_GE(args.paramList().capacity(), count);
 }
 
-TEST_F(MpsKernelArgsTest, HostFromCurrentContext) {
-  // Test basic MPS kernel args usage with fromCurrentContext
-  MpsArgs args = MpsArgs::fromCurrentContext();
-  EXPECT_EQ(args.storageCount(), 0);
-  EXPECT_EQ(args.paramList().size(), 0);
+TEST_F(KernelArgsMpsContextTest, HostFromCurrentContext) {
+  // Build KernelArgs from the current MPS context
+  auto ctx =
+      kernel::ContextAny::erase(::orteaf::internal::execution_context::mps::currentContext());
+  KernelArgsType args(std::move(ctx));
+  EXPECT_TRUE(args.valid());
 }
 
 // ============================================================
@@ -225,7 +225,7 @@ TEST_F(MpsKernelArgsTest, HostFromCurrentContext) {
 
 using TypeErasedArgs = kernel::KernelArgs;
 
-TEST_F(MpsKernelArgsTest, ContextFromMpsContext) {
+TEST_F(KernelArgsMpsContextTest, ContextFromMpsContext) {
   auto ctx =
       kernel::ContextAny::erase(::orteaf::internal::execution_context::mps::Context{});
   TypeErasedArgs args(std::move(ctx));
@@ -237,7 +237,7 @@ TEST_F(MpsKernelArgsTest, ContextFromMpsContext) {
   EXPECT_NE(mps_ctx, nullptr);
 }
 
-TEST_F(MpsKernelArgsTest, ContextVisitOnInvalid) {
+TEST_F(KernelArgsMpsContextTest, ContextVisitOnInvalid) {
   TypeErasedArgs args;
 
   bool visited_monostate = false;

@@ -8,16 +8,15 @@ namespace orteaf::internal::kernel {
  * @brief Generic storage binding structure for kernel arguments.
  *
  * Represents a bound storage resource with its key and lease.
- * This template is specialized for different execution backends (CPU, MPS, CUDA).
- * Access pattern information is available through the StorageId metadata.
+ * This template can be used with a type-erased StorageLease to avoid
+ * backend-specific bindings. Access pattern information is available through
+ * the StorageId metadata.
  *
- * @tparam StorageLease The backend-specific storage lease type
- *                      (e.g., CpuStorageLease, MpsStorageLease, CudaStorageLease)
+ * @tparam StorageLease The storage lease type (type-erased or backend-specific)
  *
  * Example:
  * @code
- * using CpuStorageBinding = StorageBinding<CpuStorageLease>;
- * using MpsStorageBinding = StorageBinding<MpsStorageLease>;
+ * using AnyStorageBinding = StorageBinding<StorageLease>;
  * @endcode
  */
 template <typename StorageLease>

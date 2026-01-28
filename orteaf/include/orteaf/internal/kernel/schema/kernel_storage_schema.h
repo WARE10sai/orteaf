@@ -53,8 +53,7 @@ struct StorageField {
   /**
    * @brief Get the storage lease.
    *
-   * @tparam StorageBinding The storage binding type (MpsStorageBinding,
-   * CpuStorageBinding)
+   * @tparam StorageBinding The storage binding type
    * @throws std::runtime_error if binding not found
    */
   template <typename StorageBinding> auto &lease() const {
@@ -106,8 +105,7 @@ struct StorageField {
   /**
    * @brief Extract storage binding from kernel arguments.
    *
-   * @tparam KernelArgs The kernel arguments type (CpuKernelArgs, MpsKernelArgs,
-   * etc.)
+   * @tparam KernelArgs The kernel arguments type (KernelArgs)
    * @param args Kernel arguments containing storage bindings
    * @throws std::runtime_error if storage not found
    */

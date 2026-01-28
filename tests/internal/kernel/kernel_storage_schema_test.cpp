@@ -1,9 +1,10 @@
 #include <orteaf/internal/kernel/schema/kernel_storage_schema.h>
+#include <orteaf/internal/kernel/storage/storage_binding.h>
+#include <orteaf/internal/storage/storage_lease.h>
 
 #include <gtest/gtest.h>
 
-#include <orteaf/internal/kernel/cpu/cpu_kernel_args.h>
-#include <orteaf/internal/kernel/cpu/cpu_storage_binding.h>
+#include <orteaf/internal/kernel/core/kernel_args.h>
 #include <orteaf/internal/kernel/storage/storage_id.h>
 
 #include <orteaf/internal/execution/cpu/api/cpu_execution_api.h>
@@ -12,8 +13,7 @@
 namespace orteaf::internal::kernel {
 namespace {
 
-using ::orteaf::internal::kernel::cpu::CpuKernelArgs;
-using ::orteaf::internal::kernel::cpu::CpuStorageBinding;
+using ::orteaf::internal::kernel::KernelArgs;
 
 // Test fixture to set up CPU device manager
 class KernelStorageSchemaTest : public ::testing::Test {
@@ -41,7 +41,7 @@ struct SimpleStorageSchema : StorageSchema<SimpleStorageSchema> {
 };
 
 TEST_F(KernelStorageSchemaTest, BasicExtraction) {
-  CpuKernelArgs args;
+  KernelArgs args;
 
   // Extract from empty args
   auto schema = SimpleStorageSchema::extract(args);
@@ -61,7 +61,7 @@ struct OptionalStorageSchema : StorageSchema<OptionalStorageSchema> {
 };
 
 TEST_F(KernelStorageSchemaTest, OptionalStorageField) {
-  CpuKernelArgs args;
+  KernelArgs args;
 
   auto schema = OptionalStorageSchema::extract(args);
 
@@ -73,7 +73,8 @@ TEST_F(KernelStorageSchemaTest, OptionalStorageField) {
   EXPECT_FALSE(schema.workspace.present());
 
   // Optional field returns nullptr when not present
-  auto *workspace_binding = schema.workspace.bindingOr<CpuStorageBinding>();
+  using AnyBinding = StorageBinding<::orteaf::internal::storage::StorageLease>;
+  auto *workspace_binding = schema.workspace.bindingOr<AnyBinding>();
   EXPECT_EQ(workspace_binding, nullptr);
 }
 
@@ -85,13 +86,13 @@ struct RequiredStorageSchema : StorageSchema<RequiredStorageSchema> {
 };
 
 TEST_F(KernelStorageSchemaTest, MissingRequiredStorage) {
-  CpuKernelArgs args;
+  KernelArgs args;
 
   EXPECT_THROW(RequiredStorageSchema::extract(args), std::runtime_error);
 }
 
 TEST_F(KernelStorageSchemaTest, OptionalFieldNotPresent) {
-  CpuKernelArgs args;
+  KernelArgs args;
 
   // Single field extraction
   OptionalStorageField<StorageId::Workspace> workspace_field;
@@ -103,4 +104,3 @@ TEST_F(KernelStorageSchemaTest, OptionalFieldNotPresent) {
 
 } // namespace
 } // namespace orteaf::internal::kernel
-

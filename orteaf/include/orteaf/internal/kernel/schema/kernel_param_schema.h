@@ -88,8 +88,7 @@ template <ParamId ID, typename T> struct Field {
   /**
    * @brief Extract value from kernel arguments.
    *
-   * @tparam KernelArgs The kernel arguments type (CpuKernelArgs, MpsKernelArgs,
-   * etc.)
+   * @tparam KernelArgs The kernel arguments type (KernelArgs)
    * @param args Kernel arguments containing parameters
    * @throws std::runtime_error if parameter not found or type mismatch
    */
@@ -167,8 +166,7 @@ template <ParamId ID, typename T> struct OptionalField {
    *
    * Sets present flag if parameter found and type matches.
    *
-   * @tparam KernelArgs The kernel arguments type (CpuKernelArgs, MpsKernelArgs,
-   * etc.)
+   * @tparam KernelArgs The kernel arguments type (KernelArgs)
    * @param args Kernel arguments containing parameters
    */
   template <typename KernelArgs> void extract(const KernelArgs &args) {

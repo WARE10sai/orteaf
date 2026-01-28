@@ -16,15 +16,16 @@ inline constexpr std::size_t kDefaultStorageListCapacity = 16;
  * Manages a collection of storage bindings with efficient inline storage.
  * Provides convenient methods for adding and finding storages by key.
  * Template parameter allows use with different storage binding types
- * (CpuStorageBinding, MpsStorageBinding, CudaStorageBinding, etc.).
+ * (e.g., StorageBinding<StorageLease>).
  *
  * @tparam StorageBinding The storage binding type (must have an 'id' field)
  * @tparam InlineCapacity Number of inline storage slots (default: 16)
  *
  * Example:
  * @code
- * StorageList<MpsStorageBinding> storages;
- * storages.add(MpsStorageBinding{makeStorageKey(StorageId::Input0), lease});
+ * using AnyBinding = StorageBinding<StorageLease>;
+ * StorageList<AnyBinding> storages;
+ * storages.add(AnyBinding{makeStorageKey(StorageId::Input0), lease});
  * auto* binding = storages.find(makeStorageKey(StorageId::Input0));
  * @endcode
  */
