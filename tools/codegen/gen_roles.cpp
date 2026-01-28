@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -129,9 +130,10 @@ ParsedConfig ParseConfig(const fs::path &yaml_path) {
   }
 
   std::unordered_set<std::string> seen_ids;
-  std::unordered_set<int> seen_values;
-
   config.roles.reserve(roles_node.size());
+  seen_ids.reserve(roles_node.size());
+  const auto max_role_value =
+      static_cast<std::size_t>(std::numeric_limits<int>::max());
   for (std::size_t idx = 0; idx < roles_node.size(); ++idx) {
     const auto &node = roles_node[idx];
     if (!node.IsMap()) {
@@ -160,12 +162,12 @@ ParsedConfig ParseConfig(const fs::path &yaml_path) {
           << "). Values are auto-assigned by order.";
       Fail(oss.str());
     }
-    role.value = static_cast<int>(idx);
-    if (!seen_values.insert(role.value).second) {
+    if (idx > max_role_value) {
       std::ostringstream oss;
-      oss << "Duplicate role value " << role.value;
+      oss << "Too many roles: role value exceeds int range (" << context << ")";
       Fail(oss.str());
     }
+    role.value = static_cast<int>(idx);
 
     role.description = ReadString(node, "description", false, context);
 
@@ -214,7 +216,7 @@ GeneratedFiles GenerateFiles(const ParsedConfig &config) {
   header_stream << "};\n\n";
 
   header_stream << "// Type info for each Role\n";
-  header_stream << "template <Role Role>\n";
+  header_stream << "template <Role RoleValue>\n";
   header_stream << "struct RoleInfo;\n\n";
 
   for (const auto &role : config.roles) {
