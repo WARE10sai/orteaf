@@ -13,6 +13,8 @@
 #include <utility>
 #include <vector>
 
+#include "include_resolver.h"
+
 namespace fs = std::filesystem;
 
 namespace {
@@ -228,6 +230,14 @@ GeneratedData GenerateOutputs(const ResolvedConfig &resolved) {
     Fail("No params defined");
   }
 
+  std::vector<std::string> cpp_types;
+  cpp_types.reserve(resolved.params.size());
+  for (const auto &param : resolved.params) {
+    cpp_types.push_back(param.cpp_type);
+  }
+  const auto include_headers =
+      ::orteaf::codegen::CollectRequiredIncludes(cpp_types);
+
   // Generate .def file
   std::ostringstream def_stream;
   def_stream << "// Auto-generated. Do not edit.\n";
@@ -243,7 +253,10 @@ GeneratedData GenerateOutputs(const ResolvedConfig &resolved) {
   header_stream << "#include <cstdint>\n";
   header_stream << "#include <string_view>\n";
   header_stream << "#include <variant>\n";
-  header_stream << "#include <orteaf/internal/base/array_view.h>\n\n";
+  for (const auto &header : include_headers) {
+    header_stream << "#include <" << header << ">\n";
+  }
+  header_stream << "\n";
   header_stream << "namespace orteaf::internal::kernel {\n";
   header_stream << "enum class ParamId : std::uint64_t;\n";
   header_stream << "}  // namespace orteaf::internal::kernel\n\n";
