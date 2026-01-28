@@ -28,6 +28,9 @@ CollectRequiredIncludes(const std::vector<std::string> &types) {
                                "orteaf/internal/base/small_vector.h");
     InsertIncludeIfTypeMatches(includes, type, "InlineVector<",
                                "orteaf/internal/base/inline_vector.h");
+    InsertIncludeIfTypeMatches(includes, type, "std::array", "array");
+    InsertIncludeIfTypeMatches(includes, type, "std::optional", "optional");
+    InsertIncludeIfTypeMatches(includes, type, "std::span", "span");
     InsertIncludeIfTypeMatches(includes, type, "std::string",
                                "string");
     InsertIncludeIfTypeMatches(includes, type, "std::vector",
