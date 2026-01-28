@@ -110,7 +110,7 @@ TEST(ArchitectureParent, ParentOfGenericReturnsSelf) {
 }
 
 TEST(ArchitectureParent, ParentOfNonGenericIsWithinSameExecution) {
-  // Without explicit parent, defaults to Generic
+  // Verifies parent matches YAML: Sm80 -> CudaGeneric
   const auto parent = arch::parentOf(arch::Architecture::CudaSm80);
   EXPECT_EQ(arch::executionOf(parent), execution::Execution::Cuda);
   EXPECT_EQ(parent, arch::Architecture::CudaGeneric);
