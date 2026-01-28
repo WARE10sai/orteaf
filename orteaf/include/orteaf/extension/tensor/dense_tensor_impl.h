@@ -113,8 +113,8 @@ public:
   /// @brief Check if the layout is contiguous.
   bool isContiguous() const noexcept { return layout_.isContiguous(); }
 
-  void bindKernelArgs(::orteaf::internal::kernel::KernelArgs &args,
-                      ::orteaf::internal::kernel::OperandId operand_id) const {
+  void bindAllArgs(::orteaf::internal::kernel::KernelArgs &args,
+                   ::orteaf::internal::kernel::OperandId operand_id) const {
     storage_.bind(args, operand_id);
     layout_.bindParams(args, operand_id);
   }
