@@ -192,7 +192,7 @@ MpsHeapManager::bufferManager(const HeapLease &lease) {
   if (!lease) {
     return nullptr;
   }
-  auto *payload = const_cast<MpsHeapResource *>(lease.operator->());
+  auto *payload = const_cast<MpsHeapPayload *>(lease.operator->());
   return payload ? &payload->buffer_manager : nullptr;
 }
 

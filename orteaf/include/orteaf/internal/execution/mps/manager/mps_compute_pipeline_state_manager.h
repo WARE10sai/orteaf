@@ -52,8 +52,8 @@ struct FunctionKeyHasher {
   }
 };
 
-// Resource struct: holds function + pipeline_state
-struct MpsPipelineResource {
+// Payload struct: holds function + pipeline_state
+struct MpsPipelinePayload {
   ::orteaf::internal::execution::mps::platform::wrapper::MpsFunction_t function{
       nullptr};
   ::orteaf::internal::execution::mps::platform::wrapper::
@@ -61,7 +61,7 @@ struct MpsPipelineResource {
 };
 
 struct PipelinePayloadPoolTraits {
-  using Payload = MpsPipelineResource;
+  using Payload = MpsPipelinePayload;
   using Handle = ::orteaf::internal::execution::mps::MpsFunctionHandle;
   using DeviceType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsDevice_t;
@@ -120,7 +120,7 @@ struct PipelineControlBlockTag {};
 
 using PipelineControlBlock = ::orteaf::internal::base::StrongControlBlock<
     ::orteaf::internal::execution::mps::MpsFunctionHandle,
-    MpsPipelineResource,
+    MpsPipelinePayload,
     PipelinePayloadPool>;
 
 struct MpsComputePipelineStateManagerTraits {
@@ -228,7 +228,7 @@ public:
     return core_.payloadCreatedForTest(handle);
   }
 
-  const MpsPipelineResource *
+  const MpsPipelinePayload *
   payloadForTest(FunctionHandle handle) const noexcept {
     return core_.payloadForTest(handle);
   }

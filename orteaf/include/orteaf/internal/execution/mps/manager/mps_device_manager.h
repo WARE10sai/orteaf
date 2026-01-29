@@ -27,10 +27,10 @@ namespace orteaf::internal::execution::mps::manager {
 class MpsExecutionManager;
 
 // =============================================================================
-// Device Resource
+// Device Payload
 // =============================================================================
 
-struct MpsDeviceResource {
+struct MpsDevicePayload {
   using SlowOps = ::orteaf::internal::execution::mps::platform::MpsSlowOps;
 
   ::orteaf::internal::execution::mps::platform::wrapper::MpsDevice_t device{
@@ -44,15 +44,15 @@ struct MpsDeviceResource {
   MpsEventManager event_pool{};
   MpsFenceManager fence_pool{};
 
-  MpsDeviceResource() = default;
-  MpsDeviceResource(const MpsDeviceResource &) = delete;
-  MpsDeviceResource &operator=(const MpsDeviceResource &) = delete;
+  MpsDevicePayload() = default;
+  MpsDevicePayload(const MpsDevicePayload &) = delete;
+  MpsDevicePayload &operator=(const MpsDevicePayload &) = delete;
 
-  MpsDeviceResource(MpsDeviceResource &&other) noexcept {
+  MpsDevicePayload(MpsDevicePayload &&other) noexcept {
     moveFrom(std::move(other));
   }
 
-  MpsDeviceResource &operator=(MpsDeviceResource &&other) noexcept {
+  MpsDevicePayload &operator=(MpsDevicePayload &&other) noexcept {
     if (this != &other) {
       reset(nullptr);
       moveFrom(std::move(other));
@@ -60,7 +60,7 @@ struct MpsDeviceResource {
     return *this;
   }
 
-  ~MpsDeviceResource() { reset(nullptr); }
+  ~MpsDevicePayload() { reset(nullptr); }
 
   void reset(SlowOps *slow_ops) noexcept {
     command_queue_manager.shutdown();
@@ -102,7 +102,7 @@ struct MpsDeviceResource {
   const MpsFenceManager &fencePool() const noexcept { return fence_pool; }
 
 private:
-  void moveFrom(MpsDeviceResource &&other) noexcept {
+  void moveFrom(MpsDevicePayload &&other) noexcept {
     command_queue_manager = std::move(other.command_queue_manager);
     heap_manager = std::move(other.heap_manager);
     library_manager = std::move(other.library_manager);
@@ -120,7 +120,7 @@ private:
 // =============================================================================
 
 struct DevicePayloadPoolTraits {
-  using Payload = MpsDeviceResource;
+  using Payload = MpsDevicePayload;
   using Handle = ::orteaf::internal::execution::mps::MpsDeviceHandle;
   using SlowOps = ::orteaf::internal::execution::mps::platform::MpsSlowOps;
 
@@ -218,7 +218,7 @@ struct DeviceManagerCBTag {};
 // =============================================================================
 
 using DeviceControlBlock = ::orteaf::internal::base::StrongControlBlock<
-    ::orteaf::internal::execution::mps::MpsDeviceHandle, MpsDeviceResource,
+    ::orteaf::internal::execution::mps::MpsDeviceHandle, MpsDevicePayload,
     DevicePayloadPool>;
 
 // =============================================================================

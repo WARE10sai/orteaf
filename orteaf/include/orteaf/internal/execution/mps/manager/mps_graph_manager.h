@@ -73,10 +73,10 @@ struct GraphKeyHasher {
 };
 
 // =============================================================================
-// Graph Resource
+// Graph Payload
 // =============================================================================
 
-struct MpsGraphResource {
+struct MpsGraphPayload {
   ::orteaf::internal::execution::mps::platform::wrapper::MpsGraph_t graph{
       nullptr};
   ::orteaf::internal::execution::mps::platform::wrapper::MpsGraphExecutable_t
@@ -88,7 +88,7 @@ struct MpsGraphResource {
 // =============================================================================
 
 struct GraphPayloadPoolTraits {
-  using Payload = MpsGraphResource;
+  using Payload = MpsGraphPayload;
   using Handle = ::orteaf::internal::execution::mps::MpsGraphHandle;
   using DeviceType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsDevice_t;
@@ -152,7 +152,7 @@ using GraphPayloadPool =
 struct GraphControlBlockTag {};
 
 using GraphControlBlock = ::orteaf::internal::base::StrongControlBlock<
-    ::orteaf::internal::execution::mps::MpsGraphHandle, MpsGraphResource,
+    ::orteaf::internal::execution::mps::MpsGraphHandle, MpsGraphPayload,
     GraphPayloadPool>;
 
 // =============================================================================

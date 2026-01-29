@@ -50,8 +50,8 @@ struct LibraryKeyHasher {
   }
 };
 
-// Resource struct: holds library + pipeline_manager
-struct MpsLibraryResource {
+// Payload struct: holds library + pipeline_manager
+struct MpsLibraryPayload {
   ::orteaf::internal::execution::mps::platform::wrapper::MpsLibrary_t library{
       nullptr};
   MpsComputePipelineStateManager pipeline_manager{};
@@ -59,7 +59,7 @@ struct MpsLibraryResource {
 
 // Payload pool
 struct LibraryPayloadPoolTraits {
-  using Payload = MpsLibraryResource;
+  using Payload = MpsLibraryPayload;
   using Handle = ::orteaf::internal::execution::mps::MpsLibraryHandle;
   using DeviceType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsDevice_t;
@@ -109,7 +109,7 @@ using LibraryPayloadPool =
 
 // ControlBlock type using StrongControlBlock
 using LibraryControlBlock = ::orteaf::internal::base::StrongControlBlock<
-    ::orteaf::internal::execution::mps::MpsLibraryHandle, MpsLibraryResource,
+    ::orteaf::internal::execution::mps::MpsLibraryHandle, MpsLibraryPayload,
     LibraryPayloadPool>;
 
 // Traits for PoolManager
@@ -208,7 +208,7 @@ public:
   bool payloadCreatedForTest(LibraryHandle handle) const noexcept {
     return core_.payloadCreatedForTest(handle);
   }
-  const MpsLibraryResource *payloadForTest(LibraryHandle handle) const noexcept {
+  const MpsLibraryPayload *payloadForTest(LibraryHandle handle) const noexcept {
     return core_.payloadForTest(handle);
   }
 #endif

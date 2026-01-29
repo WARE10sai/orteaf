@@ -69,10 +69,10 @@ struct HeapDescriptorKeyHasher {
 };
 
 // =============================================================================
-// Heap Resource - MpsBufferManager を直接保持
+// Heap Payload - MpsBufferManager を直接保持
 // =============================================================================
 
-struct MpsHeapResource {
+struct MpsHeapPayload {
   ::orteaf::internal::execution::mps::platform::wrapper::MpsHeap_t heap{
       nullptr};
   MpsBufferManager<
@@ -85,7 +85,7 @@ struct MpsHeapResource {
 // =============================================================================
 
 struct HeapPayloadPoolTraits {
-  using Payload = MpsHeapResource;
+  using Payload = MpsHeapPayload;
   using Handle = ::orteaf::internal::execution::mps::MpsHeapHandle;
   using DeviceType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsDevice_t;
@@ -119,7 +119,7 @@ using HeapPayloadPool =
 // =============================================================================
 
 using HeapControlBlock = ::orteaf::internal::base::StrongControlBlock<
-    ::orteaf::internal::execution::mps::MpsHeapHandle, MpsHeapResource,
+    ::orteaf::internal::execution::mps::MpsHeapHandle, MpsHeapPayload,
     HeapPayloadPool>;
 
 // =============================================================================
@@ -237,7 +237,7 @@ public:
   bool payloadCreatedForTest(HeapHandle handle) const noexcept {
     return core_.payloadCreatedForTest(handle);
   }
-  const MpsHeapResource *payloadForTest(HeapHandle handle) const noexcept {
+  const MpsHeapPayload *payloadForTest(HeapHandle handle) const noexcept {
     return core_.payloadForTest(handle);
   }
 #endif
