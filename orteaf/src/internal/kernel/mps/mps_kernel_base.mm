@@ -22,7 +22,7 @@ void MpsKernelBase::configure(
   entry.pipelines.reserve(keys_.size());
   for (std::size_t i = 0; i < keys_.size(); ++i) {
     const auto &key = keys_[i];
-    auto library_lease = device_resource->library_manager.acquire(key.first);
+    auto library_lease = device_resource->libraryManager().acquire(key.first);
     auto *library_resource = library_lease.operator->();
     if (library_resource) {
       entry.pipelines.pushBack(

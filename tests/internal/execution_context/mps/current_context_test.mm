@@ -110,7 +110,7 @@ TEST_F(MpsCurrentContextTest, SetCurrentContextOverridesState) {
   if (resource == nullptr) {
     GTEST_SKIP() << "Failed to acquire MPS device";
   }
-  ctx.command_queue = resource->command_queue_manager.acquire();
+  ctx.command_queue = resource->commandQueueManager().acquire();
   if (!ctx.command_queue) {
     GTEST_SKIP() << "Failed to acquire MPS command queue";
   }
@@ -136,7 +136,7 @@ TEST_F(MpsCurrentContextTest, SetCurrentOverridesState) {
   if (resource == nullptr) {
     GTEST_SKIP() << "Failed to acquire MPS device";
   }
-  ctx.command_queue = resource->command_queue_manager.acquire();
+  ctx.command_queue = resource->commandQueueManager().acquire();
   if (!ctx.command_queue) {
     GTEST_SKIP() << "Failed to acquire MPS command queue";
   }
