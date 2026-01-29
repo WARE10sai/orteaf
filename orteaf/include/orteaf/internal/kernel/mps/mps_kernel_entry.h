@@ -4,9 +4,11 @@
 
 #include "orteaf/internal/diagnostics/error/error.h"
 #include "orteaf/internal/kernel/core/kernel_args.h"
-#include "orteaf/internal/kernel/mps/mps_kernel_base.h"
+#include "orteaf/internal/execution/mps/resource/mps_kernel_base.h"
 
 namespace orteaf::internal::kernel::mps {
+
+using MpsKernelBase = ::orteaf::internal::execution::mps::resource::MpsKernelBase;
 
 /**
  * @brief MPS kernel entry structure.

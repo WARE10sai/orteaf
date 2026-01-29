@@ -15,7 +15,7 @@
 #include "orteaf/internal/execution/mps/mps_handles.h"
 #include "orteaf/internal/execution/mps/platform/mps_slow_ops.h"
 
-namespace orteaf::internal::kernel::mps {
+namespace orteaf::internal::execution::mps::manager {
 
 // Forward declaration
 class MpsKernelBaseManager;
@@ -241,6 +241,6 @@ private:
   Core core_{};
 };
 
-} // namespace orteaf::internal::kernel::mps
+} // namespace orteaf::internal::execution::mps::manager
 
 #endif // ORTEAF_ENABLE_MPS

@@ -1,10 +1,10 @@
 #if ORTEAF_ENABLE_MPS
 
-#include "orteaf/internal/kernel/mps/mps_kernel_base_manager.h"
+#include "orteaf/internal/execution/mps/manager/mps_kernel_base_manager.h"
 #include "orteaf/internal/diagnostics/error/error.h"
 #include "orteaf/internal/execution/mps/manager/mps_device_manager.h"
 
-namespace orteaf::internal::kernel::mps {
+namespace orteaf::internal::execution::mps::manager {
 
 using DeviceLease = ::orteaf::internal::execution::mps::manager::
     MpsDeviceManager::DeviceLease;
@@ -121,6 +121,6 @@ MpsKernelBaseManager::makePayloadContext(
   return context;
 }
 
-} // namespace orteaf::internal::kernel::mps
+} // namespace orteaf::internal::execution::mps::manager
 
 #endif // ORTEAF_ENABLE_MPS

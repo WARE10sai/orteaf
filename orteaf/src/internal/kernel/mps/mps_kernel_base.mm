@@ -1,8 +1,8 @@
-#include "orteaf/internal/kernel/mps/mps_kernel_base.h"
+#include "orteaf/internal/execution/mps/resource/mps_kernel_base.h"
 
 #if ORTEAF_ENABLE_MPS
 
-namespace orteaf::internal::kernel::mps {
+namespace orteaf::internal::execution::mps::resource {
 
 void MpsKernelBase::configure(
     ::orteaf::internal::execution_context::mps::Context &context) {
@@ -34,6 +34,6 @@ void MpsKernelBase::configure(
   entry.configured = true;
 }
 
-} // namespace orteaf::internal::kernel::mps
+} // namespace orteaf::internal::execution::mps::resource
 
 #endif // ORTEAF_ENABLE_MPS

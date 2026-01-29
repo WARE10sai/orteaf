@@ -24,7 +24,7 @@
 #include "orteaf/internal/storage/registry/storage_types.h"
 #include "orteaf/internal/storage/mps/mps_storage.h"
 
-namespace orteaf::internal::kernel::mps {
+namespace orteaf::internal::execution::mps::resource {
 
 /**
  * @brief Kernel base structure that caches MPS compute pipeline states.
@@ -915,6 +915,6 @@ private:
       std::numeric_limits<std::size_t>::max();
 };
 
-} // namespace orteaf::internal::kernel::mps
+} // namespace orteaf::internal::execution::mps::resource
 
 #endif // ORTEAF_ENABLE_MPS

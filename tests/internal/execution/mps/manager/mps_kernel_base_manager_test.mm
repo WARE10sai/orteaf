@@ -4,7 +4,7 @@
 #include <cstdint>
 
 #include <orteaf/internal/diagnostics/error/error.h>
-#include <orteaf/internal/kernel/mps/mps_kernel_base_manager.h>
+#include <orteaf/internal/execution/mps/manager/mps_kernel_base_manager.h>
 #include <orteaf/internal/execution/mps/manager/mps_device_manager.h>
 #include <orteaf/internal/execution/mps/manager/mps_library_manager.h>
 #include <tests/internal/execution/mps/manager/testing/execution_ops_provider.h>
@@ -13,7 +13,7 @@
 #include <tests/internal/testing/error_assert.h>
 
 namespace diag_error = orteaf::internal::diagnostics::error;
-namespace kernel_mps = orteaf::internal::kernel::mps;
+namespace kernel_mps = orteaf::internal::execution::mps::manager;
 namespace mps_mgr = orteaf::internal::execution::mps::manager;
 namespace mps_wrapper = orteaf::internal::execution::mps::platform::wrapper;
 namespace testing_mps = orteaf::tests::execution::mps::testing;
