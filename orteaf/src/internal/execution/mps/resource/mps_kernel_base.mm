@@ -48,7 +48,6 @@ bool MpsKernelBase::initialize(
     reset();
     return false;
   }
-  ::orteaf::internal::execution_context::mps::Context context{};
   configure(device_lease);
 
   if (keys.empty()) {
