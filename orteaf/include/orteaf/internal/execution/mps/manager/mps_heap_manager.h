@@ -73,11 +73,49 @@ struct HeapDescriptorKeyHasher {
 // =============================================================================
 
 struct MpsHeapPayload {
-  ::orteaf::internal::execution::mps::platform::wrapper::MpsHeap_t heap{
-      nullptr};
-  MpsBufferManager<
-      ::orteaf::internal::execution::allocator::resource::mps::MpsResource>
-      buffer_manager{};
+  using HeapType =
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsHeap_t;
+  using DeviceType =
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsDevice_t;
+  using SlowOps = ::orteaf::internal::execution::mps::platform::MpsSlowOps;
+  using BufferManager = MpsBufferManager<
+      ::orteaf::internal::execution::allocator::resource::mps::MpsResource>;
+
+  struct InitConfig {
+    DeviceType device{nullptr};
+    ::orteaf::internal::execution::mps::MpsDeviceHandle device_handle{};
+    MpsLibraryManager *library_manager{nullptr};
+    SlowOps *ops{nullptr};
+    HeapDescriptorKey key{};
+    BufferManager::Config buffer_config{};
+  };
+
+  MpsHeapPayload() = default;
+  MpsHeapPayload(const MpsHeapPayload &) = delete;
+  MpsHeapPayload &operator=(const MpsHeapPayload &) = delete;
+  MpsHeapPayload(MpsHeapPayload &&) = default;
+  MpsHeapPayload &operator=(MpsHeapPayload &&) = default;
+  ~MpsHeapPayload() = default;
+
+  bool initialize(const InitConfig &config);
+
+  void reset(SlowOps *ops) noexcept {
+    buffer_manager_.shutdown();
+    if (heap_ != nullptr && ops != nullptr) {
+      ops->destroyHeap(heap_);
+      heap_ = nullptr;
+    }
+  }
+
+  HeapType heap() const noexcept { return heap_; }
+  BufferManager &bufferManager() noexcept { return buffer_manager_; }
+  const BufferManager &bufferManager() const noexcept {
+    return buffer_manager_;
+  }
+
+private:
+  HeapType heap_{nullptr};
+  BufferManager buffer_manager_{};
 };
 
 // =============================================================================

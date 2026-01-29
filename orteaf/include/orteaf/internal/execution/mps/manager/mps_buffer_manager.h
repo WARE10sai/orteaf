@@ -232,6 +232,7 @@ private:
   }
 
   friend struct HeapPayloadPoolTraits;
+  friend struct MpsHeapPayload;
 
 public:
 

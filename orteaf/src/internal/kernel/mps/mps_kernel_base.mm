@@ -26,7 +26,7 @@ void MpsKernelBase::configure(
     auto *library_resource = library_lease.operator->();
     if (library_resource) {
       entry.pipelines.pushBack(
-          library_resource->pipeline_manager.acquire(key.second));
+          library_resource->pipelineManager().acquire(key.second));
     } else {
       entry.pipelines.pushBack(PipelineLease{}); // Invalid lease
     }

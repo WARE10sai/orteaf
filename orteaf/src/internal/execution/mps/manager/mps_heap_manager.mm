@@ -10,14 +10,13 @@ namespace orteaf::internal::execution::mps::manager {
 // HeapPayloadPoolTraits Implementation
 // =============================================================================
 
-bool HeapPayloadPoolTraits::create(Payload &payload, const Request &request,
-                                   const Context &context) {
-  if (context.ops == nullptr || context.device == nullptr) {
+bool MpsHeapPayload::initialize(const InitConfig &config) {
+  if (config.ops == nullptr || config.device == nullptr) {
     return false;
   }
 
   // Create heap descriptor
-  auto descriptor = context.ops->createHeapDescriptor();
+  auto descriptor = config.ops->createHeapDescriptor();
   if (descriptor == nullptr) {
     return false;
   }
@@ -33,48 +32,53 @@ bool HeapPayloadPoolTraits::create(Payload &payload, const Request &request,
       }
     }
   };
-  DescriptorGuard guard{descriptor, context.ops};
+  DescriptorGuard guard{descriptor, config.ops};
 
   // Configure descriptor
-  context.ops->setHeapDescriptorSize(descriptor, request.key.size_bytes);
-  context.ops->setHeapDescriptorResourceOptions(descriptor,
-                                                request.key.resource_options);
-  context.ops->setHeapDescriptorStorageMode(descriptor,
-                                            request.key.storage_mode);
-  context.ops->setHeapDescriptorCPUCacheMode(descriptor,
-                                             request.key.cpu_cache_mode);
-  context.ops->setHeapDescriptorHazardTrackingMode(
-      descriptor, request.key.hazard_tracking_mode);
-  context.ops->setHeapDescriptorType(descriptor, request.key.heap_type);
+  config.ops->setHeapDescriptorSize(descriptor, config.key.size_bytes);
+  config.ops->setHeapDescriptorResourceOptions(descriptor,
+                                               config.key.resource_options);
+  config.ops->setHeapDescriptorStorageMode(descriptor,
+                                           config.key.storage_mode);
+  config.ops->setHeapDescriptorCPUCacheMode(descriptor,
+                                            config.key.cpu_cache_mode);
+  config.ops->setHeapDescriptorHazardTrackingMode(
+      descriptor, config.key.hazard_tracking_mode);
+  config.ops->setHeapDescriptorType(descriptor, config.key.heap_type);
 
   // Create heap
-  payload.heap = context.ops->createHeap(context.device, descriptor);
-  if (payload.heap == nullptr) {
+  heap_ = config.ops->createHeap(config.device, descriptor);
+  if (heap_ == nullptr) {
     return false;
   }
 
   // Configure buffer manager
   BufferManager::InternalConfig buf_cfg{};
-  buf_cfg.public_config = context.buffer_config;
-  buf_cfg.device = context.device;
-  buf_cfg.device_handle = context.device_handle;
-  buf_cfg.heap = payload.heap;
-  buf_cfg.library_manager = context.library_manager;
-  payload.buffer_manager.configure(buf_cfg);
+  buf_cfg.public_config = config.buffer_config;
+  buf_cfg.device = config.device;
+  buf_cfg.device_handle = config.device_handle;
+  buf_cfg.heap = heap_;
+  buf_cfg.library_manager = config.library_manager;
+  buffer_manager_.configure(buf_cfg);
 
   return true;
 }
 
+bool HeapPayloadPoolTraits::create(Payload &payload, const Request &request,
+                                   const Context &context) {
+  MpsHeapPayload::InitConfig init{};
+  init.device = context.device;
+  init.device_handle = context.device_handle;
+  init.library_manager = context.library_manager;
+  init.ops = context.ops;
+  init.key = request.key;
+  init.buffer_config = context.buffer_config;
+  return payload.initialize(init);
+}
+
 void HeapPayloadPoolTraits::destroy(Payload &payload, const Request &,
                                     const Context &context) {
-  // Shutdown buffer manager first
-  payload.buffer_manager.shutdown();
-
-  // Then destroy heap
-  if (payload.heap != nullptr && context.ops != nullptr) {
-    context.ops->destroyHeap(payload.heap);
-    payload.heap = nullptr;
-  }
+  payload.reset(context.ops);
 }
 
 // =============================================================================
@@ -193,7 +197,7 @@ MpsHeapManager::bufferManager(const HeapLease &lease) {
     return nullptr;
   }
   auto *payload = const_cast<MpsHeapPayload *>(lease.operator->());
-  return payload ? &payload->buffer_manager : nullptr;
+  return payload ? &payload->bufferManager() : nullptr;
 }
 
 MpsHeapManager::BufferManager *
@@ -212,7 +216,7 @@ MpsHeapManager::bufferManager(const HeapDescriptorKey &key) {
       lifetime_.set(lease);
     }
     auto *payload = lease.operator->();
-    return payload ? &payload->buffer_manager : nullptr;
+    return payload ? &payload->bufferManager() : nullptr;
   }
 
   // Create new entry - use acquire and then extract buffer_manager
@@ -221,7 +225,7 @@ MpsHeapManager::bufferManager(const HeapDescriptorKey &key) {
     return nullptr;
   }
   auto *payload = lease.operator->();
-  return payload ? &payload->buffer_manager : nullptr;
+  return payload ? &payload->bufferManager() : nullptr;
 }
 
 void MpsHeapManager::validateKey(const HeapDescriptorKey &key) const {

@@ -52,9 +52,63 @@ struct LibraryKeyHasher {
 
 // Payload struct: holds library + pipeline_manager
 struct MpsLibraryPayload {
-  ::orteaf::internal::execution::mps::platform::wrapper::MpsLibrary_t library{
-      nullptr};
-  MpsComputePipelineStateManager pipeline_manager{};
+  using LibraryType =
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsLibrary_t;
+  using DeviceType =
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsDevice_t;
+  using SlowOps = ::orteaf::internal::execution::mps::platform::MpsSlowOps;
+
+  struct InitConfig {
+    DeviceType device{nullptr};
+    SlowOps *ops{nullptr};
+    LibraryKey key{};
+    MpsComputePipelineStateManager::Config pipeline_config{};
+  };
+
+  MpsLibraryPayload() = default;
+  MpsLibraryPayload(const MpsLibraryPayload &) = delete;
+  MpsLibraryPayload &operator=(const MpsLibraryPayload &) = delete;
+  MpsLibraryPayload(MpsLibraryPayload &&) = default;
+  MpsLibraryPayload &operator=(MpsLibraryPayload &&) = default;
+  ~MpsLibraryPayload() = default;
+
+  bool initialize(const InitConfig &config) {
+    if (config.ops == nullptr || config.device == nullptr) {
+      return false;
+    }
+    library_ =
+        config.ops->createLibraryWithName(config.device, config.key.identifier);
+    if (library_ == nullptr) {
+      return false;
+    }
+    MpsComputePipelineStateManager::InternalConfig pipeline_config{};
+    pipeline_config.public_config = config.pipeline_config;
+    pipeline_config.device = config.device;
+    pipeline_config.library = library_;
+    pipeline_config.ops = config.ops;
+    pipeline_manager_.configure(pipeline_config);
+    return true;
+  }
+
+  void reset(SlowOps *ops) noexcept {
+    pipeline_manager_.shutdown();
+    if (library_ != nullptr && ops != nullptr) {
+      ops->destroyLibrary(library_);
+      library_ = nullptr;
+    }
+  }
+
+  LibraryType library() const noexcept { return library_; }
+  MpsComputePipelineStateManager &pipelineManager() noexcept {
+    return pipeline_manager_;
+  }
+  const MpsComputePipelineStateManager &pipelineManager() const noexcept {
+    return pipeline_manager_;
+  }
+
+private:
+  LibraryType library_{nullptr};
+  MpsComputePipelineStateManager pipeline_manager_{};
 };
 
 // Payload pool
@@ -77,30 +131,17 @@ struct LibraryPayloadPoolTraits {
 
   static bool create(Payload &payload, const Request &request,
                      const Context &context) {
-    if (context.ops == nullptr || context.device == nullptr) {
-      return false;
-    }
-    payload.library = context.ops->createLibraryWithName(
-        context.device, request.key.identifier);
-    if (payload.library == nullptr) {
-      return false;
-    }
-    MpsComputePipelineStateManager::InternalConfig pipeline_config{};
-    pipeline_config.public_config = context.pipeline_config;
-    pipeline_config.device = context.device;
-    pipeline_config.library = payload.library;
-    pipeline_config.ops = context.ops;
-    payload.pipeline_manager.configure(pipeline_config);
-    return true;
+    MpsLibraryPayload::InitConfig init{};
+    init.device = context.device;
+    init.ops = context.ops;
+    init.key = request.key;
+    init.pipeline_config = context.pipeline_config;
+    return payload.initialize(init);
   }
 
   static void destroy(Payload &payload, const Request &,
                       const Context &context) {
-    payload.pipeline_manager.shutdown();
-    if (payload.library != nullptr && context.ops != nullptr) {
-      context.ops->destroyLibrary(payload.library);
-      payload.library = nullptr;
-    }
+    payload.reset(context.ops);
   }
 };
 

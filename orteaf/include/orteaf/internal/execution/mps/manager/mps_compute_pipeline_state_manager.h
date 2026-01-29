@@ -54,10 +54,67 @@ struct FunctionKeyHasher {
 
 // Payload struct: holds function + pipeline_state
 struct MpsPipelinePayload {
-  ::orteaf::internal::execution::mps::platform::wrapper::MpsFunction_t function{
-      nullptr};
-  ::orteaf::internal::execution::mps::platform::wrapper::
-      MpsComputePipelineState_t pipeline_state{nullptr};
+  using FunctionType =
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsFunction_t;
+  using PipelineStateType = ::orteaf::internal::execution::mps::platform::
+      wrapper::MpsComputePipelineState_t;
+  using DeviceType =
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsDevice_t;
+  using LibraryType =
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsLibrary_t;
+  using SlowOps = ::orteaf::internal::execution::mps::platform::MpsSlowOps;
+
+  struct InitConfig {
+    DeviceType device{nullptr};
+    LibraryType library{nullptr};
+    SlowOps *ops{nullptr};
+    FunctionKey key{};
+  };
+
+  MpsPipelinePayload() = default;
+  MpsPipelinePayload(const MpsPipelinePayload &) = delete;
+  MpsPipelinePayload &operator=(const MpsPipelinePayload &) = delete;
+  MpsPipelinePayload(MpsPipelinePayload &&) = default;
+  MpsPipelinePayload &operator=(MpsPipelinePayload &&) = default;
+  ~MpsPipelinePayload() = default;
+
+  bool initialize(const InitConfig &config) {
+    if (config.ops == nullptr || config.device == nullptr ||
+        config.library == nullptr) {
+      return false;
+    }
+    function_ =
+        config.ops->createFunction(config.library, config.key.identifier);
+    if (function_ == nullptr) {
+      return false;
+    }
+    pipeline_state_ =
+        config.ops->createComputePipelineState(config.device, function_);
+    if (pipeline_state_ == nullptr) {
+      config.ops->destroyFunction(function_);
+      function_ = nullptr;
+      return false;
+    }
+    return true;
+  }
+
+  void reset(SlowOps *ops) noexcept {
+    if (pipeline_state_ != nullptr && ops != nullptr) {
+      ops->destroyComputePipelineState(pipeline_state_);
+      pipeline_state_ = nullptr;
+    }
+    if (function_ != nullptr && ops != nullptr) {
+      ops->destroyFunction(function_);
+      function_ = nullptr;
+    }
+  }
+
+  FunctionType function() const noexcept { return function_; }
+  PipelineStateType pipelineState() const noexcept { return pipeline_state_; }
+
+private:
+  FunctionType function_{nullptr};
+  PipelineStateType pipeline_state_{nullptr};
 };
 
 struct PipelinePayloadPoolTraits {
@@ -81,35 +138,17 @@ struct PipelinePayloadPoolTraits {
 
   static bool create(Payload &payload, const Request &request,
                      const Context &context) {
-    if (context.ops == nullptr || context.device == nullptr ||
-        context.library == nullptr) {
-      return false;
-    }
-    payload.function =
-        context.ops->createFunction(context.library, request.key.identifier);
-    if (payload.function == nullptr) {
-      return false;
-    }
-    payload.pipeline_state = context.ops->createComputePipelineState(
-        context.device, payload.function);
-    if (payload.pipeline_state == nullptr) {
-      context.ops->destroyFunction(payload.function);
-      payload.function = nullptr;
-      return false;
-    }
-    return true;
+    MpsPipelinePayload::InitConfig init{};
+    init.device = context.device;
+    init.library = context.library;
+    init.ops = context.ops;
+    init.key = request.key;
+    return payload.initialize(init);
   }
 
   static void destroy(Payload &payload, const Request &,
                       const Context &context) {
-    if (payload.pipeline_state != nullptr && context.ops != nullptr) {
-      context.ops->destroyComputePipelineState(payload.pipeline_state);
-      payload.pipeline_state = nullptr;
-    }
-    if (payload.function != nullptr && context.ops != nullptr) {
-      context.ops->destroyFunction(payload.function);
-      payload.function = nullptr;
-    }
+    payload.reset(context.ops);
   }
 };
 
@@ -182,6 +221,7 @@ private:
   void configure(const InternalConfig &config);
 
   friend struct LibraryPayloadPoolTraits;
+  friend struct MpsLibraryPayload;
 
 public:
   void shutdown();

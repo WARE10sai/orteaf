@@ -73,7 +73,7 @@ public:
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
           "MPS library lease has no payload");
     }
-    return library_resource->pipeline_manager.acquire(function_key);
+    return library_resource->pipelineManager().acquire(function_key);
   }
 
   static StrongFenceLease acquireFence(DeviceHandle device) {

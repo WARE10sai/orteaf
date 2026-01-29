@@ -34,30 +34,45 @@ struct MpsKernelBasePayload {
   using PipelineLease = ::orteaf::internal::execution::mps::manager::
       MpsComputePipelineStateManager::PipelineLease;
 
-  /// Pipeline state leases for each kernel function
-  ::orteaf::internal::base::HeapVector<PipelineLease> pipelines;
+  MpsKernelBasePayload() = default;
+  MpsKernelBasePayload(const MpsKernelBasePayload &) = delete;
+  MpsKernelBasePayload &operator=(const MpsKernelBasePayload &) = delete;
+  MpsKernelBasePayload(MpsKernelBasePayload &&) = default;
+  MpsKernelBasePayload &operator=(MpsKernelBasePayload &&) = default;
+  ~MpsKernelBasePayload() = default;
+
+  void reset() noexcept { pipelines_.clear(); }
+
+  void reserve(std::size_t count) { pipelines_.reserve(count); }
+  void addPipeline(PipelineLease &&lease) {
+    pipelines_.pushBack(std::move(lease));
+  }
 
   /// Get the number of kernel functions
   [[nodiscard]] std::size_t kernelCount() const noexcept {
-    return pipelines.size();
+    return pipelines_.size();
   }
 
   /// Get a pipeline lease by index
   [[nodiscard]] PipelineLease *getPipeline(std::size_t index) noexcept {
-    if (index >= pipelines.size()) {
+    if (index >= pipelines_.size()) {
       return nullptr;
     }
-    return &pipelines[index];
+    return &pipelines_[index];
   }
 
   /// Get a const pipeline lease by index
   [[nodiscard]] const PipelineLease *
   getPipeline(std::size_t index) const noexcept {
-    if (index >= pipelines.size()) {
+    if (index >= pipelines_.size()) {
       return nullptr;
     }
-    return &pipelines[index];
+    return &pipelines_[index];
   }
+
+private:
+  /// Pipeline state leases for each kernel function
+  ::orteaf::internal::base::HeapVector<PipelineLease> pipelines_{};
 };
 
 // =============================================================================

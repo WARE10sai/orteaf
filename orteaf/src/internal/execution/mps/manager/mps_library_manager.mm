@@ -115,7 +115,7 @@ MpsLibraryManager::acquire(LibraryHandle handle) {
   }
   auto lease = core_.acquireStrongLease(handle);
   const auto *payload_ptr = lease.operator->();
-  if (payload_ptr == nullptr || payload_ptr->library == nullptr) {
+  if (payload_ptr == nullptr || payload_ptr->library() == nullptr) {
     ::orteaf::internal::diagnostics::error::throwError(
         ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidArgument,
         "Library handle does not exist");

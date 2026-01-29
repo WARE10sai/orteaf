@@ -510,11 +510,11 @@ struct MpsKernelBase {
       return;
     }
     auto *resource = pipeline.operator->();
-    if (resource == nullptr || resource->pipeline_state == nullptr) {
+    if (resource == nullptr || resource->pipelineState() == nullptr) {
       return;
     }
     ::orteaf::internal::execution::mps::platform::wrapper::setPipelineState(
-        encoder, resource->pipeline_state);
+        encoder, resource->pipelineState());
   }
 
   /**

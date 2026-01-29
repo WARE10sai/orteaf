@@ -119,7 +119,7 @@ public:
       const std::size_t size_in_bytes =
           numel_ * ::orteaf::internal::sizeOf(dtype_);
       BufferLease lease =
-          heap_lease_->buffer_manager.acquire(size_in_bytes, alignment_);
+          heap_lease_->bufferManager().acquire(size_in_bytes, alignment_);
       return MpsStorage(std::move(lease), std::move(fence_token_),
                         std::move(layout_), dtype_, numel_);
     }

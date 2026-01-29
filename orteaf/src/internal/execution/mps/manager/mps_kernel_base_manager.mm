@@ -21,32 +21,34 @@ bool KernelBasePayloadPoolTraits::create(Payload &payload,
   }
 
   // Acquire pipeline leases for each library/function key pair
-  payload.pipelines.reserve(request.keys.size());
+  payload.reserve(request.keys.size());
   for (const auto &key : request.keys) {
     // Get library lease via DeviceLease->libraryManager()
-    auto library_lease = (*context.device_lease)->libraryManager().acquire(key.first);
+    auto library_lease =
+        (*context.device_lease)->libraryManager().acquire(key.first);
     if (!library_lease) {
       // Failed to acquire library, cleanup and return false
-      payload.pipelines.clear();
+      payload.reset();
       return false;
     }
 
     // Get library resource from the lease using operator->()
     auto *library_resource = library_lease.operator->();
     if (library_resource == nullptr) {
-      payload.pipelines.clear();
+      payload.reset();
       return false;
     }
 
     // Acquire pipeline lease from pipeline manager
-    auto pipeline_lease = library_resource->pipeline_manager.acquire(key.second);
+    auto pipeline_lease =
+        library_resource->pipelineManager().acquire(key.second);
     if (!pipeline_lease) {
-      payload.pipelines.clear();
+      payload.reset();
       return false;
     }
 
     // Store the pipeline lease (library lease will be held by pipeline)
-    payload.pipelines.pushBack(std::move(pipeline_lease));
+    payload.addPipeline(std::move(pipeline_lease));
   }
 
   return true;
@@ -56,7 +58,7 @@ void KernelBasePayloadPoolTraits::destroy(Payload &payload,
                                            const Request &,
                                            const Context &) {
   // Pipeline leases are automatically released on destruction
-  payload.pipelines.clear();
+  payload.reset();
 }
 
 // =============================================================================

@@ -148,7 +148,7 @@ TEST(MpsKernelBaseTest, CreateCommandBufferSucceedsWithValidContext) {
 
   // Manually set up a command queue resource
   mps_resource::MpsCommandQueueResource queue_resource;
-  queue_resource.setQueue(queue);
+  queue_resource.setQueueForTest(queue);
 
   // Create a mock lease that points to the resource
   // Note: This is a bit tricky because we need a proper lease structure
