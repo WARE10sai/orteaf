@@ -76,6 +76,31 @@ struct MpsDeviceResource {
     arch = ::orteaf::internal::architecture::Architecture::MpsGeneric;
   }
 
+  // Accessor methods for encapsulated managers
+  MpsLibraryManager &libraryManager() noexcept { return library_manager; }
+  const MpsLibraryManager &libraryManager() const noexcept {
+    return library_manager;
+  }
+
+  MpsCommandQueueManager &commandQueueManager() noexcept {
+    return command_queue_manager;
+  }
+  const MpsCommandQueueManager &commandQueueManager() const noexcept {
+    return command_queue_manager;
+  }
+
+  MpsHeapManager &heapManager() noexcept { return heap_manager; }
+  const MpsHeapManager &heapManager() const noexcept { return heap_manager; }
+
+  MpsGraphManager &graphManager() noexcept { return graph_manager; }
+  const MpsGraphManager &graphManager() const noexcept { return graph_manager; }
+
+  MpsEventManager &eventPool() noexcept { return event_pool; }
+  const MpsEventManager &eventPool() const noexcept { return event_pool; }
+
+  MpsFenceManager &fencePool() noexcept { return fence_pool; }
+  const MpsFenceManager &fencePool() const noexcept { return fence_pool; }
+
 private:
   void moveFrom(MpsDeviceResource &&other) noexcept {
     command_queue_manager = std::move(other.command_queue_manager);

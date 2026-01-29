@@ -10,6 +10,7 @@
 #include "orteaf/internal/base/manager/pool_manager.h"
 #include "orteaf/internal/base/pool/slot_pool.h"
 #include "orteaf/internal/execution/mps/manager/mps_compute_pipeline_state_manager.h"
+#include "orteaf/internal/execution/mps/manager/mps_device_manager.h"
 #include "orteaf/internal/execution/mps/manager/mps_library_manager.h"
 #include "orteaf/internal/execution/mps/mps_handles.h"
 #include "orteaf/internal/execution/mps/platform/mps_slow_ops.h"
@@ -66,6 +67,8 @@ struct MpsKernelBasePayload {
 struct KernelBasePayloadPoolTraits {
   using Payload = MpsKernelBasePayload;
   using Handle = ::orteaf::internal::execution::mps::MpsKernelBaseHandle;
+  using DeviceLease = ::orteaf::internal::execution::mps::manager::
+      MpsDeviceManager::DeviceLease;
   using LibraryKey = ::orteaf::internal::execution::mps::manager::LibraryKey;
   using FunctionKey = ::orteaf::internal::execution::mps::manager::FunctionKey;
   using Key = std::pair<LibraryKey, FunctionKey>;
@@ -75,9 +78,7 @@ struct KernelBasePayloadPoolTraits {
   };
 
   struct Context {
-    ::orteaf::internal::execution::mps::manager::MpsLibraryManager
-        *library_manager{nullptr};
-    ::orteaf::internal::execution::mps::platform::MpsSlowOps *ops{nullptr};
+    DeviceLease *device_lease{nullptr};
   };
 
   static bool create(Payload &payload, const Request &request,
@@ -132,8 +133,8 @@ class MpsKernelBaseManager {
 
 public:
   using SlowOps = ::orteaf::internal::execution::mps::platform::MpsSlowOps;
-  using LibraryManager =
-      ::orteaf::internal::execution::mps::manager::MpsLibraryManager;
+  using DeviceLease = ::orteaf::internal::execution::mps::manager::
+      MpsDeviceManager::DeviceLease;
   using KernelBaseHandle =
       ::orteaf::internal::execution::mps::MpsKernelBaseHandle;
   using LibraryKey = ::orteaf::internal::execution::mps::manager::LibraryKey;
@@ -171,8 +172,6 @@ public:
 private:
   struct InternalConfig {
     Config public_config{};
-    LibraryManager *library_manager{nullptr};
-    SlowOps *ops{nullptr};
   };
 
   void configure(const InternalConfig &config);
@@ -187,9 +186,11 @@ public:
    * The returned lease holds strong references to pipeline states.
    *
    * @param keys Library/function key pairs for kernel functions
+   * @param device_lease Device lease to access library manager
    * @return Strong lease to kernel base resource
    */
-  KernelBaseLease acquire(const ::orteaf::internal::base::HeapVector<Key> &keys);
+  KernelBaseLease acquire(const ::orteaf::internal::base::HeapVector<Key> &keys,
+                          DeviceLease &device_lease);
 
   /**
    * @brief Release a kernel base lease.
@@ -202,12 +203,9 @@ public:
   void release(KernelBaseLease &lease) noexcept { lease.release(); }
 
 #if ORTEAF_ENABLE_TEST
-  void configureForTest(const Config &config, LibraryManager *library_manager,
-                        SlowOps *ops) {
+  void configureForTest(const Config &config) {
     InternalConfig internal{};
     internal.public_config = config;
-    internal.library_manager = library_manager;
-    internal.ops = ops;
     configure(internal);
   }
 
@@ -237,10 +235,9 @@ public:
 #endif
 
 private:
-  KernelBasePayloadPoolTraits::Context makePayloadContext() const noexcept;
+  KernelBasePayloadPoolTraits::Context
+  makePayloadContext(DeviceLease &device_lease) const noexcept;
 
-  LibraryManager *library_manager_{nullptr};
-  SlowOps *ops_{nullptr};
   Core core_{};
 };
 
