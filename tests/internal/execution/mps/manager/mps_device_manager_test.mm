@@ -240,16 +240,16 @@ TYPED_TEST(MpsDeviceManagerTypedTest, GetDeviceReturnsRegisteredHandle) {
     const auto device = manager.acquire(mps::MpsDeviceHandle{idx});
     auto *resource = device.operator->();
     EXPECT_NE(resource, nullptr);
-    EXPECT_EQ(resource->device != nullptr, static_cast<bool>(device));
+    EXPECT_EQ(resource->device() != nullptr, static_cast<bool>(device));
     if constexpr (TypeParam::is_mock) {
-      EXPECT_EQ(resource->device, expected_handles[idx]);
+      EXPECT_EQ(resource->device(), expected_handles[idx]);
       const auto expected_arch = (idx == 0) ? architecture::Architecture::MpsM3
                                             : architecture::Architecture::MpsM4;
-      EXPECT_EQ(resource->arch, expected_arch);
+      EXPECT_EQ(resource->architecture(), expected_arch);
     } else {
       EXPECT_TRUE(device);
       if (expected_count >= 0 && idx == 0) {
-        EXPECT_NE(resource->arch, architecture::Architecture::MpsGeneric);
+        EXPECT_NE(resource->architecture(), architecture::Architecture::MpsGeneric);
       }
     }
   }
@@ -289,20 +289,20 @@ TYPED_TEST(MpsDeviceManagerTypedTest, GetArchMatchesReportedArchitecture) {
     const auto device = manager.acquire(mps::MpsDeviceHandle{idx});
     auto *resource = device.operator->();
     EXPECT_NE(resource, nullptr);
-    const auto arch = resource->arch;
+    const auto arch = resource->architecture();
     if constexpr (TypeParam::is_mock) {
       const auto expected_arch = (idx == 0) ? architecture::Architecture::MpsM4
                                             : architecture::Architecture::MpsM3;
       EXPECT_EQ(arch, expected_arch);
-      EXPECT_EQ(resource->arch, expected_arch);
-      EXPECT_TRUE(resource->device != nullptr);
+      EXPECT_EQ(resource->architecture(), expected_arch);
+      EXPECT_TRUE(resource->device() != nullptr);
     } else if (expected_arch_env && *expected_arch_env != '\0' && idx == 0) {
       EXPECT_STREQ(expected_arch_env, architecture::idOf(arch).data());
       EXPECT_STREQ(expected_arch_env,
-                   architecture::idOf(resource->arch).data());
+                   architecture::idOf(resource->architecture()).data());
     } else {
       EXPECT_FALSE(architecture::idOf(arch).empty());
-      EXPECT_FALSE(architecture::idOf(resource->arch).empty());
+      EXPECT_FALSE(architecture::idOf(resource->architecture()).empty());
     }
   }
 
@@ -446,7 +446,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, ReinitializeReleasesPreviousDevices) {
     const auto device = manager.acquire(mps::MpsDeviceHandle{0});
     auto *resource = device.operator->();
     ASSERT_NE(resource, nullptr);
-    EXPECT_EQ(resource->device, first0);
+    EXPECT_EQ(resource->device(), first0);
   }
 
   // Act: Reinitialize with different devices
@@ -467,7 +467,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, ReinitializeReleasesPreviousDevices) {
     const auto device = manager.acquire(mps::MpsDeviceHandle{0});
     auto *resource = device.operator->();
     ASSERT_NE(resource, nullptr);
-    EXPECT_EQ(resource->device, second0);
+    EXPECT_EQ(resource->device(), second0);
     EXPECT_NE(second0, first0);
   }
 
@@ -627,7 +627,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
     const auto device = manager.acquire(id);
     auto *resource = device.operator->();
     ASSERT_NE(resource, nullptr);
-    EXPECT_EQ(resource->command_queue_manager.payloadPoolSizeForTest(),
+    EXPECT_EQ(resource->commandQueueManager().payloadPoolSizeForTest(),
               kCapacity);
   }
 
@@ -672,7 +672,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
     const auto device = manager.acquire(handle);
     auto *resource = device.operator->();
     ASSERT_NE(resource, nullptr);
-    EXPECT_EQ(resource->heap_manager.payloadPoolSizeForTest(), kCapacity);
+    EXPECT_EQ(resource->heapManager().payloadPoolSizeForTest(), kCapacity);
   }
 
   // Cleanup
@@ -716,7 +716,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest,
     const auto device = manager.acquire(id);
     auto *resource = device.operator->();
     ASSERT_NE(resource, nullptr);
-    EXPECT_EQ(resource->library_manager.payloadPoolSizeForTest(), kCapacity);
+    EXPECT_EQ(resource->libraryManager().payloadPoolSizeForTest(), kCapacity);
   }
 
   // Cleanup
@@ -749,7 +749,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, EventPoolAccessSucceeds) {
   auto device = manager.acquire(mps::MpsDeviceHandle{0});
   auto *resource = device.operator->();
   ASSERT_NE(resource, nullptr);
-  EXPECT_NE(&resource->event_pool, nullptr);
+  EXPECT_NE(&resource->eventPool(), nullptr);
   device.release();
 
   // Cleanup
@@ -778,7 +778,7 @@ TYPED_TEST(MpsDeviceManagerTypedTest, FencePoolAccessSucceeds) {
   auto device = manager.acquire(mps::MpsDeviceHandle{0});
   auto *resource = device.operator->();
   ASSERT_NE(resource, nullptr);
-  EXPECT_NE(&resource->fence_pool, nullptr);
+  EXPECT_NE(&resource->fencePool(), nullptr);
   device.release();
 
   // Cleanup
@@ -808,17 +808,17 @@ TYPED_TEST(MpsDeviceManagerTypedTest, DirectAccessReturnsValidPointers) {
   auto *resource = device.operator->();
   ASSERT_NE(resource, nullptr);
   if constexpr (TypeParam::is_mock) {
-    EXPECT_EQ(resource->device, device0);
+    EXPECT_EQ(resource->device(), device0);
   } else {
     EXPECT_TRUE(device);
   }
 
   device.release();
-  EXPECT_NE(&resource->command_queue_manager, nullptr);
-  EXPECT_NE(&resource->heap_manager, nullptr);
-  EXPECT_NE(&resource->library_manager, nullptr);
-  EXPECT_NE(&resource->event_pool, nullptr);
-  EXPECT_NE(&resource->fence_pool, nullptr);
+  EXPECT_NE(&resource->commandQueueManager(), nullptr);
+  EXPECT_NE(&resource->heapManager(), nullptr);
+  EXPECT_NE(&resource->libraryManager(), nullptr);
+  EXPECT_NE(&resource->eventPool(), nullptr);
+  EXPECT_NE(&resource->fencePool(), nullptr);
 
   // Cleanup
   manager.shutdown();

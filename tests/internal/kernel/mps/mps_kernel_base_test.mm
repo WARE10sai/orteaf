@@ -13,12 +13,12 @@
 #include <orteaf/internal/execution/mps/platform/wrapper/mps_size.h>
 #include <orteaf/internal/execution/mps/resource/mps_command_queue_resource.h>
 #include <orteaf/internal/execution_context/mps/context.h>
-#include <orteaf/internal/kernel/mps/mps_kernel_base.h>
+#include <orteaf/internal/execution/mps/resource/mps_kernel_base.h>
 #include <orteaf/internal/kernel/param/param.h>
 #include <orteaf/internal/kernel/param/param_id.h>
 #include <orteaf/internal/storage/mps/mps_storage.h>
 
-namespace mps_kernel = orteaf::internal::kernel::mps;
+namespace mps_kernel = ::orteaf::internal::execution::mps::resource;
 namespace mps_manager = orteaf::internal::execution::mps::manager;
 namespace mps_exec = orteaf::internal::execution::mps;
 namespace mps_context = orteaf::internal::execution_context::mps;
@@ -148,7 +148,7 @@ TEST(MpsKernelBaseTest, CreateCommandBufferSucceedsWithValidContext) {
 
   // Manually set up a command queue resource
   mps_resource::MpsCommandQueueResource queue_resource;
-  queue_resource.setQueue(queue);
+  queue_resource.setQueueForTest(queue);
 
   // Create a mock lease that points to the resource
   // Note: This is a bit tricky because we need a proper lease structure

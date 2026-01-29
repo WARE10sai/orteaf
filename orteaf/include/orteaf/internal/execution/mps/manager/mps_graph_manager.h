@@ -73,14 +73,71 @@ struct GraphKeyHasher {
 };
 
 // =============================================================================
-// Graph Resource
+// Graph Payload
 // =============================================================================
 
-struct MpsGraphResource {
-  ::orteaf::internal::execution::mps::platform::wrapper::MpsGraph_t graph{
-      nullptr};
-  ::orteaf::internal::execution::mps::platform::wrapper::MpsGraphExecutable_t
-      executable{nullptr};
+struct MpsGraphPayload {
+  using GraphType =
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsGraph_t;
+  using ExecutableType = ::orteaf::internal::execution::mps::platform::wrapper::
+      MpsGraphExecutable_t;
+  using DeviceType =
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsDevice_t;
+  using SlowOps = ::orteaf::internal::execution::mps::platform::MpsSlowOps;
+  using CompileFn =
+      std::function<::orteaf::internal::execution::mps::platform::wrapper::
+                        MpsGraphExecutable_t(
+                            ::orteaf::internal::execution::mps::platform::
+                                wrapper::MpsGraph_t graph,
+                            DeviceType device, SlowOps *slow_ops)>;
+
+  struct InitConfig {
+    DeviceType device{nullptr};
+    SlowOps *ops{nullptr};
+    const CompileFn *compile_fn{nullptr};
+  };
+
+  MpsGraphPayload() = default;
+  MpsGraphPayload(const MpsGraphPayload &) = delete;
+  MpsGraphPayload &operator=(const MpsGraphPayload &) = delete;
+  MpsGraphPayload(MpsGraphPayload &&) = default;
+  MpsGraphPayload &operator=(MpsGraphPayload &&) = default;
+  ~MpsGraphPayload() = default;
+
+  bool initialize(const InitConfig &config) {
+    if (config.ops == nullptr || config.device == nullptr ||
+        config.compile_fn == nullptr) {
+      return false;
+    }
+    graph_ = config.ops->createGraph();
+    executable_ = (*config.compile_fn)(graph_, config.device, config.ops);
+    if (executable_ == nullptr) {
+      if (graph_ != nullptr) {
+        config.ops->destroyGraph(graph_);
+      }
+      graph_ = nullptr;
+      return false;
+    }
+    return true;
+  }
+
+  void reset(SlowOps *ops) noexcept {
+    if (executable_ != nullptr && ops != nullptr) {
+      ops->destroyGraphExecutable(executable_);
+      executable_ = nullptr;
+    }
+    if (graph_ != nullptr && ops != nullptr) {
+      ops->destroyGraph(graph_);
+      graph_ = nullptr;
+    }
+  }
+
+  GraphType graph() const noexcept { return graph_; }
+  ExecutableType executable() const noexcept { return executable_; }
+
+private:
+  GraphType graph_{nullptr};
+  ExecutableType executable_{nullptr};
 };
 
 // =============================================================================
@@ -88,7 +145,7 @@ struct MpsGraphResource {
 // =============================================================================
 
 struct GraphPayloadPoolTraits {
-  using Payload = MpsGraphResource;
+  using Payload = MpsGraphPayload;
   using Handle = ::orteaf::internal::execution::mps::MpsGraphHandle;
   using DeviceType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsDevice_t;
@@ -112,33 +169,16 @@ struct GraphPayloadPoolTraits {
 
   static bool create(Payload &payload, const Request &request,
                      const Context &context) {
-    if (context.ops == nullptr || context.device == nullptr ||
-        request.compile_fn == nullptr) {
-      return false;
-    }
-    payload.graph = context.ops->createGraph();
-    payload.executable =
-        (*request.compile_fn)(payload.graph, context.device, context.ops);
-    if (payload.executable == nullptr) {
-      if (payload.graph != nullptr) {
-        context.ops->destroyGraph(payload.graph);
-      }
-      payload.graph = nullptr;
-      return false;
-    }
-    return true;
+    MpsGraphPayload::InitConfig init{};
+    init.device = context.device;
+    init.ops = context.ops;
+    init.compile_fn = request.compile_fn;
+    return payload.initialize(init);
   }
 
   static void destroy(Payload &payload, const Request &,
                       const Context &context) {
-    if (payload.executable != nullptr && context.ops != nullptr) {
-      context.ops->destroyGraphExecutable(payload.executable);
-      payload.executable = nullptr;
-    }
-    if (payload.graph != nullptr && context.ops != nullptr) {
-      context.ops->destroyGraph(payload.graph);
-      payload.graph = nullptr;
-    }
+    payload.reset(context.ops);
   }
 };
 
@@ -152,7 +192,7 @@ using GraphPayloadPool =
 struct GraphControlBlockTag {};
 
 using GraphControlBlock = ::orteaf::internal::base::StrongControlBlock<
-    ::orteaf::internal::execution::mps::MpsGraphHandle, MpsGraphResource,
+    ::orteaf::internal::execution::mps::MpsGraphHandle, MpsGraphPayload,
     GraphPayloadPool>;
 
 // =============================================================================
@@ -219,6 +259,7 @@ private:
   void configure(const InternalConfig &config);
 
   friend struct DevicePayloadPoolTraits;
+  friend struct MpsDevicePayload;
 
 public:
   void shutdown();

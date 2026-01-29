@@ -350,7 +350,7 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
   EXPECT_EQ(lease0.payloadHandle(), lease1.payloadHandle());
   if constexpr (TypeParam::is_mock) {
     ASSERT_NE(lease0.operator->(), nullptr);
-    EXPECT_EQ(lease0->pipeline_state, pipeline_handle);
+    EXPECT_EQ(lease0->pipelineState(), pipeline_handle);
   } else {
     EXPECT_TRUE(lease0);
   }
@@ -359,8 +359,8 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
   EXPECT_TRUE(manager.payloadCreatedForTest(lease0.payloadHandle()));
   const auto *payload = manager.payloadForTest(lease0.payloadHandle());
   ASSERT_NE(payload, nullptr);
-  EXPECT_NE(payload->pipeline_state, nullptr);
-  EXPECT_NE(payload->function, nullptr);
+  EXPECT_NE(payload->pipelineState(), nullptr);
+  EXPECT_NE(payload->function(), nullptr);
 
   // Cleanup
   this->adapter().expectDestroyComputePipelineStates({pipeline_handle});
@@ -409,7 +409,7 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
   EXPECT_EQ(reacquired.payloadHandle(), handle);
   if constexpr (TypeParam::is_mock) {
     ASSERT_NE(reacquired.operator->(), nullptr);
-    EXPECT_EQ(reacquired->pipeline_state, first_pipeline);
+    EXPECT_EQ(reacquired->pipelineState(), first_pipeline);
   } else {
     EXPECT_TRUE(reacquired);
   }

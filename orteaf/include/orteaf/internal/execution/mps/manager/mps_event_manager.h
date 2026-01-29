@@ -18,12 +18,60 @@ namespace orteaf::internal::execution::mps::manager {
 struct DevicePayloadPoolTraits;
 
 // =============================================================================
+// Payload
+// =============================================================================
+
+struct MpsEventPayload {
+  using EventType =
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsEvent_t;
+  using DeviceType =
+      ::orteaf::internal::execution::mps::platform::wrapper::MpsDevice_t;
+  using SlowOps = ::orteaf::internal::execution::mps::platform::MpsSlowOps;
+
+  struct InitConfig {
+    DeviceType device{nullptr};
+    SlowOps *ops{nullptr};
+  };
+
+  MpsEventPayload() = default;
+  MpsEventPayload(const MpsEventPayload &) = delete;
+  MpsEventPayload &operator=(const MpsEventPayload &) = delete;
+  MpsEventPayload(MpsEventPayload &&) = default;
+  MpsEventPayload &operator=(MpsEventPayload &&) = default;
+  ~MpsEventPayload() = default;
+
+  bool initialize(const InitConfig &config) {
+    if (config.ops == nullptr || config.device == nullptr) {
+      return false;
+    }
+    auto event = config.ops->createEvent(config.device);
+    if (event == nullptr) {
+      return false;
+    }
+    event_ = event;
+    return true;
+  }
+
+  void reset(SlowOps *ops) noexcept {
+    if (event_ != nullptr && ops != nullptr) {
+      ops->destroyEvent(event_);
+      event_ = nullptr;
+    }
+  }
+
+  EventType event() const noexcept { return event_; }
+  bool hasEvent() const noexcept { return event_ != nullptr; }
+
+private:
+  EventType event_{nullptr};
+};
+
+// =============================================================================
 // Payload Pool
 // =============================================================================
 
 struct EventPayloadPoolTraits {
-  using Payload =
-      ::orteaf::internal::execution::mps::platform::wrapper::MpsEvent_t;
+  using Payload = MpsEventPayload;
   using Handle = ::orteaf::internal::execution::mps::MpsEventHandle;
   using DeviceType =
       ::orteaf::internal::execution::mps::platform::wrapper::MpsDevice_t;
@@ -40,23 +88,15 @@ struct EventPayloadPoolTraits {
 
   static bool create(Payload &payload, const Request &,
                      const Context &context) {
-    if (context.ops == nullptr || context.device == nullptr) {
-      return false;
-    }
-    auto event = context.ops->createEvent(context.device);
-    if (event == nullptr) {
-      return false;
-    }
-    payload = event;
-    return true;
+    MpsEventPayload::InitConfig init{};
+    init.device = context.device;
+    init.ops = context.ops;
+    return payload.initialize(init);
   }
 
   static void destroy(Payload &payload, const Request &,
                       const Context &context) {
-    if (payload != nullptr && context.ops != nullptr) {
-      context.ops->destroyEvent(payload);
-      payload = nullptr;
-    }
+    payload.reset(context.ops);
   }
 };
 
@@ -71,7 +111,7 @@ struct EventControlBlockTag {};
 
 using EventControlBlock = ::orteaf::internal::base::StrongControlBlock<
     ::orteaf::internal::execution::mps::MpsEventHandle,
-    ::orteaf::internal::execution::mps::platform::wrapper::MpsEvent_t,
+    MpsEventPayload,
     EventPayloadPool>;
 
 // =============================================================================
@@ -137,6 +177,7 @@ private:
   void configure(const InternalConfig &config);
 
   friend struct DevicePayloadPoolTraits;
+  friend struct MpsDevicePayload;
 
 public:
   void shutdown();

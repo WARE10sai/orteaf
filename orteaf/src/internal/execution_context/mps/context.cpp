@@ -11,7 +11,7 @@ Context::Context(::orteaf::internal::execution::mps::MpsDeviceHandle device) {
 
   this->device = mps_api::MpsExecutionApi::acquireDevice(device);
   if (auto *resource = this->device.operator->()) {
-    this->command_queue = resource->command_queue_manager.acquire();
+    this->command_queue = resource->commandQueueManager().acquire();
   }
 }
 
@@ -23,7 +23,7 @@ Context::Context(
   this->device = mps_api::MpsExecutionApi::acquireDevice(device);
   if (auto *resource = this->device.operator->()) {
     this->command_queue =
-        resource->command_queue_manager.acquire(command_queue);
+        resource->commandQueueManager().acquire(command_queue);
   }
 }
 

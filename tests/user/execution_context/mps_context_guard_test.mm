@@ -95,7 +95,7 @@ TEST_F(MpsExecutionContextGuardTest, GuardRestoresPreviousContext) {
   if (resource == nullptr) {
     GTEST_SKIP() << "Failed to access MPS device resource";
   }
-  auto alt_queue = resource->command_queue_manager.acquire();
+  auto alt_queue = resource->commandQueueManager().acquire();
   if (!alt_queue) {
     GTEST_SKIP() << "Failed to acquire alternate MPS command queue";
   }

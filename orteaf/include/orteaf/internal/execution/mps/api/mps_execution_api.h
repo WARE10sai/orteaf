@@ -57,7 +57,7 @@ public:
   static HeapLease acquireHeap(DeviceHandle device,
                                const HeapDescriptorKey &key) {
     auto device_lease = acquireDevice(device);
-    return device_lease->heap_manager.acquire(key);
+    return device_lease->heapManager().acquire(key);
   }
 
   // Acquire a single pipeline for the given device/library/function key trio.
@@ -66,20 +66,20 @@ public:
                                        const FunctionKey &function_key) {
     auto device_lease = acquireDevice(device);
     auto *resource = device_lease.operator->();
-    auto library_lease = resource->library_manager.acquire(library_key);
+    auto library_lease = resource->libraryManager().acquire(library_key);
     auto *library_resource = library_lease.operator->();
     if (library_resource == nullptr) {
       ::orteaf::internal::diagnostics::error::throwError(
           ::orteaf::internal::diagnostics::error::OrteafErrc::InvalidState,
           "MPS library lease has no payload");
     }
-    return library_resource->pipeline_manager.acquire(function_key);
+    return library_resource->pipelineManager().acquire(function_key);
   }
 
   static StrongFenceLease acquireFence(DeviceHandle device) {
     auto device_lease = acquireDevice(device);
     auto *resource = device_lease.operator->();
-    return resource->fence_pool.acquire();
+    return resource->fencePool().acquire();
   }
 
 private:

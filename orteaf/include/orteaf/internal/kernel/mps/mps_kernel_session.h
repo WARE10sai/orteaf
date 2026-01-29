@@ -11,9 +11,11 @@
 #include "orteaf/internal/execution/mps/platform/wrapper/mps_size.h"
 #include "orteaf/internal/execution_context/mps/context.h"
 #include "orteaf/internal/kernel/core/kernel_args.h"
-#include "orteaf/internal/kernel/mps/mps_kernel_base.h"
+#include "orteaf/internal/execution/mps/resource/mps_kernel_base.h"
 
 namespace orteaf::internal::kernel::mps {
+
+using MpsKernelBase = ::orteaf::internal::execution::mps::resource::MpsKernelBase;
 
 /**
  * @brief RAII helper for MPS kernel execution.

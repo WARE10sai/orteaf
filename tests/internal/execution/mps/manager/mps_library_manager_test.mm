@@ -221,7 +221,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest, GetOrCreateAllocatesAndCachesLibrary) {
   // Assert
   auto *payload = lease.operator->();
   ASSERT_NE(payload, nullptr);
-  EXPECT_EQ(payload->library, lib_handle);
+  EXPECT_EQ(payload->library(), lib_handle);
 
   // Save handle before release (release clears control block's payload handle)
   const auto saved_handle = lease.payloadHandle();
@@ -308,7 +308,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest,
   auto library_lease = manager.acquire(mps_rt::LibraryKey::Named("TestLib"));
   auto *library_resource = library_lease.operator->();
   ASSERT_NE(library_resource, nullptr);
-  auto *pipeline_manager = &library_resource->pipeline_manager;
+  auto *pipeline_manager = &library_resource->pipelineManager();
 
   // Assert
   EXPECT_NE(pipeline_manager, nullptr);
@@ -337,7 +337,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest, PipelineManagerCanBeAccessedByKey) {
   auto library_lease = manager.acquire(key);
   auto *library_resource = library_lease.operator->();
   ASSERT_NE(library_resource, nullptr);
-  auto *pipeline_manager = &library_resource->pipeline_manager;
+  auto *pipeline_manager = &library_resource->pipelineManager();
 
   // Assert: Library was created for the pipeline manager
   EXPECT_NE(pipeline_manager, nullptr);
@@ -363,7 +363,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest, LibraryPersistsAfterLeaseRelease) {
   auto library_lease = manager.acquire(key);
   auto *library_resource = library_lease.operator->();
   ASSERT_NE(library_resource, nullptr);
-  auto *pipeline_manager = &library_resource->pipeline_manager;
+  auto *pipeline_manager = &library_resource->pipelineManager();
   EXPECT_NE(pipeline_manager, nullptr);
 
   // Save handle before release (release clears control block's payload handle)
@@ -398,8 +398,8 @@ TYPED_TEST(MpsLibraryManagerTypedTest,
   auto *resource_again = library_lease_again.operator->();
   ASSERT_NE(resource_first, nullptr);
   ASSERT_NE(resource_again, nullptr);
-  auto *pm1 = &resource_first->pipeline_manager;
-  auto *pm2 = &resource_again->pipeline_manager;
+  auto *pm1 = &resource_first->pipelineManager();
+  auto *pm2 = &resource_again->pipelineManager();
 
   // Assert: Same pipeline manager for same library
   EXPECT_EQ(pm1, pm2);

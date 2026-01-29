@@ -169,6 +169,7 @@ private:
   void configure(const InternalConfig &config);
 
   friend struct DevicePayloadPoolTraits;
+  friend struct MpsDevicePayload;
 
 public:
   void shutdown();

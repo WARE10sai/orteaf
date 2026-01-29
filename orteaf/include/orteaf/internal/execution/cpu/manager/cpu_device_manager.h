@@ -23,7 +23,7 @@ class CpuExecutionManager;
 /**
  * @brief Resource structure holding CPU device state and sub-managers.
  *
- * Similar to MpsDeviceResource, this holds the architecture information
+ * Similar to MpsDevicePayload, this holds the architecture information
  * and any device-specific sub-managers (e.g., buffer manager).
  */
 struct CpuDeviceResource {

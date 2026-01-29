@@ -24,7 +24,7 @@
 #include "orteaf/internal/storage/registry/storage_types.h"
 #include "orteaf/internal/storage/mps/mps_storage.h"
 
-namespace orteaf::internal::kernel::mps {
+namespace orteaf::internal::execution::mps::resource {
 
 /**
  * @brief Kernel base structure that caches MPS compute pipeline states.
@@ -68,7 +68,26 @@ struct MpsKernelBase {
    *
    * @param context Execution context containing device lease
    */
-  void configure(::orteaf::internal::execution_context::mps::Context &context);
+  void configure(::orteaf::internal::execution::mps::manager::
+                     MpsDeviceManager::DeviceLease &device_lease);
+
+  /**
+   * @brief Initialize kernel base with keys and configure for a device lease.
+   *
+   * Returns false if the device lease is invalid or any pipeline acquisition
+   * fails.
+   */
+  bool initialize(const ::orteaf::internal::base::HeapVector<Key> &keys,
+                  ::orteaf::internal::execution::mps::manager::
+                      MpsDeviceManager::DeviceLease &device_lease);
+
+  /**
+   * @brief Clear keys and cached pipelines.
+   */
+  void reset() noexcept {
+    device_pipelines_.clear();
+    keys_.clear();
+  }
 
   /**
    * @brief Get a mutable pipeline lease for the specified device and kernel
@@ -510,11 +529,11 @@ struct MpsKernelBase {
       return;
     }
     auto *resource = pipeline.operator->();
-    if (resource == nullptr || resource->pipeline_state == nullptr) {
+    if (resource == nullptr || resource->pipelineState() == nullptr) {
       return;
     }
     ::orteaf::internal::execution::mps::platform::wrapper::setPipelineState(
-        encoder, resource->pipeline_state);
+        encoder, resource->pipelineState());
   }
 
   /**
@@ -915,6 +934,6 @@ private:
       std::numeric_limits<std::size_t>::max();
 };
 
-} // namespace orteaf::internal::kernel::mps
+} // namespace orteaf::internal::execution::mps::resource
 
 #endif // ORTEAF_ENABLE_MPS

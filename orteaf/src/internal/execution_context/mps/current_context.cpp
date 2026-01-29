@@ -30,7 +30,7 @@ void ensureDefaultCommandQueue(CurrentContext &state) {
   if (resource == nullptr) {
     return;
   }
-  state.current.command_queue = resource->command_queue_manager.acquire();
+  state.current.command_queue = resource->commandQueueManager().acquire();
 }
 
 } // namespace
