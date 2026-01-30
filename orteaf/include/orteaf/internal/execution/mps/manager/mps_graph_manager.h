@@ -228,9 +228,6 @@ public:
       ::orteaf::internal::execution::mps::platform::wrapper::MpsGraph_t graph,
       DeviceType device, SlowOps *slow_ops)>;
 
-private:
-  friend GraphLease;
-
 public:
   struct Config {
     // PoolManager settings
@@ -265,7 +262,6 @@ public:
   void shutdown();
 
   GraphLease acquire(const GraphKey &key, const CompileFn &compile_fn);
-  void release(GraphLease &lease) noexcept { lease.release(); }
 
 #if ORTEAF_ENABLE_TEST
   void configureForTest(const Config &config, DeviceType device,

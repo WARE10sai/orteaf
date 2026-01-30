@@ -153,16 +153,6 @@ public:
   KernelBaseLease acquire(const ::orteaf::internal::base::HeapVector<Key> &keys,
                           DeviceLease &device_lease);
 
-  /**
-   * @brief Release a kernel base lease.
-   *
-   * Decrements reference count and returns resource to pool when count reaches
-   * zero.
-   *
-   * @param lease Lease to release
-   */
-  void release(KernelBaseLease &lease) noexcept { lease.release(); }
-
 #if ORTEAF_ENABLE_TEST
   void configureForTest(const Config &config) {
     InternalConfig internal{};

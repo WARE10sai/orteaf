@@ -36,8 +36,7 @@ mps_wrapper::MpsComputePipelineState_t makePipeline(std::uintptr_t value) {
   return reinterpret_cast<mps_wrapper::MpsComputePipelineState_t>(value);
 }
 
-template <typename Config>
-void setPoolBlockSizes(Config &config) {
+template <typename Config> void setPoolBlockSizes(Config &config) {
   if (config.payload_block_size == 0) {
     config.payload_block_size =
         config.payload_capacity == 0 ? 1u : config.payload_capacity;
@@ -449,7 +448,7 @@ TYPED_TEST(MpsComputePipelineStateManagerTypedTest,
   // Act
   auto lease = manager.acquire(mps_rt::FunctionKey::Named(*maybe_name));
   const auto original_handle = lease.payloadHandle();
-  manager.release(lease);
+  lease.release();
 
   // Assert
   EXPECT_FALSE(static_cast<bool>(lease));

@@ -231,7 +231,6 @@ public:
   void shutdown();
 
   HeapLease acquire(const HeapDescriptorKey &key);
-  void release(HeapLease &lease) noexcept { lease.release(); }
 
   // Direct access to BufferManager for a given heap
   BufferManager *bufferManager(const HeapLease &lease);

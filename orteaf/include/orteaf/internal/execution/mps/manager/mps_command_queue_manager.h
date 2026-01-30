@@ -132,9 +132,6 @@ public:
       ::orteaf::internal::base::manager::LeaseLifetimeRegistry<
           CommandQueueHandle, CommandQueueLease>;
 
-private:
-  friend CommandQueueLease;
-
 public:
   struct Config {
     // PoolManager settings

@@ -344,7 +344,7 @@ TYPED_TEST(MpsHeapManagerTypedTest, ManualReleaseInvalidatesLease) {
 
   // Act
   auto lease = manager.acquire(key);
-  manager.release(lease);
+  lease.release();
 
   // Assert: Lease is invalidated after release
   EXPECT_FALSE(static_cast<bool>(lease));
