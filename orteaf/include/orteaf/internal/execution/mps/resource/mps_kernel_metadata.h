@@ -7,7 +7,7 @@
 #include "orteaf/internal/base/heap_vector.h"
 #include "orteaf/internal/execution/mps/manager/mps_compute_pipeline_state_manager.h"
 #include "orteaf/internal/execution/mps/manager/mps_library_manager.h"
-#include "orteaf/internal/kernel/kernel_entry.h"
+#include "orteaf/internal/kernel/core/kernel_entry.h"
 
 namespace orteaf::internal::execution::mps::resource {
 
@@ -20,7 +20,7 @@ struct MpsKernelMetadata {
   using LibraryKey = ::orteaf::internal::execution::mps::manager::LibraryKey;
   using FunctionKey = ::orteaf::internal::execution::mps::manager::FunctionKey;
   using Key = std::pair<LibraryKey, FunctionKey>;
-  using ExecuteFunc = ::orteaf::internal::kernel::KernelEntry::ExecuteFunc;
+  using ExecuteFunc = ::orteaf::internal::kernel::core::KernelEntry::ExecuteFunc;
 
   bool initialize(const ::orteaf::internal::base::HeapVector<Key> &keys,
                   ExecuteFunc execute) {

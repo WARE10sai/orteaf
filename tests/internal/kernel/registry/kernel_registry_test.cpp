@@ -5,7 +5,7 @@
 #include <type_traits>
 
 #include "orteaf/internal/kernel/core/kernel_key.h"
-#include "orteaf/internal/kernel/kernel_metadata.h"
+#include "orteaf/internal/kernel/core/kernel_metadata.h"
 #include "orteaf/internal/kernel/registry/kernel_registry_config.h"
 
 namespace registry = orteaf::internal::kernel::registry;
@@ -19,10 +19,10 @@ kernel::KernelKey makeKey(int id) {
 }
 
 // Helper to create test metadata
-kernel::KernelMetadataLease makeMetadata(const char *lib, const char *func) {
+kernel::core::KernelMetadataLease makeMetadata(const char *lib, const char *func) {
   (void)lib;
   (void)func;
-  return kernel::KernelMetadataLease{};
+  return kernel::core::KernelMetadataLease{};
 }
 
 static_assert(!std::is_move_constructible_v<registry::KernelRegistry>);

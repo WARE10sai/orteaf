@@ -7,7 +7,7 @@
 
 #include <orteaf/internal/kernel/schema/kernel_param_schema.h>
 #include <orteaf/internal/kernel/core/kernel_args.h>
-#include <orteaf/internal/kernel/kernel_entry.h>
+#include <orteaf/internal/kernel/core/kernel_entry.h>
 #include <orteaf/internal/kernel/param/param_id.h>
 #include <orteaf/internal/kernel/storage/operand_id.h>
 
@@ -33,7 +33,7 @@ struct ScopedParamParams : kernel::ParamSchema<ScopedParamParams> {
  *
  * Extracts a scoped parameter and writes a global Count param as a side effect.
  */
-inline void scopedParamExecute(kernel::KernelEntry::KernelBaseLease & /*lease*/,
+inline void scopedParamExecute(kernel::core::KernelEntry::KernelBaseLease & /*lease*/,
                                ::orteaf::internal::kernel::KernelArgs &args) {
   auto params = ScopedParamParams::extract(args);
   args.addParam(kernel::Param(kernel::ParamId::Count,
@@ -43,8 +43,8 @@ inline void scopedParamExecute(kernel::KernelEntry::KernelBaseLease & /*lease*/,
 /**
  * @brief Create and initialize a scoped-param kernel entry.
  */
-inline kernel::KernelEntry createScopedParamKernel() {
-  kernel::KernelEntry entry;
+inline kernel::core::KernelEntry createScopedParamKernel() {
+  kernel::core::KernelEntry entry;
   entry.setExecute(scopedParamExecute);
   return entry;
 }

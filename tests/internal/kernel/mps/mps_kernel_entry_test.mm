@@ -8,10 +8,10 @@
 #include <orteaf/internal/execution/mps/mps_handles.h>
 #include <orteaf/internal/execution_context/mps/context.h>
 #include <orteaf/internal/kernel/core/kernel_args.h>
-#include <orteaf/internal/kernel/kernel_entry.h>
+#include <orteaf/internal/kernel/core/kernel_entry.h>
 
 namespace kernel = orteaf::internal::kernel;
-namespace kernel_entry = ::orteaf::internal::kernel;
+namespace kernel_entry = ::orteaf::internal::kernel::core;
 
 namespace {
 

@@ -8,7 +8,7 @@
 #include <orteaf/internal/kernel/schema/kernel_param_schema.h>
 #include <orteaf/internal/kernel/schema/kernel_storage_schema.h>
 #include <orteaf/internal/kernel/core/kernel_args.h>
-#include <orteaf/internal/kernel/kernel_entry.h>
+#include <orteaf/internal/kernel/core/kernel_entry.h>
 #include <orteaf/internal/kernel/mps/mps_kernel_session.h>
 #include <orteaf/internal/kernel/param/param_id.h>
 #include <orteaf/internal/kernel/storage/operand_id.h>
@@ -57,8 +57,8 @@ struct VectorAddParams : kernel::ParamSchema<VectorAddParams> {
  * @param args Kernel arguments containing storages and parameters
  */
 inline mps_resource::MpsKernelBase *
-getMpsBase(kernel::KernelEntry::KernelBaseLease &lease) {
-  using LeaseT = kernel::KernelEntry::MpsKernelBaseLease;
+getMpsBase(kernel::core::KernelEntry::KernelBaseLease &lease) {
+  using LeaseT = kernel::core::KernelEntry::MpsKernelBaseLease;
   auto *mps_lease = std::get_if<LeaseT>(&lease);
   if (!mps_lease || !(*mps_lease)) {
     return nullptr;
@@ -66,7 +66,7 @@ getMpsBase(kernel::KernelEntry::KernelBaseLease &lease) {
   return mps_lease->operator->();
 }
 
-inline void vectorAddExecute(kernel::KernelEntry::KernelBaseLease &lease,
+inline void vectorAddExecute(kernel::core::KernelEntry::KernelBaseLease &lease,
                              ::orteaf::internal::kernel::KernelArgs &args) {
   auto *base_ptr = getMpsBase(lease);
   if (!base_ptr) {
@@ -100,8 +100,8 @@ inline void vectorAddExecute(kernel::KernelEntry::KernelBaseLease &lease,
  *
  * @return KernelEntry for vector add operations
  */
-inline kernel::KernelEntry createVectorAddKernel() {
-  kernel::KernelEntry entry;
+inline kernel::core::KernelEntry createVectorAddKernel() {
+  kernel::core::KernelEntry entry;
   entry.setExecute(vectorAddExecute);
 
   return entry;

@@ -2,15 +2,15 @@
 
 #include <variant>
 
-#include "orteaf/internal/kernel/kernel_entry.h"
-#include "orteaf/internal/kernel/kernel_metadata.h"
+#include "orteaf/internal/kernel/core/kernel_entry.h"
+#include "orteaf/internal/kernel/core/kernel_metadata.h"
 
 namespace kernel = orteaf::internal::kernel;
 
 namespace {
 
 TEST(KernelMetadataTest, DefaultConstructionIsEmpty) {
-  kernel::KernelMetadataLease metadata;
+  kernel::core::KernelMetadataLease metadata;
   EXPECT_TRUE(
       std::holds_alternative<std::monostate>(metadata.lease()));
 
@@ -19,8 +19,8 @@ TEST(KernelMetadataTest, DefaultConstructionIsEmpty) {
 }
 
 TEST(KernelMetadataTest, SetLeaseMonostateKeepsEmpty) {
-  kernel::KernelMetadataLease metadata;
-  metadata.setLease(kernel::KernelMetadataLease::Variant{});
+  kernel::core::KernelMetadataLease metadata;
+  metadata.setLease(kernel::core::KernelMetadataLease::Variant{});
 
   EXPECT_TRUE(
       std::holds_alternative<std::monostate>(metadata.lease()));

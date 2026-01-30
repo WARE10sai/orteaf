@@ -12,7 +12,7 @@
 #include <orteaf/internal/execution/mps/platform/wrapper/mps_device.h>
 #include <orteaf/internal/execution_context/mps/context.h>
 #include <orteaf/internal/kernel/core/kernel_args.h>
-#include <orteaf/internal/kernel/kernel_entry.h>
+#include <orteaf/internal/kernel/core/kernel_entry.h>
 #include <orteaf/internal/kernel/param/param.h>
 #include <orteaf/internal/kernel/param/param_id.h>
 #include <orteaf/internal/kernel/storage/operand_id.h>
@@ -21,7 +21,7 @@
 #include "tests/internal/kernel/mps/ops/fixtures/vector_add_kernel.h"
 
 namespace kernel = orteaf::internal::kernel;
-namespace kernel_entry = ::orteaf::internal::kernel;
+namespace kernel_entry = ::orteaf::internal::kernel::core;
 namespace mps_wrapper = orteaf::internal::execution::mps::platform::wrapper;
 namespace vector_add = orteaf::extension::kernel::mps::ops;
 

@@ -12,7 +12,7 @@
 #include "orteaf/internal/execution_context/mps/context.h"
 #endif
 
-namespace orteaf::internal::kernel {
+namespace orteaf::internal::kernel::core {
 
 /**
  * @brief Generic kernel entry structure.
@@ -112,4 +112,4 @@ private:
   ExecuteFunc execute_{nullptr};
 };
 
-} // namespace orteaf::internal::kernel
+} // namespace orteaf::internal::kernel::core

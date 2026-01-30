@@ -5,14 +5,14 @@
 
 #include "orteaf/internal/base/lru_list.h"
 #include "orteaf/internal/kernel/core/kernel_key.h"
-#include "orteaf/internal/kernel/kernel_entry.h"
-#include "orteaf/internal/kernel/kernel_metadata.h"
+#include "orteaf/internal/kernel/core/kernel_entry.h"
+#include "orteaf/internal/kernel/core/kernel_metadata.h"
 #include "orteaf/internal/kernel/registry/kernel_registry_config.h"
 
 namespace orteaf::internal::kernel::registry {
 
 /**
- * @brief Template-based 3-tier cache KernelRegistry with LRU eviction.
+ * @brief 3-tier cache KernelRegistry with LRU eviction.
  *
  * Manages kernel entries in a hierarchical cache:
  * - Cache (L1): Fixed-size, fastest access, holds pointers to Main Memory
@@ -25,8 +25,8 @@ namespace orteaf::internal::kernel::registry {
  */
 class KernelRegistry {
 public:
-  using Entry = ::orteaf::internal::kernel::KernelEntry;
-  using Metadata = ::orteaf::internal::kernel::KernelMetadataLease;
+  using Entry = ::orteaf::internal::kernel::core::KernelEntry;
+  using Metadata = ::orteaf::internal::kernel::core::KernelMetadataLease;
   using Key = ::orteaf::internal::kernel::KernelKey;
 
   /**

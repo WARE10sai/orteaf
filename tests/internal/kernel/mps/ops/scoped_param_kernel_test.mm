@@ -5,7 +5,7 @@
 #include <cstdint>
 
 #include <orteaf/internal/kernel/core/kernel_args.h>
-#include <orteaf/internal/kernel/kernel_entry.h>
+#include <orteaf/internal/kernel/core/kernel_entry.h>
 #include <orteaf/internal/kernel/param/param.h>
 #include <orteaf/internal/kernel/param/param_id.h>
 #include <orteaf/internal/kernel/param/param_key.h>

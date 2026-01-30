@@ -7,9 +7,9 @@
 #if ORTEAF_ENABLE_MPS
 #include "orteaf/internal/execution/mps/manager/mps_kernel_metadata_manager.h"
 #endif
-#include "orteaf/internal/kernel/kernel_entry.h"
+#include "orteaf/internal/kernel/core/kernel_entry.h"
 
-namespace orteaf::internal::kernel {
+namespace orteaf::internal::kernel::core {
 
 /**
  * @brief Type-erased kernel metadata lease.
@@ -40,8 +40,8 @@ public:
 
   void setLease(Variant lease) noexcept { lease_ = std::move(lease); }
 
-  ::orteaf::internal::kernel::KernelEntry rebuild() const {
-    ::orteaf::internal::kernel::KernelEntry entry;
+  ::orteaf::internal::kernel::core::KernelEntry rebuild() const {
+    ::orteaf::internal::kernel::core::KernelEntry entry;
     std::visit(
         [&](const auto &lease_value) {
           using LeaseT = std::decay_t<decltype(lease_value)>;
@@ -68,4 +68,4 @@ private:
   Variant lease_{};
 };
 
-} // namespace orteaf::internal::kernel
+} // namespace orteaf::internal::kernel::core
