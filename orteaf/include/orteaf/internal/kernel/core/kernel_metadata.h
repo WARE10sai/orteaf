@@ -1,16 +1,42 @@
 #pragma once
 
+#include <concepts>
 #include <type_traits>
 #include <utility>
 #include <variant>
 
 #if ORTEAF_ENABLE_MPS
-#include "orteaf/internal/execution/mps/api/mps_execution_api.h"
 #include "orteaf/internal/execution/mps/manager/mps_kernel_metadata_manager.h"
 #endif
 #include "orteaf/internal/kernel/core/kernel_entry.h"
 
 namespace orteaf::internal::kernel::core {
+
+class KernelMetadataLease;
+
+namespace detail {
+
+template <class LeaseT>
+concept KernelMetadataPayloadRebuildable = requires(
+    const LeaseT &lease,
+    ::orteaf::internal::kernel::core::KernelEntry &entry) {
+  { static_cast<bool>(lease) } -> std::same_as<bool>;
+  { lease.operator->()->rebuildKernelEntry(entry) } -> std::same_as<void>;
+};
+
+template <class LeaseT>
+concept KernelMetadataFromEntryBuildable =
+    requires(const LeaseT &lease) {
+      { static_cast<bool>(lease) } -> std::same_as<bool>;
+    } && requires(
+             const LeaseT &lease_value,
+             ::orteaf::internal::kernel::core::KernelEntry::ExecuteFunc execute) {
+      { ::orteaf::internal::execution::mps::resource::MpsKernelMetadata::
+            buildMetadataLeaseFromBase(*lease_value.operator->(), execute) } ->
+          std::same_as<::orteaf::internal::kernel::core::KernelMetadataLease>;
+    };
+
+} // namespace detail
 
 /**
  * @brief Type-erased kernel metadata lease.
@@ -46,10 +72,7 @@ public:
     std::visit(
         [&](const auto &lease_value) {
           using LeaseT = std::decay_t<decltype(lease_value)>;
-          if constexpr (std::is_same_v<LeaseT, std::monostate>) {
-            return;
-#if ORTEAF_ENABLE_MPS
-          } else if constexpr (std::is_same_v<LeaseT, MpsKernelMetadataLease>) {
+          if constexpr (detail::KernelMetadataPayloadRebuildable<LeaseT>) {
             if (!lease_value) {
               return;
             }
@@ -57,15 +80,34 @@ public:
             if (!payload) {
               return;
             }
-            entry.setBase(::orteaf::internal::execution::mps::api::
-                              MpsExecutionApi::acquireKernelBase(
-                                  payload->keys()));
-            entry.setExecute(payload->execute());
-#endif
+            payload->rebuildKernelEntry(entry);
           }
         },
         lease_);
     return entry;
+  }
+
+  static KernelMetadataLease fromEntry(
+      const ::orteaf::internal::kernel::core::KernelEntry &entry) {
+    KernelMetadataLease metadata;
+    std::visit(
+        [&](const auto &lease_value) {
+          using LeaseT = std::decay_t<decltype(lease_value)>;
+          if constexpr (detail::KernelMetadataFromEntryBuildable<LeaseT>) {
+            if (!lease_value) {
+              return;
+            }
+            auto *base_ptr = lease_value.operator->();
+            if (!base_ptr) {
+              return;
+            }
+            metadata = ::orteaf::internal::execution::mps::resource::
+                MpsKernelMetadata::buildMetadataLeaseFromBase(*base_ptr,
+                                                             entry.execute());
+          }
+        },
+        entry.base());
+    return metadata;
   }
 
 private:

@@ -299,7 +299,9 @@ private:
     // Demote to Secondary Storage
     auto it = main_memory_.find(key);
     if (it != main_memory_.end()) {
-      secondary_storage_[key] = Metadata{};
+      secondary_storage_[key] =
+          ::orteaf::internal::kernel::core::KernelMetadataLease::fromEntry(
+              *it->second);
       main_memory_.erase(it);
     }
     main_memory_nodes_.erase(key);
