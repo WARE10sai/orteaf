@@ -117,7 +117,7 @@ public:
 
   private:
     HeapLease heap_lease_{};
-    HeapHandle heap_handle_{};
+    HeapHandle heap_handle_{HeapHandle::invalid()};
     HeapDescriptorKey heap_key_{};
     bool has_heap_key_{false};
     DType dtype_{DType::F32};
