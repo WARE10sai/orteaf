@@ -130,8 +130,6 @@ public:
       const ::orteaf::internal::base::HeapVector<Key> &keys,
       ExecuteFunc execute);
 
-  void release(KernelMetadataLease &lease) noexcept { lease.release(); }
-
 #if ORTEAF_ENABLE_TEST
   void configureForTest(const Config &config) {
     InternalConfig internal{};
