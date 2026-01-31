@@ -12,6 +12,8 @@
 #include <orteaf/internal/storage/registry/storage_types.h>
 #include <orteaf/internal/tensor/manager/tensor_impl_manager.h>
 
+#include <limits>
+
 namespace orteaf::internal::tensor {
 
 namespace detail {
@@ -137,14 +139,28 @@ bool TensorImplPoolTraits<Impl>::create(Payload &payload,
             return false;
           }
 
-          // Calculate numel from shape
+          // Calculate numel from shape with validation and overflow check
           std::int64_t numel = 1;
           for (auto dim : req.shape) {
+            // Validate dimension is non-negative
+            if (dim < 0) {
+              return false;
+            }
             if (dim == 0) {
               numel = 0;
               break;
             }
+            // Check for overflow before multiplication
+            constexpr std::int64_t max_numel = std::numeric_limits<std::int64_t>::max();
+            if (numel > max_numel / dim) {
+              return false; // Overflow would occur
+            }
             numel *= dim;
+          }
+
+          // Additional safety check before casting to size_t
+          if (numel < 0) {
+            return false;
           }
 
           // Create storage lease using factory pattern
