@@ -2,6 +2,8 @@
 
 #include <utility>
 
+#if ORTEAF_ENABLE_MPS
+
 #include <orteaf/internal/diagnostics/error/error.h>
 #include <orteaf/internal/dtype/dtype.h>
 #include <orteaf/internal/execution/allocator/resource/mps/mps_resource.h>
@@ -261,3 +263,5 @@ private:
 };
 
 } // namespace orteaf::internal::storage::mps
+
+#endif // ORTEAF_ENABLE_MPS

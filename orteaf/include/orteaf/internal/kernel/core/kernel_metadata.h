@@ -7,6 +7,7 @@
 
 #if ORTEAF_ENABLE_MPS
 #include "orteaf/internal/execution/mps/manager/mps_kernel_metadata_manager.h"
+#include "orteaf/internal/execution/mps/resource/mps_kernel_metadata.h"
 #endif
 #include "orteaf/internal/kernel/core/kernel_entry.h"
 
@@ -24,18 +25,20 @@ concept KernelMetadataPayloadRebuildable = requires(
   { lease.operator->()->rebuildKernelEntry(entry) } -> std::same_as<void>;
 };
 
+template <class BaseT>
+concept HasMetadataType = requires {
+  typename BaseT::MetadataType;
+};
+
 template <class LeaseT>
 concept KernelMetadataFromEntryBuildable =
     requires(const LeaseT &lease) {
       { static_cast<bool>(lease) } -> std::same_as<bool>;
-    } && requires(
-             const LeaseT &lease_value,
-             ::orteaf::internal::kernel::core::KernelEntry::ExecuteFunc execute) {
-      { ::orteaf::internal::execution::mps::resource::MpsKernelMetadata::
-            buildMetadataLeaseFromBase(*lease_value.operator->(), execute) } ->
+    } && requires(const LeaseT &lease_value) {
+      requires HasMetadataType<std::remove_cvref_t<decltype(*lease_value.operator->())>>;
+      { std::remove_cvref_t<decltype(*lease_value.operator->())>::MetadataType::buildMetadataLeaseFromBase(*lease_value.operator->()) } ->
           std::same_as<::orteaf::internal::kernel::core::KernelMetadataLease>;
     };
-
 } // namespace detail
 
 /**
@@ -46,7 +49,7 @@ public:
 #if ORTEAF_ENABLE_MPS
   using MpsKernelMetadataLease =
       ::orteaf::internal::execution::mps::manager::MpsKernelMetadataManager::
-          KernelMetadataLease;
+          MpsKernelMetadataLease;
 #endif
 
   using Variant = std::variant<
@@ -57,6 +60,8 @@ public:
 #endif
       >;
 
+  using ExecuteFunc = KernelEntry::ExecuteFunc;
+
   KernelMetadataLease() = default;
 
   explicit KernelMetadataLease(Variant lease) noexcept
@@ -66,6 +71,9 @@ public:
   const Variant &lease() const noexcept { return lease_; }
 
   void setLease(Variant lease) noexcept { lease_ = std::move(lease); }
+
+  ExecuteFunc execute() const noexcept { return execute_; }
+  void setExecute(ExecuteFunc execute) noexcept { execute_ = execute; }
 
   ::orteaf::internal::kernel::core::KernelEntry rebuild() const {
     ::orteaf::internal::kernel::core::KernelEntry entry;
@@ -84,12 +92,14 @@ public:
           }
         },
         lease_);
+    entry.setExecute(execute_);
     return entry;
   }
 
   static KernelMetadataLease fromEntry(
       const ::orteaf::internal::kernel::core::KernelEntry &entry) {
     KernelMetadataLease metadata;
+    metadata.setExecute(entry.execute());
     std::visit(
         [&](const auto &lease_value) {
           using LeaseT = std::decay_t<decltype(lease_value)>;
@@ -101,9 +111,9 @@ public:
             if (!base_ptr) {
               return;
             }
-            metadata = ::orteaf::internal::execution::mps::resource::
-                MpsKernelMetadata::buildMetadataLeaseFromBase(*base_ptr,
-                                                             entry.execute());
+            using BaseT = std::remove_cvref_t<decltype(*base_ptr)>;
+            metadata = BaseT::MetadataType::buildMetadataLeaseFromBase(*base_ptr);
+            metadata.setExecute(entry.execute());
           }
         },
         entry.base());
@@ -112,6 +122,7 @@ public:
 
 private:
   Variant lease_{};
+  ExecuteFunc execute_{nullptr};
 };
 
 } // namespace orteaf::internal::kernel::core

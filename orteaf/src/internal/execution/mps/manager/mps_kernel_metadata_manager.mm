@@ -12,7 +12,7 @@ namespace orteaf::internal::execution::mps::manager {
 bool KernelMetadataPayloadPoolTraits::create(Payload &payload,
                                              const Request &request,
                                              const Context &) {
-  return payload.initialize(request.keys, request.execute);
+  return payload.initialize(request.keys);
 }
 
 void KernelMetadataPayloadPoolTraits::destroy(Payload &payload,
@@ -55,15 +55,13 @@ void MpsKernelMetadataManager::shutdown() {
   core_.shutdown(payload_request, payload_context);
 }
 
-MpsKernelMetadataManager::KernelMetadataLease
+MpsKernelMetadataManager::MpsKernelMetadataLease
 MpsKernelMetadataManager::acquire(
-    const ::orteaf::internal::base::HeapVector<Key> &keys,
-    ExecuteFunc execute) {
+    const ::orteaf::internal::base::HeapVector<Key> &keys) {
   core_.ensureConfigured();
 
   KernelMetadataPayloadPoolTraits::Request request{};
   request.keys = keys;
-  request.execute = execute;
 
   const KernelMetadataPayloadPoolTraits::Context context{};
   auto handle = core_.acquirePayloadOrGrowAndCreate(request, context);

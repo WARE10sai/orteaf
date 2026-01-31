@@ -26,6 +26,8 @@
 
 namespace orteaf::internal::execution::mps::resource {
 
+struct MpsKernelMetadata;
+
 /**
  * @brief Kernel base structure that caches MPS compute pipeline states.
  *
@@ -37,6 +39,7 @@ namespace orteaf::internal::execution::mps::resource {
  * Each MpsKernelBase can manage multiple kernels (library/function pairs).
  */
 struct MpsKernelBase {
+  using MetadataType = MpsKernelMetadata;
   using PipelineLease = ::orteaf::internal::execution::mps::manager::
       MpsComputePipelineStateManager::PipelineLease;
   using LibraryKey = ::orteaf::internal::execution::mps::manager::LibraryKey;

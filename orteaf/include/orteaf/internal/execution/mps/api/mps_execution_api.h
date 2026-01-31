@@ -34,9 +34,7 @@ public:
   using KernelBaseLease = ::orteaf::internal::execution::mps::manager::
       MpsKernelBaseManager::KernelBaseLease;
   using KernelMetadataLease = ::orteaf::internal::execution::mps::manager::
-      MpsKernelMetadataManager::KernelMetadataLease;
-  using KernelExecuteFunc = ::orteaf::internal::execution::mps::manager::
-      MpsKernelMetadataManager::ExecuteFunc;
+      MpsKernelMetadataManager::MpsKernelMetadataLease;
   using PipelineLease = ::orteaf::internal::execution::mps::manager::
       MpsComputePipelineStateManager::PipelineLease;
   using StrongFenceLease = ::orteaf::internal::execution::mps::manager::
@@ -106,9 +104,8 @@ public:
     return manager().kernelBaseManager().acquire(keys);
   }
 
-  static KernelMetadataLease acquireKernelMetadata(const KernelKeys &keys,
-                                                   KernelExecuteFunc execute) {
-    return manager().kernelMetadataManager().acquire(keys, execute);
+  static KernelMetadataLease acquireKernelMetadata(const KernelKeys &keys) {
+    return manager().kernelMetadataManager().acquire(keys);
   }
 
 private:

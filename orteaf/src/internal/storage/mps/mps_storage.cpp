@@ -1,5 +1,7 @@
 #include "orteaf/internal/storage/mps/mps_storage.h"
 
+#if ORTEAF_ENABLE_MPS
+
 #include "orteaf/internal/execution/mps/api/mps_execution_api.h"
 
 namespace orteaf::internal::storage::mps {
@@ -26,3 +28,5 @@ MpsStorage MpsStorage::Builder::build() {
 }
 
 } // namespace orteaf::internal::storage::mps
+
+#endif // ORTEAF_ENABLE_MPS
