@@ -158,8 +158,7 @@ using PipelinePayloadPool =
 struct PipelineControlBlockTag {};
 
 using PipelineControlBlock = ::orteaf::internal::base::StrongControlBlock<
-    ::orteaf::internal::execution::mps::MpsFunctionHandle,
-    MpsPipelinePayload,
+    ::orteaf::internal::execution::mps::MpsFunctionHandle, MpsPipelinePayload,
     PipelinePayloadPool>;
 
 struct MpsComputePipelineStateManagerTraits {
@@ -227,7 +226,6 @@ public:
   void shutdown();
 
   PipelineLease acquire(const FunctionKey &key);
-  void release(PipelineLease &lease) noexcept { lease.release(); }
 
 #if ORTEAF_ENABLE_TEST
   void configureForTest(const Config &config, DeviceType device,
@@ -275,7 +273,6 @@ public:
 #endif
 
 private:
-
   void validateKey(const FunctionKey &key) const;
   PipelinePayloadPoolTraits::Context makePayloadContext() const noexcept;
 

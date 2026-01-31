@@ -199,7 +199,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest, GrowthChunkSizeControlsPoolExpansion) {
   EXPECT_EQ(manager.payloadPoolSizeForTest(), 3u);
 
   // Cleanup
-  manager.release(first);
+  first.release();
 }
 
 TYPED_TEST(MpsLibraryManagerTypedTest, GetOrCreateAllocatesAndCachesLibrary) {
@@ -228,7 +228,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest, GetOrCreateAllocatesAndCachesLibrary) {
   EXPECT_TRUE(manager.payloadCreatedForTest(saved_handle));
 
   // Act: Release (RawLease - no ref counting, just invalidate)
-  manager.release(lease);
+  lease.release();
 
   // Assert: library still alive (cache pattern) - use saved handle
   EXPECT_TRUE(manager.payloadCreatedForTest(saved_handle));
@@ -258,8 +258,8 @@ TYPED_TEST(MpsLibraryManagerTypedTest, ReleasedLeaseDoesNotAffectLibrary) {
   const auto saved_handle = first.payloadHandle();
 
   // Act: Release both (RawLease - no ref counting)
-  manager.release(first);
-  manager.release(second);
+  first.release();
+  second.release();
 
   // Assert: Library still alive (cache pattern) - use saved handle
   EXPECT_TRUE(manager.payloadCreatedForTest(saved_handle));
@@ -281,8 +281,8 @@ TYPED_TEST(MpsLibraryManagerTypedTest, ReleaseIsIdempotent) {
   auto lease = manager.acquire(mps_rt::LibraryKey::Named("Qux"));
 
   // Act & Assert: Multiple releases are safe
-  manager.release(lease);
-  manager.release(lease);
+  lease.release();
+  lease.release();
 }
 
 // =============================================================================
@@ -315,7 +315,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest,
   EXPECT_TRUE(pipeline_manager->isConfiguredForTest());
 
   // Cleanup
-  manager.release(library_lease);
+  library_lease.release();
 }
 
 TYPED_TEST(MpsLibraryManagerTypedTest, PipelineManagerCanBeAccessedByKey) {
@@ -369,7 +369,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest, LibraryPersistsAfterLeaseRelease) {
   // Save handle before release (release clears control block's payload handle)
   const auto saved_handle = library_lease.payloadHandle();
 
-  manager.release(library_lease);
+  library_lease.release();
 
   // Assert: Library still alive after release - use saved handle
   EXPECT_TRUE(manager.payloadCreatedForTest(saved_handle));
@@ -407,7 +407,7 @@ TYPED_TEST(MpsLibraryManagerTypedTest,
   // Save handle before release (release clears control block's payload handle)
   const auto saved_handle = library_lease.payloadHandle();
 
-  manager.release(library_lease);
+  library_lease.release();
 
   // Assert: Library still alive after release - use saved handle
   EXPECT_TRUE(manager.payloadCreatedForTest(saved_handle));

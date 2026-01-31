@@ -115,7 +115,7 @@ TEST_F(MpsGraphManagerTest, AcquireCachesExecutableForSameKey) {
   auto *payload1 = lease1.operator->();
   ASSERT_NE(payload1, nullptr);
   auto exe1 = payload1->executable();
-  manager_.release(lease1);
+  lease1.release();
 
   auto lease2 = manager_.acquire(key, compile_fn);
 
@@ -125,7 +125,7 @@ TEST_F(MpsGraphManagerTest, AcquireCachesExecutableForSameKey) {
   EXPECT_EQ(exe1, payload2->executable());
 
   // Cleanup
-  manager_.release(lease2);
+  lease2.release();
 }
 
 TEST_F(MpsGraphManagerTest, DifferentKeyShapeTriggersNewCompile) {
@@ -187,8 +187,8 @@ TEST_F(MpsGraphManagerTest, DifferentKeyShapeTriggersNewCompile) {
   EXPECT_NE(payload1->executable(), payload2->executable());
 
   // Cleanup
-  manager_.release(lease1);
-  manager_.release(lease2);
+  lease1.release();
+  lease2.release();
 }
 
 // =============================================================================

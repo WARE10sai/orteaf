@@ -213,8 +213,6 @@ public:
   LibraryLease acquire(const LibraryKey &key);
   LibraryLease acquire(LibraryHandle handle);
 
-  void release(LibraryLease &lease) noexcept { lease.release(); }
-
 #if ORTEAF_ENABLE_TEST
   void configureForTest(const Config &config, DeviceType device,
                         SlowOps *ops) {
@@ -256,8 +254,6 @@ public:
 #endif
 
 private:
-  friend LibraryLease;
-
   void validateKey(const LibraryKey &key) const;
   LibraryPayloadPoolTraits::Context makePayloadContext() const noexcept;
 

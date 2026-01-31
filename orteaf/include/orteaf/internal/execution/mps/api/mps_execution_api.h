@@ -6,6 +6,7 @@
 #include <memory>
 #include <utility>
 
+#include "orteaf/internal/base/heap_vector.h"
 #include "orteaf/internal/diagnostics/error/error.h"
 #include "orteaf/internal/execution/mps/manager/mps_execution_manager.h"
 #include "orteaf/internal/execution/mps/platform/mps_slow_ops.h"
@@ -24,8 +25,16 @@ public:
       ::orteaf::internal::execution::mps::manager::HeapDescriptorKey;
   using HeapLease =
       ::orteaf::internal::execution::mps::manager::MpsHeapManager::HeapLease;
+  using HeapHandle = ::orteaf::internal::execution::mps::MpsHeapHandle;
   using LibraryKey = ::orteaf::internal::execution::mps::manager::LibraryKey;
   using FunctionKey = ::orteaf::internal::execution::mps::manager::FunctionKey;
+  using KernelKey =
+      ::orteaf::internal::execution::mps::manager::MpsKernelBaseManager::Key;
+  using KernelKeys = ::orteaf::internal::base::HeapVector<KernelKey>;
+  using KernelBaseLease = ::orteaf::internal::execution::mps::manager::
+      MpsKernelBaseManager::KernelBaseLease;
+  using KernelMetadataLease = ::orteaf::internal::execution::mps::manager::
+      MpsKernelMetadataManager::MpsKernelMetadataLease;
   using PipelineLease = ::orteaf::internal::execution::mps::manager::
       MpsComputePipelineStateManager::PipelineLease;
   using StrongFenceLease = ::orteaf::internal::execution::mps::manager::
@@ -60,6 +69,15 @@ public:
     return device_lease->heapManager().acquire(key);
   }
 
+  static HeapLease acquireHeap(const HeapDescriptorKey &key) {
+    return acquireHeap(DeviceHandle{0}, key);
+  }
+
+  static HeapLease acquireHeap(HeapHandle handle) {
+    auto device_lease = acquireDevice(DeviceHandle{0});
+    return device_lease->heapManager().acquire(handle);
+  }
+
   // Acquire a single pipeline for the given device/library/function key trio.
   static PipelineLease acquirePipeline(DeviceHandle device,
                                        const LibraryKey &library_key,
@@ -80,6 +98,14 @@ public:
     auto device_lease = acquireDevice(device);
     auto *resource = device_lease.operator->();
     return resource->fencePool().acquire();
+  }
+
+  static KernelBaseLease acquireKernelBase(const KernelKeys &keys) {
+    return manager().kernelBaseManager().acquire(keys);
+  }
+
+  static KernelMetadataLease acquireKernelMetadata(const KernelKeys &keys) {
+    return manager().kernelMetadataManager().acquire(keys);
   }
 
 private:
