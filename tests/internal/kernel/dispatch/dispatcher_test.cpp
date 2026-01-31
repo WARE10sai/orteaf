@@ -48,7 +48,7 @@ void registerTestKernel(Op op, Architecture arch, kernel::Layout layout,
                        DType dtype, kernel::Variant variant) {
   auto key = kernel::kernel_key::make(op, arch, layout, dtype, variant);
   auto metadata = makeTestMetadata();
-  api::registerKernel(key, std::move(metadata));
+  api::KernelRegistryApi::registerKernel(key, std::move(metadata));
 }
 
 // Test fixture for Dispatcher tests
@@ -64,12 +64,12 @@ protected:
     ::orteaf::internal::execution_context::cpu::reset();
     
     // Clear the global registry before each test
-    api::kernelRegistry().clear();
+    api::KernelRegistryApi::clear();
   }
 
   void TearDown() override {
     // Clean up the registry after each test
-    api::kernelRegistry().clear();
+    api::KernelRegistryApi::clear();
     
     // Cleanup CPU execution API
     namespace cpu_api = ::orteaf::internal::execution::cpu::api;
@@ -207,10 +207,10 @@ TEST_F(DispatcherTest, IntegrationWithRegistryAPI) {
   
   // Register via API
   auto metadata = makeTestMetadata();
-  api::registerKernel(key, std::move(metadata));
+  api::KernelRegistryApi::registerKernel(key, std::move(metadata));
   
   // Verify it's in the registry
-  EXPECT_TRUE(api::containsKernel(key));
+  EXPECT_TRUE(api::KernelRegistryApi::containsKernel(key));
   
   // Now try to resolve via dispatcher
   dispatch::Dispatcher dispatcher;

@@ -24,7 +24,7 @@ DispatchResult Dispatcher::dispatch(const Request &request, Args &args) {
 
 Dispatcher::Entry *Dispatcher::resolve(const Request &request, const Args &args) {
   // Get the global kernel registry
-  auto &registry = ::orteaf::internal::kernel::api::kernelRegistry();
+  auto &registry = ::orteaf::internal::kernel::api::KernelRegistryApi::instance();
   
   // Use key resolver to find the best matching kernel key
   auto key_opt = ::orteaf::internal::kernel::key_resolver::resolve(
